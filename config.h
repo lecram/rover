@@ -17,7 +17,11 @@
 #define RVK_TG_HIDDEN   "s"
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
-#define RVC_CWD         BLUE
-#define RVC_STATUS      GREEN
+#define RVC_CWD         GREEN
+#define RVC_STATUS      BLUE
+#define RVC_BORDER      CYAN
+#define RVC_FILE        DEFAULT
+#define RVC_DIR         DEFAULT
+#define RVC_HIDDEN      MAGENTA
 
 #define RV_JUMP         10

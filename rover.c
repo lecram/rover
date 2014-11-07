@@ -140,10 +140,15 @@ update_browser()
     for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
         if (j == rover.fsel)
             wattr_on(rover.window, A_REVERSE, NULL);
-        (void) mvwhline(rover.window, i + 1, 1,
-                        ' ', COLS - 2);
-        (void) mvwaddnstr(rover.window, i + 1, 1,
-                          rover.fnames[j], COLS - 2);
+        if (rover.fnames[j][0] == '.')
+            wcolor_set(rover.window, RVC_HIDDEN, NULL);
+        else if (strchr(rover.fnames[j], '/') != NULL)
+            wcolor_set(rover.window, RVC_DIR, NULL);
+        else
+            wcolor_set(rover.window, RVC_FILE, NULL);
+        (void) mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+        (void) mvwaddnstr(rover.window, i + 1, 1, rover.fnames[j], COLS - 2);
+        wcolor_set(rover.window, DEFAULT, NULL);
         if (j == rover.fsel)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
@@ -180,7 +185,9 @@ cd()
         free(rover.fnames);
     rover.nfiles = ls(rover.cwd, &rover.fnames, rover.flags);
     (void) wclear(rover.window);
+    wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+    wcolor_set(rover.window, DEFAULT, NULL);
     update_browser();
     refresh();
 }
