@@ -1,5 +1,4 @@
 /* ToDo
- *  - incremental search inside directory;
  *  - filters (show/hide diretories/files, apply glob pattern)
  *  - tabs (only store paths?);
  *  - browsing history (use keys < & > to navigate);
