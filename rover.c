@@ -134,7 +134,8 @@ init_term()
 static void
 update_browser()
 {
-    int i, j;
+    int i, j, n;
+    char fmt[32];
 
     for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
         if (j == rover.fsel)
@@ -147,13 +148,15 @@ update_browser()
             wattr_off(rover.window, A_REVERSE, NULL);
     }
     wrefresh(rover.window);
+    sprintf(STATUS, "%d/%d%n", rover.fsel + 1, rover.nfiles, &n);
+    sprintf(fmt, "%% %dd/%%d", 10-n);
     STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = rover.flags & SHOW_DIRS   ? 'D' : ' ';
     STATUS[2] = rover.flags & SHOW_HIDDEN ? 'H' : ' ';
-    /* C89 doesn't have snprintf(), but a buffer overrun will only occur here
-     *  if the number of files reach 10 ^ (STATUSSZ / 2), which is unlikely. */
-    sprintf(STATUS+3, "% 10d/%d", rover.fsel + 1, rover.nfiles);
+    sprintf(STATUS+3, fmt, rover.fsel + 1, rover.nfiles);
+    color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
+    color_set(DEFAULT, NULL);
     refresh();
 }
 
@@ -168,7 +171,9 @@ cd()
     rover.scroll = 0;
     (void) chdir(rover.cwd);
     (void) mvhline(0, 0, ' ', COLS);
+    color_set(RVC_CWD, NULL);
     (void) mvaddnstr(0, 0, rover.cwd, COLS);
+    color_set(DEFAULT, NULL);
     for (i = 0; i < rover.nfiles; i++)
         free(rover.fnames[i]);
     if (rover.nfiles)
