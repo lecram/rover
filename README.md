@@ -44,11 +44,31 @@ Quick Start
  ```
 
 
+Dependencies
+============
+
+ Rover is supposed to run on any Unix-like system with a curses implementation.
+To build Rover, you need a C89 compiler and a `curses.h` header file.
+
 Configuration
 =============
 
  Rover configuration (mostly key bindings and colors) can only be changed
-by editing config.h and rebuilding the binary.
+by editing the file `config.h` and rebuilding the binary.
+
+ Note that the external programs executed by some Rover commands may be changed
+via the appropriated environment variables. For example, to specify an editor:
+ ```
+ $ EDITOR=vi ./rover
+ ```
+
+ You may also want to "install" Rover by copying it somewhere on your $PATH. The
+only file that needs to be copied is `rover`:
+ ```
+ $ cp rover /usr/bin
+ $ # Now the "./" prefix is no longer necessary
+ $ rover
+ ```
 
 
 Copyright
