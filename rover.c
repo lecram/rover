@@ -1,10 +1,3 @@
-/* ToDo
- *  - tabs (only store paths?);
- *  - browsing history (use keys < & > to navigate);
- */
-
-/* POSIX 2008: http://pubs.opengroup.org/onlinepubs/9699919799/toc.htm */
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
