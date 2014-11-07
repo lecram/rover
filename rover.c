@@ -319,6 +319,7 @@ main()
         else if (!strcmp(key, RVK_SEARCH)) {
             int ch, length, sel, oldsel, oldscroll;
             color_t color;
+            mvaddstr(LINES - 1, 0, "search:");
             oldsel = rover.fsel;
             oldscroll = rover.scroll;
             *SEARCH = '\0';
@@ -358,7 +359,7 @@ main()
                 update_browser();
                 SEARCH[length] = ' ';
                 color_set(color, NULL);
-                mvaddstr(LINES - 1, 0, SEARCH);
+                mvaddstr(LINES - 1, 8, SEARCH);
                 color_set(DEFAULT, NULL);
             }
             move(LINES - 1, 0);
