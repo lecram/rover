@@ -11,5 +11,6 @@
 #define RVK_HOME        "H"
 #define RVK_SHELL       "^M"
 #define RVK_EDIT        " "
+#define RVK_SEARCH      "/"
 
 #define RV_JUMP         10

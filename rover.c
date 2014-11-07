@@ -20,12 +20,14 @@
 
 #include "config.h"
 
-#define TXTBUFSZ 256
-char TXTBUF[TXTBUFSZ];
+#define STATUSSZ 256
+char STATUS[STATUSSZ];
+#define SEARCHSZ 256
+char SEARCH[SEARCHSZ];
 #define MAXARGS 256
 char *args[MAXARGS];
 
-enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE};
+typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 
 struct skit_t {
     int nfiles;
@@ -129,9 +131,9 @@ update_browser()
     }
     wrefresh(skit.window);
     /* C89 doesn't have snprintf(), but a buffer overrun will only occur here
-     *  if the number of files reach 10 ^ (TXTBUFSZ / 2), which is unlikely. */
-    sprintf(TXTBUF, "% 10d/%d", skit.fsel + 1, skit.nfiles);
-    mvaddstr(LINES - 1, COLS - strlen(TXTBUF), TXTBUF);
+     *  if the number of files reach 10 ^ (STATUSSZ / 2), which is unlikely. */
+    sprintf(STATUS, "% 10d/%d", skit.fsel + 1, skit.nfiles);
+    mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
     refresh();
 }
 
@@ -276,6 +278,55 @@ main()
                 args[2] = NULL;
                 spawn();
             }
+        }
+        else if (!strcmp(key, RVK_SEARCH)) {
+            int ch, length, sel, oldsel, oldscroll;
+            color_t color;
+            oldsel = skit.fsel;
+            oldscroll = skit.scroll;
+            *SEARCH = '\0';
+            length = 0;
+            while ((ch = getch()) != '\r') {
+                switch (ch) {
+                    case 8:
+                    case 127:
+                        if (length)
+                            SEARCH[--length] = '\0';
+                        if (!length) {
+                            skit.fsel = oldsel;
+                            skit.scroll = oldscroll;
+                        }
+                        break;
+                    default:
+                        if (length < SEARCHSZ - 2)
+                            SEARCH[length++] = ch;
+                }
+                if (length) {
+                    for (sel = 0; sel < skit.nfiles; sel++)
+                        if (!strncmp(skit.fnames[sel], SEARCH, length))
+                            break;
+                    if (sel < skit.nfiles) {
+                        color = GREEN;
+                        skit.fsel = sel;
+                        if (skit.nfiles > LINES - 4) {
+                            if (sel > skit.nfiles - LINES + 4)
+                                skit.scroll = skit.nfiles - LINES + 4;
+                            else
+                                skit.scroll = sel;
+                        }
+                    }
+                    else
+                        color = RED;
+                }
+                update_browser();
+                SEARCH[length] = ' ';
+                color_set(color, NULL);
+                mvaddstr(LINES - 1, 0, SEARCH);
+                color_set(DEFAULT, NULL);
+            }
+            move(LINES - 1, 0);
+            clrtoeol();
+            update_browser();
         }
     }
     while (skit.nfiles--) free(skit.fnames[skit.nfiles]);
