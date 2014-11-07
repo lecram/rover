@@ -301,6 +301,17 @@ main()
                 spawn();
             }
         }
+        else if (!strcmp(key, RVK_VIEW)) {
+            if (strchr(rover.fnames[rover.fsel], '/') != NULL)
+                continue;
+            program = getenv("PAGER");
+            if (program) {
+                args[0] = program;
+                args[1] = rover.fnames[rover.fsel];
+                args[2] = NULL;
+                spawn();
+            }
+        }
         else if (!strcmp(key, RVK_EDIT)) {
             if (strchr(rover.fnames[rover.fsel], '/') != NULL)
                 continue;
