@@ -1,0 +1,12 @@
+#define RVK_QUIT        'q'
+#define RVK_DOWN        'j'
+#define RVK_UP          'k'
+#define RVK_JUMP_DOWN   'J'
+#define RVK_JUMP_UP     'K'
+#define RVK_CD_DOWN     'l'
+#define RVK_CD_UP       'h'
+#define RVK_HOME        'H'
+#define RVK_SHELL       '\r'
+#define RVK_EDIT        ' '
+
+#define RV_JUMP         10
