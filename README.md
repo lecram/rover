@@ -1,10 +1,11 @@
 Introduction
 ============
 
+ Rover is an interactive application for file system navigation.
+
 ![Rover screenshot](/../screenshots/screenshot.png?raw=true "Screenshot")
 
- Rover is an interactive application for file system navigation. The
-main goal is to provide a faster way to explore a file system from the
+ The main goal is to provide a faster way to explore a file system from the
 terminal, compared to what's possible by using `cd`, `ls`, etc. Rover
 is designed to be simple and portable. It was originally written to be
 used on a headless Raspberry Pi accessed via ssh. The [Ranger file manager](http://ranger.nongnu.org/)
