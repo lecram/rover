@@ -48,13 +48,14 @@ Dependencies
 ============
 
  Rover is supposed to run on any Unix-like system with a curses implementation.
-To build Rover, you need a C89 compiler and a `curses.h` header file.
+To build Rover, you need a C compiler (supporting at least C89) and a `curses.h`
+header file.
 
 Configuration
 =============
 
  Rover configuration (mostly key bindings and colors) can only be changed
-by editing the file `config.h` and rebuilding the binary.
+by editing the file `config.h` and rebuilding the binary (with `make`).
 
  Note that the external programs executed by some Rover commands may be changed
 via the appropriated environment variables. For example, to specify an editor:
