@@ -1,5 +1,4 @@
 /* ToDo
- *  - filters (show/hide diretories/files, apply glob pattern)
  *  - tabs (only store paths?);
  *  - browsing history (use keys < & > to navigate);
  */
@@ -8,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/types.h>  /* ? */
 #include <stdio.h>      /* FILENAME_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
@@ -30,10 +30,15 @@ typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 
 #define HEIGHT (LINES-4)
 
+#define SHOW_FILES      0x01u
+#define SHOW_DIRS       0x02u
+#define SHOW_HIDDEN     0x04u
+
 struct rover_t {
     int nfiles;
     int scroll;
     int fsel;
+    uint8_t flags;
     char **fnames;
     WINDOW *window;
     char cwd[FILENAME_MAX];
@@ -53,7 +58,7 @@ spcmp(const void *a, const void *b)
 }
 
 int
-ls(char *path, char ***namesp)
+ls(char *path, char ***namesp, uint8_t flags)
 {
     DIR *dp;
     struct dirent *ep;
@@ -71,14 +76,25 @@ ls(char *path, char ***namesp)
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
+        if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
+            continue;
         /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
         (void) stat(ep->d_name, &statbuf);
-        names[i] = (char *) malloc(strlen(ep->d_name) + 2);
-        strcpy(names[i], ep->d_name);
-        if (S_ISDIR(statbuf.st_mode))
-            strcat(names[i], "/");
-        i++;
+        if (S_ISDIR(statbuf.st_mode)) {
+            if (flags & SHOW_DIRS) {
+                names[i] = (char *) malloc(strlen(ep->d_name) + 2);
+                strcpy(names[i], ep->d_name);
+                strcat(names[i], "/");
+                i++;
+            }
+        }
+        else if (flags & SHOW_FILES) {
+            names[i] = (char *) malloc(strlen(ep->d_name) + 1);
+            strcpy(names[i], ep->d_name);
+            i++;
+        }
     }
+    n = i; /* Ignore unused space in array caused by filters. */
     qsort(names, n, sizeof(char *), spcmp);
     (void) closedir(dp);
     *namesp = names;
@@ -131,9 +147,12 @@ update_browser()
             wattr_off(rover.window, A_REVERSE, NULL);
     }
     wrefresh(rover.window);
+    STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
+    STATUS[1] = rover.flags & SHOW_DIRS   ? 'D' : ' ';
+    STATUS[2] = rover.flags & SHOW_HIDDEN ? 'H' : ' ';
     /* C89 doesn't have snprintf(), but a buffer overrun will only occur here
      *  if the number of files reach 10 ^ (STATUSSZ / 2), which is unlikely. */
-    sprintf(STATUS, "% 10d/%d", rover.fsel + 1, rover.nfiles);
+    sprintf(STATUS+3, "% 10d/%d", rover.fsel + 1, rover.nfiles);
     mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
     refresh();
 }
@@ -154,7 +173,7 @@ cd()
         free(rover.fnames[i]);
     if (rover.nfiles)
         free(rover.fnames);
-    rover.nfiles = ls(rover.cwd, &rover.fnames);
+    rover.nfiles = ls(rover.cwd, &rover.fnames, rover.flags);
     (void) wclear(rover.window);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     update_browser();
@@ -190,6 +209,7 @@ main()
     init_term();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
     rover.nfiles = 0;
+    rover.flags = SHOW_FILES | SHOW_DIRS;
     (void) getcwd(rover.cwd, FILENAME_MAX);
     strcat(rover.cwd, "/");
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
@@ -328,6 +348,18 @@ main()
             move(LINES - 1, 0);
             clrtoeol();
             update_browser();
+        }
+        else if (!strcmp(key, RVK_TG_FILES)) {
+            rover.flags ^= SHOW_FILES;
+            cd();
+        }
+        else if (!strcmp(key, RVK_TG_DIRS)) {
+            rover.flags ^= SHOW_DIRS;
+            cd();
+        }
+        else if (!strcmp(key, RVK_TG_HIDDEN)) {
+            rover.flags ^= SHOW_HIDDEN;
+            cd();
         }
     }
     while (rover.nfiles--) free(rover.fnames[rover.nfiles]);
