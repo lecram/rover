@@ -51,6 +51,7 @@ Dependencies
 To build Rover, you need a C compiler (supporting at least C89) and a `curses.h`
 header file.
 
+
 Configuration
 =============
 
