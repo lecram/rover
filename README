@@ -9,6 +9,7 @@ used on a headless Raspberry Pi accessed via ssh. The Ranger file manager
 (http://ranger.nongnu.org/) was a major inspiration for the user interface
 design, but Rover has significantly less features and dependencies.
 
+
 Quick Start
 ===========
 
@@ -33,11 +34,13 @@ Quick Start
        d - toggle directory listing
        s - toggle hidden file/directory listing
 
+
 Configuration
 =============
 
  Rover configuration (mostly key bindings and colors) can only be changed
 by editing config.h and rebuilding the binary.
+
 
 Copyright
 =========
