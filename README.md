@@ -5,21 +5,26 @@ Introduction
 main goal is to provide a faster way to explore a file system from the
 terminal, compared to what's possible by using `cd`, `ls`, etc. Rover
 is designed to be simple and portable. It was originally written to be
-used on a headless Raspberry Pi accessed via ssh. The Ranger file manager
-(http://ranger.nongnu.org/) was a major inspiration for the user interface
-design, but Rover has significantly less features and dependencies.
+used on a headless Raspberry Pi accessed via ssh. The [Ranger file manager](http://ranger.nongnu.org/)
+was a major inspiration for the user interface design, but Rover has
+significantly less features and dependencies.
 
 
 Quick Start
 ===========
 
  Building:
+ ```
  $ make
+ ```
 
  Running:
+ ```
  $ ./rover
+ ```
 
  Using:
+ ```
        q - quit Rover
      j/k - move cursor up/down
      J/K - move cursor up/down 10 times
@@ -33,6 +38,7 @@ Quick Start
        f - toggle file listing
        d - toggle directory listing
        s - toggle hidden file/directory listing
+ ```
 
 
 Configuration
