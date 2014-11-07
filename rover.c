@@ -181,8 +181,8 @@ spawn()
 int
 main()
 {
-    int ch;
     char *program;
+    char *key;
 
     sk_init();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
@@ -191,8 +191,11 @@ main()
     strcat(skit.cwd, "/");
     skit.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     cd();
-    while ((ch = getch()) != RVK_QUIT) switch (ch) {
-        case RVK_DOWN:
+    while (1) {
+        key = keyname(getch());
+        if (!strcmp(key, RVK_QUIT))
+            break;
+        else if (!strcmp(key, RVK_DOWN)) {
             if (skit.fsel == skit.nfiles - 1)
                 skit.scroll = skit.fsel = 0;
             else {
@@ -201,8 +204,8 @@ main()
                     skit.scroll++;
             }
             update_browser();
-            break;
-        case RVK_UP:
+        }
+        else if (!strcmp(key, RVK_UP)) {
             if (skit.fsel == 0) {
                 skit.fsel = skit.nfiles - 1;
                 skit.scroll = skit.nfiles - LINES + 4;
@@ -215,8 +218,8 @@ main()
                     skit.scroll--;
             }
             update_browser();
-            break;
-        case RVK_JUMP_DOWN:
+        }
+        else if (!strcmp(key, RVK_JUMP_DOWN)) {
             skit.fsel += RV_JUMP;
             if (skit.fsel >= skit.nfiles)
                 skit.fsel = skit.nfiles - 1;
@@ -226,8 +229,8 @@ main()
                     skit.scroll = skit.nfiles - LINES + 4;
             }
             update_browser();
-            break;
-        case RVK_JUMP_UP:
+        }
+        else if (!strcmp(key, RVK_JUMP_UP)) {
             skit.fsel -= RV_JUMP;
             if (skit.fsel < 0)
                 skit.fsel = 0;
@@ -235,35 +238,35 @@ main()
             if (skit.scroll < 0)
                 skit.scroll = 0;
             update_browser();
-            break;
-        case RVK_CD_DOWN:
+        }
+        else if (!strcmp(key, RVK_CD_DOWN)) {
             if (strchr(skit.fnames[skit.fsel], '/') == NULL)
                 continue;
             strcat(skit.cwd, skit.fnames[skit.fsel]);
             cd();
-            break;
-        case RVK_CD_UP:
+        }
+        else if (!strcmp(key, RVK_CD_UP)) {
             if (strlen(skit.cwd) == 1)
                 continue;
             skit.cwd[strlen(skit.cwd) - 1] = '\0';
             *(strrchr(skit.cwd, '/') + 1) = '\0';
             cd();
-            break;
-        case RVK_HOME:
+        }
+        else if (!strcmp(key, RVK_HOME)) {
             strcpy(skit.cwd, getenv("HOME"));
             if (skit.cwd[strlen(skit.cwd) - 1] != '/')
                 strcat(skit.cwd, "/");
             cd();
-            break;
-        case RVK_SHELL:
+        }
+        else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
             if (program) {
                 args[0] = program;
                 args[1] = NULL;
                 spawn();
             }
-            break;
-        case RVK_EDIT:
+        }
+        else if (!strcmp(key, RVK_EDIT)) {
             if (strchr(skit.fnames[skit.fsel], '/') != NULL)
                 continue;
             program = getenv("EDITOR");
@@ -273,9 +276,7 @@ main()
                 args[2] = NULL;
                 spawn();
             }
-            break;
-        default:
-            continue;
+        }
     }
     while (skit.nfiles--) free(skit.fnames[skit.nfiles]);
     free(skit.fnames);
