@@ -28,14 +28,16 @@ char *args[MAXARGS];
 
 typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 
-struct skit_t {
+#define HEIGHT (LINES-4)
+
+struct rover_t {
     int nfiles;
     int scroll;
     int fsel;
     char **fnames;
     WINDOW *window;
     char cwd[FILENAME_MAX];
-} skit;
+} rover;
 
 static int
 spcmp(const void *a, const void *b)
@@ -67,7 +69,7 @@ ls(char *path, char ***namesp)
     names = (char **) malloc(n * sizeof(char *));
     i = 0;
     while ((ep = readdir(dp))) {
-        if (strcmp(ep->d_name, ".") == 0 || strcmp(ep->d_name, "..") == 0)
+        if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
         /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
         (void) stat(ep->d_name, &statbuf);
@@ -84,13 +86,13 @@ ls(char *path, char ***namesp)
 }
 
 static void
-sk_clean()
+clean_term()
 {
     endwin();
 }
 
 static void
-sk_init()
+init_term()
 {
     setlocale(LC_ALL, "");
     initscr();
@@ -110,7 +112,7 @@ sk_init()
         init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
         init_pair(WHITE, COLOR_WHITE, COLOR_BLACK);
     }
-    atexit(sk_clean);
+    atexit(clean_term);
 }
 
 static void
@@ -118,43 +120,43 @@ update_browser()
 {
     int i, j;
 
-    for (i = 0, j = skit.scroll; i < LINES - 4 && j < skit.nfiles; i++, j++) {
-        if (j == skit.fsel)
-            wattr_on(skit.window, A_REVERSE, NULL);
-        (void) mvwhline(skit.window, i + 1, 1,
+    for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
+        if (j == rover.fsel)
+            wattr_on(rover.window, A_REVERSE, NULL);
+        (void) mvwhline(rover.window, i + 1, 1,
                         ' ', COLS - 2);
-        (void) mvwaddnstr(skit.window, i + 1, 1,
-                          skit.fnames[j], COLS - 2);
-        if (j == skit.fsel)
-            wattr_off(skit.window, A_REVERSE, NULL);
+        (void) mvwaddnstr(rover.window, i + 1, 1,
+                          rover.fnames[j], COLS - 2);
+        if (j == rover.fsel)
+            wattr_off(rover.window, A_REVERSE, NULL);
     }
-    wrefresh(skit.window);
+    wrefresh(rover.window);
     /* C89 doesn't have snprintf(), but a buffer overrun will only occur here
      *  if the number of files reach 10 ^ (STATUSSZ / 2), which is unlikely. */
-    sprintf(STATUS, "% 10d/%d", skit.fsel + 1, skit.nfiles);
+    sprintf(STATUS, "% 10d/%d", rover.fsel + 1, rover.nfiles);
     mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
     refresh();
 }
 
-/* NOTE: The caller needs to write the new path to skit.cwd
+/* NOTE: The caller needs to write the new path to rover.cwd
  *  *before* calling this function. */
 static void
 cd()
 {
     int i;
 
-    skit.fsel = 0;
-    skit.scroll = 0;
-    (void) chdir(skit.cwd);
+    rover.fsel = 0;
+    rover.scroll = 0;
+    (void) chdir(rover.cwd);
     (void) mvhline(0, 0, ' ', COLS);
-    (void) mvaddnstr(0, 0, skit.cwd, COLS);
-    for (i = 0; i < skit.nfiles; i++)
-        free(skit.fnames[i]);
-    if (skit.nfiles)
-        free(skit.fnames);
-    skit.nfiles = ls(skit.cwd, &skit.fnames);
-    (void) wclear(skit.window);
-    wborder(skit.window, 0, 0, 0, 0, 0, 0, 0, 0);
+    (void) mvaddnstr(0, 0, rover.cwd, COLS);
+    for (i = 0; i < rover.nfiles; i++)
+        free(rover.fnames[i]);
+    if (rover.nfiles)
+        free(rover.fnames);
+    rover.nfiles = ls(rover.cwd, &rover.fnames);
+    (void) wclear(rover.window);
+    wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     update_browser();
     refresh();
 }
@@ -168,9 +170,9 @@ spawn()
     pid = fork();
     if (pid > 0) {
         /* fork() succeeded. */
-        sk_clean();
+        clean_term();
         (void) waitpid(pid, &status, 0);
-        sk_init();
+        init_term();
         doupdate();
     }
     else if (pid == 0) {
@@ -185,78 +187,78 @@ main()
     char *program;
     char *key;
 
-    sk_init();
+    init_term();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
-    skit.nfiles = 0;
-    (void) getcwd(skit.cwd, FILENAME_MAX);
-    strcat(skit.cwd, "/");
-    skit.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    rover.nfiles = 0;
+    (void) getcwd(rover.cwd, FILENAME_MAX);
+    strcat(rover.cwd, "/");
+    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     cd();
     while (1) {
         key = keyname(getch());
         if (!strcmp(key, RVK_QUIT))
             break;
         else if (!strcmp(key, RVK_DOWN)) {
-            if (skit.fsel == skit.nfiles - 1)
-                skit.scroll = skit.fsel = 0;
+            if (rover.fsel == rover.nfiles - 1)
+                rover.scroll = rover.fsel = 0;
             else {
-                skit.fsel++;
-                if ((skit.fsel - skit.scroll) == (LINES - 4))
-                    skit.scroll++;
+                rover.fsel++;
+                if ((rover.fsel - rover.scroll) == HEIGHT)
+                    rover.scroll++;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_UP)) {
-            if (skit.fsel == 0) {
-                skit.fsel = skit.nfiles - 1;
-                skit.scroll = skit.nfiles - LINES + 4;
-                if (skit.scroll < 0)
-                    skit.scroll = 0;
+            if (rover.fsel == 0) {
+                rover.fsel = rover.nfiles - 1;
+                rover.scroll = rover.nfiles - HEIGHT;
+                if (rover.scroll < 0)
+                    rover.scroll = 0;
             }
             else {
-                skit.fsel--;
-                if (skit.fsel < skit.scroll)
-                    skit.scroll--;
+                rover.fsel--;
+                if (rover.fsel < rover.scroll)
+                    rover.scroll--;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
-            skit.fsel += RV_JUMP;
-            if (skit.fsel >= skit.nfiles)
-                skit.fsel = skit.nfiles - 1;
-            if (skit.nfiles > LINES - 4) {
-                skit.scroll += RV_JUMP;
-                if (skit.scroll > skit.nfiles - LINES + 4)
-                    skit.scroll = skit.nfiles - LINES + 4;
+            rover.fsel += RV_JUMP;
+            if (rover.fsel >= rover.nfiles)
+                rover.fsel = rover.nfiles - 1;
+            if (rover.nfiles > HEIGHT) {
+                rover.scroll += RV_JUMP;
+                if (rover.scroll > rover.nfiles - HEIGHT)
+                    rover.scroll = rover.nfiles - HEIGHT;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
-            skit.fsel -= RV_JUMP;
-            if (skit.fsel < 0)
-                skit.fsel = 0;
-            skit.scroll -= RV_JUMP;
-            if (skit.scroll < 0)
-                skit.scroll = 0;
+            rover.fsel -= RV_JUMP;
+            if (rover.fsel < 0)
+                rover.fsel = 0;
+            rover.scroll -= RV_JUMP;
+            if (rover.scroll < 0)
+                rover.scroll = 0;
             update_browser();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
-            if (strchr(skit.fnames[skit.fsel], '/') == NULL)
+            if (strchr(rover.fnames[rover.fsel], '/') == NULL)
                 continue;
-            strcat(skit.cwd, skit.fnames[skit.fsel]);
+            strcat(rover.cwd, rover.fnames[rover.fsel]);
             cd();
         }
         else if (!strcmp(key, RVK_CD_UP)) {
-            if (strlen(skit.cwd) == 1)
+            if (strlen(rover.cwd) == 1)
                 continue;
-            skit.cwd[strlen(skit.cwd) - 1] = '\0';
-            *(strrchr(skit.cwd, '/') + 1) = '\0';
+            rover.cwd[strlen(rover.cwd) - 1] = '\0';
+            *(strrchr(rover.cwd, '/') + 1) = '\0';
             cd();
         }
         else if (!strcmp(key, RVK_HOME)) {
-            strcpy(skit.cwd, getenv("HOME"));
-            if (skit.cwd[strlen(skit.cwd) - 1] != '/')
-                strcat(skit.cwd, "/");
+            strcpy(rover.cwd, getenv("HOME"));
+            if (rover.cwd[strlen(rover.cwd) - 1] != '/')
+                strcat(rover.cwd, "/");
             cd();
         }
         else if (!strcmp(key, RVK_SHELL)) {
@@ -268,12 +270,12 @@ main()
             }
         }
         else if (!strcmp(key, RVK_EDIT)) {
-            if (strchr(skit.fnames[skit.fsel], '/') != NULL)
+            if (strchr(rover.fnames[rover.fsel], '/') != NULL)
                 continue;
             program = getenv("EDITOR");
             if (program) {
                 args[0] = program;
-                args[1] = skit.fnames[skit.fsel];
+                args[1] = rover.fnames[rover.fsel];
                 args[2] = NULL;
                 spawn();
             }
@@ -281,8 +283,8 @@ main()
         else if (!strcmp(key, RVK_SEARCH)) {
             int ch, length, sel, oldsel, oldscroll;
             color_t color;
-            oldsel = skit.fsel;
-            oldscroll = skit.scroll;
+            oldsel = rover.fsel;
+            oldscroll = rover.scroll;
             *SEARCH = '\0';
             length = 0;
             while ((ch = getch()) != '\r') {
@@ -292,8 +294,8 @@ main()
                         if (length)
                             SEARCH[--length] = '\0';
                         if (!length) {
-                            skit.fsel = oldsel;
-                            skit.scroll = oldscroll;
+                            rover.fsel = oldsel;
+                            rover.scroll = oldscroll;
                         }
                         break;
                     default:
@@ -301,17 +303,17 @@ main()
                             SEARCH[length++] = ch;
                 }
                 if (length) {
-                    for (sel = 0; sel < skit.nfiles; sel++)
-                        if (!strncmp(skit.fnames[sel], SEARCH, length))
+                    for (sel = 0; sel < rover.nfiles; sel++)
+                        if (!strncmp(rover.fnames[sel], SEARCH, length))
                             break;
-                    if (sel < skit.nfiles) {
+                    if (sel < rover.nfiles) {
                         color = GREEN;
-                        skit.fsel = sel;
-                        if (skit.nfiles > LINES - 4) {
-                            if (sel > skit.nfiles - LINES + 4)
-                                skit.scroll = skit.nfiles - LINES + 4;
+                        rover.fsel = sel;
+                        if (rover.nfiles > HEIGHT) {
+                            if (sel > rover.nfiles - HEIGHT)
+                                rover.scroll = rover.nfiles - HEIGHT;
                             else
-                                skit.scroll = sel;
+                                rover.scroll = sel;
                         }
                     }
                     else
@@ -328,8 +330,8 @@ main()
             update_browser();
         }
     }
-    while (skit.nfiles--) free(skit.fnames[skit.nfiles]);
-    free(skit.fnames);
-    delwin(skit.window);
+    while (rover.nfiles--) free(rover.fnames[rover.nfiles]);
+    free(rover.fnames);
+    delwin(rover.window);
     return 0;
 }
