@@ -67,7 +67,7 @@ via the appropriated environment variables. For example, to specify an editor:
 only file that needs to be copied is `rover`:
  ```
  $ cp rover /usr/bin
- $ # Now the "./" prefix is no longer necessary
+ $ # Now the "./" prefix is no longer necessary.
  $ rover
  ```
 
