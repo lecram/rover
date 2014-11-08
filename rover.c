@@ -242,6 +242,31 @@ spawn()
     }
 }
 
+/* Interactive getstr(). */
+int
+igetstr(char *buffer, int maxlen)
+{
+    int ch, length;
+
+    length = strlen(buffer);
+    ch = getch();
+    if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER)
+        return 0;
+    else if (ch == erasechar() || ch == KEY_LEFT || ch == KEY_BACKSPACE) {
+        if (length)
+            buffer[--length] = '\0';
+    }
+    else if (ch == killchar()) {
+        length = 0;
+        buffer[0] = '\0';
+    }
+    else if (length < maxlen - 1 && isprint(ch)) {
+        buffer[length++] = ch;
+        buffer[length] = '\0';
+    }
+    return 1;
+}
+
 int
 main()
 {
@@ -382,40 +407,16 @@ main()
             }
         }
         else if (!strcmp(key, RVK_SEARCH)) {
+            int oldsel, oldscroll;
             if (!rover.nfiles) continue;
-            int length, sel, oldsel, oldscroll;
-            int ch, erasec, killc;
-            color_t color;
-            mvaddstr(LINES - 1, 0, "search:");
             oldsel = rover.fsel;
             oldscroll = rover.scroll;
             *SEARCH = '\0';
-            length = 0;
-            erasec = erasechar();
-            killc = killchar();
-            while (1) {
-                ch = getch();
-                if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER)
-                    break;
-                else if (ch == erasec || ch == KEY_LEFT || ch == KEY_BACKSPACE) {
-                    if (length)
-                        SEARCH[--length] = '\0';
-                    if (!length) {
-                        rover.fsel = oldsel;
-                        rover.scroll = oldscroll;
-                    }
-                }
-                else if (ch == killc) {
-                    length = 0;
-                    SEARCH[0] = '\0';
-                    SEARCH[1] = '\0';
-                    rover.fsel = oldsel;
-                    rover.scroll = oldscroll;
-                }
-                else if (length < SEARCHSZ - 2 && isprint(ch)) {
-                    SEARCH[length++] = ch;
-                    SEARCH[length+1] = '\0';
-                }
+            mvaddstr(LINES - 1, 0, "search: ");
+            while (igetstr(SEARCH, SEARCHSZ)) {
+                int length, sel;
+                color_t color;
+                length = strlen(SEARCH);
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
                         if (!strncmp(FNAME(sel), SEARCH, length))
@@ -435,11 +436,16 @@ main()
                     else
                         color = RED;
                 }
+                else {
+                    rover.fsel = oldsel;
+                    rover.scroll = oldscroll;
+                }
                 update_browser();
-                SEARCH[length] = ' ';
+                strcat(SEARCH, " ");
                 color_set(color, NULL);
                 mvaddstr(LINES - 1, 8, SEARCH);
                 color_set(DEFAULT, NULL);
+                SEARCH[length] = '\0';
             }
             move(LINES - 1, 0);
             clrtoeol();
