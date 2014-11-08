@@ -253,7 +253,8 @@ main()
     rover.nfiles = 0;
     rover.flags = SHOW_FILES | SHOW_DIRS;
     (void) getcwd(rover.cwd, FILENAME_MAX);
-    strcat(rover.cwd, "/");
+    if (rover.cwd[strlen(rover.cwd)-1] != '/')
+        strcat(rover.cwd, "/");
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     cd();
     while (1) {
