@@ -226,7 +226,7 @@ main()
         else if (!strcmp(key, RVK_DOWN)) {
             if (rover.fsel == rover.nfiles - 1)
                 rover.scroll = rover.fsel = 0;
-            else {
+            else if (rover.nfiles != 0) {
                 rover.fsel++;
                 if ((rover.fsel - rover.scroll) == HEIGHT)
                     rover.scroll++;
@@ -240,7 +240,7 @@ main()
                 if (rover.scroll < 0)
                     rover.scroll = 0;
             }
-            else {
+            else if (rover.nfiles != 0) {
                 rover.fsel--;
                 if (rover.fsel < rover.scroll)
                     rover.scroll--;
