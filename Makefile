@@ -1,4 +1,4 @@
-CLINK = -lcurses
+CLIBS = -lcurses
 GNU ?= 0
 ifeq ($(GNU), 1)
     CFLAGS = -Wall -Wextra -Werror -std=c89
@@ -13,4 +13,4 @@ endif
 all : rover
 
 rover : rover.c config.h
-	$(CC) $(CFLAGS) -o $@ $< $(CLINK)
+	$(CC) $(CFLAGS) -o $@ $< $(CLIBS)
