@@ -21,8 +21,9 @@
 #define RVC_CWD         GREEN
 #define RVC_STATUS      BLUE
 #define RVC_BORDER      CYAN
+#define RVC_SCROLLBAR   BLUE
 #define RVC_FILE        DEFAULT
 #define RVC_DIR         DEFAULT
-#define RVC_HIDDEN      MAGENTA
+#define RVC_HIDDEN      YELLOW
 
 #define RV_JUMP         10

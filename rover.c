@@ -182,6 +182,7 @@ update_browser()
         if (!height) height = 1;
         wcolor_set(rover.window, RVC_BORDER, NULL);
         wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+        wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
         mvwvline(rover.window, center-(height>>1)+1, COLS-1, ACS_CKBOARD, height);
         wcolor_set(rover.window, DEFAULT, NULL);
     }
