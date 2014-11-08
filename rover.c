@@ -329,7 +329,10 @@ main()
                 key = keyname(ch);
                 if (!strcmp(key, "^M"))
                     break;
-                else if (!strcmp(key, "^G") || !strcmp(key, "^?")) {
+                else if (
+                    !strcmp(key, "^G") || !strcmp(key, "^?") ||
+                    !strcmp(key, "^H") || !strcmp(key, "^X")
+                ) {
                     if (length)
                         SEARCH[--length] = '\0';
                     if (!length) {
