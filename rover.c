@@ -57,7 +57,6 @@ rowcmp(const void *a, const void *b)
     isdir1 = strchr(r1->name, '/') != NULL;
     isdir2 = strchr(r2->name, '/') != NULL;
     cmpdir = isdir2 - isdir1;
-    /* FIXME: why doesn't `return cmpdir || strcoll(s1, s2)` work here? */
     return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
 }
 
