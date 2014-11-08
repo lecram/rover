@@ -151,7 +151,10 @@ update_browser()
     STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = rover.flags & SHOW_DIRS   ? 'D' : ' ';
     STATUS[2] = rover.flags & SHOW_HIDDEN ? 'H' : ' ';
-    sprintf(STATUS+3, fmt, rover.fsel + 1, rover.nfiles);
+    if (!rover.nfiles)
+        sprintf(STATUS+3, fmt, 0, 0);
+    else
+        sprintf(STATUS+3, fmt, rover.fsel + 1, rover.nfiles);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
     color_set(DEFAULT, NULL);
@@ -224,9 +227,10 @@ main()
         if (!strcmp(key, RVK_QUIT))
             break;
         else if (!strcmp(key, RVK_DOWN)) {
+            if (!rover.nfiles) continue;
             if (rover.fsel == rover.nfiles - 1)
                 rover.scroll = rover.fsel = 0;
-            else if (rover.nfiles != 0) {
+            else {
                 rover.fsel++;
                 if ((rover.fsel - rover.scroll) == HEIGHT)
                     rover.scroll++;
@@ -234,13 +238,14 @@ main()
             update_browser();
         }
         else if (!strcmp(key, RVK_UP)) {
+            if (!rover.nfiles) continue;
             if (rover.fsel == 0) {
                 rover.fsel = rover.nfiles - 1;
                 rover.scroll = rover.nfiles - HEIGHT;
                 if (rover.scroll < 0)
                     rover.scroll = 0;
             }
-            else if (rover.nfiles != 0) {
+            else {
                 rover.fsel--;
                 if (rover.fsel < rover.scroll)
                     rover.scroll--;
@@ -248,6 +253,7 @@ main()
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
+            if (!rover.nfiles) continue;
             rover.fsel += RV_JUMP;
             if (rover.fsel >= rover.nfiles)
                 rover.fsel = rover.nfiles - 1;
@@ -259,6 +265,7 @@ main()
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
+            if (!rover.nfiles) continue;
             rover.fsel -= RV_JUMP;
             if (rover.fsel < 0)
                 rover.fsel = 0;
@@ -268,6 +275,7 @@ main()
             update_browser();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
+            if (!rover.nfiles) continue;
             if (strchr(rover.fnames[rover.fsel], '/') == NULL)
                 continue;
             strcat(rover.cwd, rover.fnames[rover.fsel]);
@@ -295,6 +303,7 @@ main()
             }
         }
         else if (!strcmp(key, RVK_VIEW)) {
+            if (!rover.nfiles) continue;
             if (strchr(rover.fnames[rover.fsel], '/') != NULL)
                 continue;
             program = getenv("PAGER");
@@ -306,6 +315,7 @@ main()
             }
         }
         else if (!strcmp(key, RVK_EDIT)) {
+            if (!rover.nfiles) continue;
             if (strchr(rover.fnames[rover.fsel], '/') != NULL)
                 continue;
             program = getenv("EDITOR");
@@ -317,6 +327,7 @@ main()
             }
         }
         else if (!strcmp(key, RVK_SEARCH)) {
+            if (!rover.nfiles) continue;
             int ch, length, sel, oldsel, oldscroll;
             color_t color;
             mvaddstr(LINES - 1, 0, "search:");
