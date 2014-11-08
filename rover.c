@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <string.h>
-#include <sys/types.h>  /* ? */
+#include <sys/types.h>  /* pid_t, ... */
 #include <stdio.h>      /* FILENAME_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
 #include <unistd.h>     /* chdir(), getcwd() */
