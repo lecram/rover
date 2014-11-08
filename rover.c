@@ -336,8 +336,10 @@ main()
                         }
                         break;
                     default:
-                        if (length < SEARCHSZ - 2)
+                        if (length < SEARCHSZ - 2) {
                             SEARCH[length++] = ch;
+                            SEARCH[length+1] = '\0';
+                        }
                 }
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
