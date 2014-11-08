@@ -324,22 +324,22 @@ main()
             oldscroll = rover.scroll;
             *SEARCH = '\0';
             length = 0;
-            while ((ch = getch()) != '\r') {
-                switch (ch) {
-                    case 8:
-                    case 127:
-                        if (length)
-                            SEARCH[--length] = '\0';
-                        if (!length) {
-                            rover.fsel = oldsel;
-                            rover.scroll = oldscroll;
-                        }
-                        break;
-                    default:
-                        if (length < SEARCHSZ - 2) {
-                            SEARCH[length++] = ch;
-                            SEARCH[length+1] = '\0';
-                        }
+            while (1) {
+                ch = getch();
+                key = keyname(ch);
+                if (!strcmp(key, "^M"))
+                    break;
+                else if (!strcmp(key, "^G") || !strcmp(key, "^?")) {
+                    if (length)
+                        SEARCH[--length] = '\0';
+                    if (!length) {
+                        rover.fsel = oldsel;
+                        rover.scroll = oldscroll;
+                    }
+                }
+                else if (length < SEARCHSZ - 2) {
+                    SEARCH[length++] = ch;
+                    SEARCH[length+1] = '\0';
                 }
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
