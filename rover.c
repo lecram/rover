@@ -348,28 +348,33 @@ main()
         }
         else if (!strcmp(key, RVK_SEARCH)) {
             if (!rover.nfiles) continue;
-            int ch, length, sel, oldsel, oldscroll;
+            int length, sel, oldsel, oldscroll;
+            int ch, erasec, killc;
             color_t color;
             mvaddstr(LINES - 1, 0, "search:");
             oldsel = rover.fsel;
             oldscroll = rover.scroll;
             *SEARCH = '\0';
             length = 0;
+            erasec = erasechar();
+            killc = killchar();
             while (1) {
                 ch = getch();
-                key = keyname(ch);
-                if (!strcmp(key, "^M"))
+                if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER)
                     break;
-                else if (
-                    !strcmp(key, "^G") || !strcmp(key, "^?") ||
-                    !strcmp(key, "^H") || !strcmp(key, "^X")
-                ) {
+                else if (ch == erasec || ch == KEY_LEFT || ch == KEY_BACKSPACE) {
                     if (length)
                         SEARCH[--length] = '\0';
                     if (!length) {
                         rover.fsel = oldsel;
                         rover.scroll = oldscroll;
                     }
+                }
+                else if (ch == killc) {
+                    length = 0;
+                    SEARCH[0] = '\0';
+                    rover.fsel = oldsel;
+                    rover.scroll = oldscroll;
                 }
                 else if (length < SEARCHSZ - 2) {
                     SEARCH[length++] = ch;
