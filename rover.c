@@ -423,10 +423,12 @@ main()
                         color = GREEN;
                         rover.fsel = sel;
                         if (rover.nfiles > HEIGHT) {
-                            if (sel > rover.nfiles - HEIGHT)
+                            if (sel < 3)
+                                rover.scroll = 0;
+                            else if (sel - 3 > rover.nfiles - HEIGHT)
                                 rover.scroll = rover.nfiles - HEIGHT;
                             else
-                                rover.scroll = sel;
+                                rover.scroll = sel - 3;
                         }
                     }
                     else
