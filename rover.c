@@ -13,6 +13,8 @@
 
 #include "config.h"
 
+#define ROWSZ 256
+char ROW[ROWSZ];
 #define STATUSSZ 256
 char STATUS[STATUSSZ];
 #define SEARCHSZ 256
@@ -28,36 +30,55 @@ typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 #define SHOW_DIRS       0x02u
 #define SHOW_HIDDEN     0x04u
 
+typedef struct {
+    char *name;
+    off_t size;
+} row_t;
+
 struct rover_t {
     int nfiles;
     int scroll;
     int fsel;
     uint8_t flags;
-    char **fnames;
+    row_t *rows;
     WINDOW *window;
     char cwd[FILENAME_MAX];
 } rover;
 
+#define FNAME(I) rover.rows[I].name
+#define FSIZE(I) rover.rows[I].size
+
 static int
-spcmp(const void *a, const void *b)
+rowcmp(const void *a, const void *b)
 {
     int isdir1, isdir2, cmpdir;
-    const char *s1 = *(const char **) a;
-    const char *s2 = *(const char **) b;
-    isdir1 = strchr(s1, '/') != NULL;
-    isdir2 = strchr(s2, '/') != NULL;
+    const row_t *r1 = a;
+    const row_t *r2 = b;
+    isdir1 = strchr(r1->name, '/') != NULL;
+    isdir2 = strchr(r2->name, '/') != NULL;
     cmpdir = isdir2 - isdir1;
     /* FIXME: why doesn't `return cmpdir || strcoll(s1, s2)` work here? */
-    return cmpdir ? cmpdir : strcoll(s1, s2);
+    return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
+}
+
+void
+free_rows(row_t **rowsp, int nfiles)
+{
+    int i;
+
+    for (i = 0; i < nfiles; i++)
+        free((*rowsp)[i].name);
+    free(*rowsp);
+    *rowsp = NULL;
 }
 
 int
-ls(char *path, char ***namesp, uint8_t flags)
+ls(char *path, row_t **rowsp, uint8_t flags)
 {
     DIR *dp;
     struct dirent *ep;
     struct stat statbuf;
-    char **names;
+    row_t *rows;
     int i, n;
 
     if((dp = opendir(path)) == NULL)
@@ -65,7 +86,7 @@ ls(char *path, char ***namesp, uint8_t flags)
     n = -2; /* We don't want the entries "." and "..". */
     while (readdir(dp)) n++;
     rewinddir(dp);
-    names = (char **) malloc(n * sizeof(char *));
+    rows = (row_t *) malloc(n * sizeof(row_t));
     i = 0;
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
@@ -76,22 +97,23 @@ ls(char *path, char ***namesp, uint8_t flags)
         (void) stat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {
-                names[i] = (char *) malloc(strlen(ep->d_name) + 2);
-                strcpy(names[i], ep->d_name);
-                strcat(names[i], "/");
+                rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
+                strcpy(rows[i].name, ep->d_name);
+                strcat(rows[i].name, "/");
                 i++;
             }
         }
         else if (flags & SHOW_FILES) {
-            names[i] = (char *) malloc(strlen(ep->d_name) + 1);
-            strcpy(names[i], ep->d_name);
+            rows[i].name = (char *) malloc(strlen(ep->d_name) + 1);
+            strcpy(rows[i].name, ep->d_name);
+            rows[i].size = statbuf.st_size;
             i++;
         }
     }
     n = i; /* Ignore unused space in array caused by filters. */
-    qsort(names, n, sizeof(char *), spcmp);
+    qsort(rows, n, sizeof(row_t), rowcmp);
     (void) closedir(dp);
-    *namesp = names;
+    *rowsp = rows;
     return n;
 }
 
@@ -129,19 +151,27 @@ static void
 update_browser()
 {
     int i, j, n;
+    int ishidden, isdir;
     char fmt[32];
 
     for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
+        ishidden = FNAME(j)[0] == '.';
+        isdir = strchr(FNAME(j), '/') != NULL;
         if (j == rover.fsel)
             wattr_on(rover.window, A_REVERSE, NULL);
-        if (rover.fnames[j][0] == '.')
+        if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
-        else if (strchr(rover.fnames[j], '/') != NULL)
+        else if (isdir)
             wcolor_set(rover.window, RVC_DIR, NULL);
         else
             wcolor_set(rover.window, RVC_FILE, NULL);
+        if (!isdir)
+            sprintf(ROW, "%s%*d", FNAME(j),
+                    COLS - strlen(FNAME(j)) - 2, (int) FSIZE(j));
+        else
+            strcpy(ROW, FNAME(j));
         (void) mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        (void) mvwaddnstr(rover.window, i + 1, 1, rover.fnames[j], COLS - 2);
+        (void) mvwaddnstr(rover.window, i + 1, 1, ROW, COLS - 2);
         wcolor_set(rover.window, DEFAULT, NULL);
         if (j == rover.fsel)
             wattr_off(rover.window, A_REVERSE, NULL);
@@ -167,8 +197,6 @@ update_browser()
 static void
 cd()
 {
-    int i;
-
     rover.fsel = 0;
     rover.scroll = 0;
     (void) chdir(rover.cwd);
@@ -176,17 +204,14 @@ cd()
     color_set(RVC_CWD, NULL);
     (void) mvaddnstr(0, 0, rover.cwd, COLS);
     color_set(DEFAULT, NULL);
-    for (i = 0; i < rover.nfiles; i++)
-        free(rover.fnames[i]);
     if (rover.nfiles)
-        free(rover.fnames);
-    rover.nfiles = ls(rover.cwd, &rover.fnames, rover.flags);
+        free_rows(&rover.rows, rover.nfiles);
+    rover.nfiles = ls(rover.cwd, &rover.rows, rover.flags);
     (void) wclear(rover.window);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
     update_browser();
-    refresh();
 }
 
 static void
@@ -277,9 +302,9 @@ main()
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles) continue;
-            if (strchr(rover.fnames[rover.fsel], '/') == NULL)
+            if (strchr(FNAME(rover.fsel), '/') == NULL)
                 continue;
-            strcat(rover.cwd, rover.fnames[rover.fsel]);
+            strcat(rover.cwd, FNAME(rover.fsel));
             cd();
         }
         else if (!strcmp(key, RVK_CD_UP)) {
@@ -296,7 +321,7 @@ main()
                ) {
                 dirname[0] = first;
                 dirname[strlen(dirname)] = '/';
-                while (strcmp(rover.fnames[rover.fsel], dirname))
+                while (strcmp(FNAME(rover.fsel), dirname))
                     rover.fsel++;
                 if (rover.nfiles > HEIGHT) {
                     rover.scroll = rover.fsel - (HEIGHT >> 1);
@@ -325,24 +350,24 @@ main()
         }
         else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles) continue;
-            if (strchr(rover.fnames[rover.fsel], '/') != NULL)
+            if (strchr(FNAME(rover.fsel), '/') != NULL)
                 continue;
             program = getenv("PAGER");
             if (program) {
                 args[0] = program;
-                args[1] = rover.fnames[rover.fsel];
+                args[1] = FNAME(rover.fsel);
                 args[2] = NULL;
                 spawn();
             }
         }
         else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles) continue;
-            if (strchr(rover.fnames[rover.fsel], '/') != NULL)
+            if (strchr(FNAME(rover.fsel), '/') != NULL)
                 continue;
             program = getenv("EDITOR");
             if (program) {
                 args[0] = program;
-                args[1] = rover.fnames[rover.fsel];
+                args[1] = FNAME(rover.fsel);
                 args[2] = NULL;
                 spawn();
             }
@@ -384,7 +409,7 @@ main()
                 }
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
-                        if (!strncmp(rover.fnames[sel], SEARCH, length))
+                        if (!strncmp(FNAME(sel), SEARCH, length))
                             break;
                     if (sel < rover.nfiles) {
                         color = GREEN;
@@ -422,8 +447,9 @@ main()
             cd();
         }
     }
-    while (rover.nfiles--) free(rover.fnames[rover.nfiles]);
-    free(rover.fnames);
+    if (rover.nfiles) {
+        free_rows(&rover.rows, rover.nfiles);
+    }
     delwin(rover.window);
     return 0;
 }
