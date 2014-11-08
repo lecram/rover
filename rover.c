@@ -282,11 +282,31 @@ main()
             cd();
         }
         else if (!strcmp(key, RVK_CD_UP)) {
+            char *dirname, first;
             if (strlen(rover.cwd) == 1)
                 continue;
             rover.cwd[strlen(rover.cwd) - 1] = '\0';
-            *(strrchr(rover.cwd, '/') + 1) = '\0';
+            dirname = strrchr(rover.cwd, '/') + 1;
+            first = dirname[0];
+            dirname[0] = '\0';
             cd();
+            if ((rover.flags & SHOW_DIRS) &&
+                ((rover.flags & SHOW_HIDDEN) || (first != '.'))
+               ) {
+                dirname[0] = first;
+                dirname[strlen(dirname)] = '/';
+                while (strcmp(rover.fnames[rover.fsel], dirname))
+                    rover.fsel++;
+                if (rover.nfiles > HEIGHT) {
+                    rover.scroll = rover.fsel - (HEIGHT >> 1);
+                    if (rover.scroll < 0)
+                        rover.scroll = 0;
+                    if (rover.scroll > rover.nfiles - HEIGHT)
+                        rover.scroll = rover.nfiles - HEIGHT;
+                }
+                dirname[0] = '\0';
+                update_browser();
+            }
         }
         else if (!strcmp(key, RVK_HOME)) {
             strcpy(rover.cwd, getenv("HOME"));
