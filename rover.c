@@ -150,9 +150,8 @@ init_term()
 static void
 update_browser()
 {
-    int i, j, n;
+    int i, j;
     int ishidden, isdir;
-    char fmt[32];
 
     for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = FNAME(j)[0] == '.';
@@ -177,17 +176,16 @@ update_browser()
             wattr_off(rover.window, A_REVERSE, NULL);
     }
     wrefresh(rover.window);
-    sprintf(STATUS, "%d/%d%n", rover.fsel + 1, rover.nfiles, &n);
-    sprintf(fmt, "%% %dd/%%d", 10-n);
     STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = rover.flags & SHOW_DIRS   ? 'D' : ' ';
     STATUS[2] = rover.flags & SHOW_HIDDEN ? 'H' : ' ';
     if (!rover.nfiles)
-        sprintf(STATUS+3, fmt, 0, 0);
+        strcpy(ROW, "0/0");
     else
-        sprintf(STATUS+3, fmt, rover.fsel + 1, rover.nfiles);
+        sprintf(ROW, "%d/%d", rover.fsel + 1, rover.nfiles);
+    sprintf(STATUS+3, "%*s", 12, ROW);
     color_set(RVC_STATUS, NULL);
-    mvaddstr(LINES - 1, COLS - strlen(STATUS), STATUS);
+    mvaddstr(LINES - 1, COLS - 15, STATUS);
     color_set(DEFAULT, NULL);
     refresh();
 }
