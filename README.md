@@ -21,9 +21,15 @@ Quick Start
  $ make
  ```
 
+ Installing:
+ ```
+ $ # Requires write access to $(PREFIX)/bin/.
+ $ make install
+ ```
+
  Running:
  ```
- $ ./rover
+ $ rover
  ```
 
  Using:
@@ -55,21 +61,21 @@ header file.
 Configuration
 =============
 
+ By default, rover is installed to `/usr/bin/rover`. To change this and other
+build options, such as the name of the curses library, please edit `Makefile`
+before executing `make` or specify the options during invocation. For example,
+to link against `libncurses.so` and install to `/opt/bin/rover`:
+ ```
+ make CLIBS=-lncurses PREFIX=/opt install
+ ```
+
  Rover configuration (mostly key bindings and colors) can only be changed
 by editing the file `config.h` and rebuilding the binary (with `make`).
 
  Note that the external programs executed by some Rover commands may be changed
-via the appropriated environment variables. For example, to specify an editor:
+via the appropriate environment variables. For example, to specify an editor:
  ```
- $ EDITOR=vi ./rover
- ```
-
- You may also want to "install" Rover by copying it somewhere on your $PATH. The
-only file that needs to be copied is `rover`:
- ```
- $ cp rover /usr/bin
- $ # Now the "./" prefix is no longer necessary.
- $ rover
+ $ EDITOR=vi rover
  ```
 
 
