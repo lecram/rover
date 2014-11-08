@@ -1,6 +1,7 @@
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
+#include <ctype.h>
+#include <string.h>
 #include <sys/types.h>  /* ? */
 #include <stdio.h>      /* FILENAME_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
@@ -373,10 +374,11 @@ main()
                 else if (ch == killc) {
                     length = 0;
                     SEARCH[0] = '\0';
+                    SEARCH[1] = '\0';
                     rover.fsel = oldsel;
                     rover.scroll = oldscroll;
                 }
-                else if (length < SEARCHSZ - 2) {
+                else if (length < SEARCHSZ - 2 && isprint(ch)) {
                     SEARCH[length++] = ch;
                     SEARCH[length+1] = '\0';
                 }
