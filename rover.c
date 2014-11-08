@@ -169,11 +169,21 @@ update_browser()
                     COLS - strlen(FNAME(j)) - 2, (int) FSIZE(j));
         else
             strcpy(ROW, FNAME(j));
-        (void) mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        (void) mvwaddnstr(rover.window, i + 1, 1, ROW, COLS - 2);
+        mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+        mvwaddnstr(rover.window, i + 1, 1, ROW, COLS - 2);
         wcolor_set(rover.window, DEFAULT, NULL);
         if (j == rover.fsel)
             wattr_off(rover.window, A_REVERSE, NULL);
+    }
+    if (rover.nfiles > HEIGHT) {
+        int center, height;
+        center = (rover.scroll + (HEIGHT >> 1)) * HEIGHT / rover.nfiles;
+        height = (HEIGHT-1) * HEIGHT / rover.nfiles;
+        if (!height) height = 1;
+        wcolor_set(rover.window, RVC_BORDER, NULL);
+        wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+        mvwvline(rover.window, center-(height>>1)+1, COLS-1, ACS_CKBOARD, height);
+        wcolor_set(rover.window, DEFAULT, NULL);
     }
     wrefresh(rover.window);
     STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
