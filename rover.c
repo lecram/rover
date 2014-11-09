@@ -40,7 +40,7 @@ struct rover_t {
     int nfiles;
     int scroll[10];
     int fsel[10];
-    uint8_t flags;
+    uint8_t flags[10];
     row_t *rows;
     WINDOW *window;
     char cwd[10][FILENAME_MAX];
@@ -50,6 +50,7 @@ struct rover_t {
 #define FSIZE(I) rover.rows[I].size
 #define SCROLL rover.scroll[rover.tab]
 #define FSEL rover.fsel[rover.tab]
+#define FLAGS rover.flags[rover.tab]
 #define CWD rover.cwd[rover.tab]
 
 static int
@@ -190,9 +191,9 @@ update_browser()
         wcolor_set(rover.window, DEFAULT, NULL);
     }
     wrefresh(rover.window);
-    STATUS[0] = rover.flags & SHOW_FILES  ? 'F' : ' ';
-    STATUS[1] = rover.flags & SHOW_DIRS   ? 'D' : ' ';
-    STATUS[2] = rover.flags & SHOW_HIDDEN ? 'H' : ' ';
+    STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
+    STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
+    STATUS[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
     if (!rover.nfiles)
         strcpy(ROW, "0/0");
     else
@@ -222,7 +223,7 @@ cd(int reset)
     attr_off(A_BOLD, NULL);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    rover.nfiles = ls(CWD, &rover.rows, rover.flags);
+    rover.nfiles = ls(CWD, &rover.rows, FLAGS);
     (void) wclear(rover.window);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -284,7 +285,10 @@ main()
     init_term();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
     rover.nfiles = 0;
-    rover.flags = SHOW_FILES | SHOW_DIRS;
+    for (i = 0; i < 10; i++) {
+        rover.fsel[i] = rover.scroll[i] = 0;
+        rover.flags[i] = SHOW_FILES | SHOW_DIRS;
+    }
     strcpy(rover.cwd[0], getenv("HOME"));
     if (rover.cwd[0][strlen(rover.cwd[0]) - 1] != '/')
         strcat(rover.cwd[0], "/");
@@ -369,8 +373,8 @@ main()
             first = dirname[0];
             dirname[0] = '\0';
             cd(1);
-            if ((rover.flags & SHOW_DIRS) &&
-                ((rover.flags & SHOW_HIDDEN) || (first != '.'))
+            if ((FLAGS & SHOW_DIRS) &&
+                ((FLAGS & SHOW_HIDDEN) || (first != '.'))
                ) {
                 dirname[0] = first;
                 dirname[strlen(dirname)] = '/';
@@ -471,15 +475,15 @@ main()
             update_browser();
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
-            rover.flags ^= SHOW_FILES;
+            FLAGS ^= SHOW_FILES;
             cd(1);
         }
         else if (!strcmp(key, RVK_TG_DIRS)) {
-            rover.flags ^= SHOW_DIRS;
+            FLAGS ^= SHOW_DIRS;
             cd(1);
         }
         else if (!strcmp(key, RVK_TG_HIDDEN)) {
-            rover.flags ^= SHOW_HIDDEN;
+            FLAGS ^= SHOW_HIDDEN;
             cd(1);
         }
     }
