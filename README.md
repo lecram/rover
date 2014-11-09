@@ -31,6 +31,11 @@ Quick Start
  $ rover
  ```
 
+ Specify path for some (up to 9) tabs at startup:
+ ```
+ $ rover [DIR1 [DIR2 [DIR3 [...]]]]
+ ```
+
  Using:
  ```
        q - quit Rover
