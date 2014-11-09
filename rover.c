@@ -279,10 +279,11 @@ igetstr(char *buffer, int maxlen)
 }
 
 int
-main()
+main(int argc, char *argv[])
 {
     int i, ch;
     char *program, *key;
+    DIR *d;
 
     init_term();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
@@ -292,14 +293,21 @@ main()
         rover.flags[i] = SHOW_FILES | SHOW_DIRS;
     }
     strcpy(rover.cwd[0], getenv("HOME"));
-    if (rover.cwd[0][strlen(rover.cwd[0]) - 1] != '/')
-        strcat(rover.cwd[0], "/");
-    for (i = 1; i < 10; i++)
-        strcpy(rover.cwd[i], rover.cwd[0]);
+    for (i = 1; i < argc && i < 10; i++) {
+        d = opendir(argv[i]);
+        if (d) {
+            strcpy(rover.cwd[i], argv[i]);
+            closedir(d);
+        }
+        else strcpy(rover.cwd[i], rover.cwd[0]);
+    }
+    getcwd(rover.cwd[i], FILENAME_MAX);
+    for (i++; i < 10; i++)
+        strcpy(rover.cwd[i], rover.cwd[i-1]);
+    for (i = 0; i < 10; i++)
+        if (rover.cwd[i][strlen(rover.cwd[i]) - 1] != '/')
+            strcat(rover.cwd[i], "/");
     rover.tab = 1;
-    getcwd(CWD, FILENAME_MAX);
-    if (CWD[strlen(CWD)-1] != '/')
-        strcat(CWD, "/");
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     cd(1);
     while (1) {
