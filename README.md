@@ -23,8 +23,7 @@ Quick Start
 
  Installing:
  ```
- $ # Requires write access to $(PREFIX)/bin/.
- $ make install
+ $ sudo make install
  ```
 
  Running:
