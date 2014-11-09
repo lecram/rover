@@ -98,7 +98,7 @@ ls(char *path, row_t **rowsp, uint8_t flags)
         if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
             continue;
         /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
-        (void) stat(ep->d_name, &statbuf);
+        stat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {
                 rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
@@ -116,7 +116,7 @@ ls(char *path, row_t **rowsp, uint8_t flags)
     }
     n = i; /* Ignore unused space in array caused by filters. */
     qsort(rows, n, sizeof(row_t), rowcmp);
-    (void) closedir(dp);
+    closedir(dp);
     *rowsp = rows;
     return n;
 }
@@ -212,10 +212,10 @@ cd(int reset)
 {
     if (reset)
         FSEL = SCROLL = 0;
-    (void) chdir(CWD);
-    (void) mvhline(0, 0, ' ', COLS);
+    chdir(CWD);
+    mvhline(0, 0, ' ', COLS);
     color_set(RVC_CWD, NULL);
-    (void) mvaddnstr(0, 0, CWD, COLS);
+    mvaddnstr(0, 0, CWD, COLS);
     color_set(DEFAULT, NULL);
     move(0, COLS-2);
     attr_on(A_BOLD, NULL);
@@ -224,7 +224,7 @@ cd(int reset)
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
     rover.nfiles = ls(CWD, &rover.rows, FLAGS);
-    (void) wclear(rover.window);
+    wclear(rover.window);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
@@ -241,7 +241,7 @@ spawn()
     if (pid > 0) {
         /* fork() succeeded. */
         clean_term();
-        (void) waitpid(pid, &status, 0);
+        waitpid(pid, &status, 0);
         init_term();
         doupdate();
     }
@@ -295,7 +295,7 @@ main()
     for (i = 1; i < 10; i++)
         strcpy(rover.cwd[i], rover.cwd[0]);
     rover.tab = 1;
-    (void) getcwd(CWD, FILENAME_MAX);
+    getcwd(CWD, FILENAME_MAX);
     if (CWD[strlen(CWD)-1] != '/')
         strcat(CWD, "/");
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
