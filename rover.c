@@ -36,17 +36,21 @@ typedef struct {
 } row_t;
 
 struct rover_t {
+    int tab;
     int nfiles;
-    int scroll;
-    int fsel;
+    int scroll[10];
+    int fsel[10];
     uint8_t flags;
     row_t *rows;
     WINDOW *window;
-    char cwd[FILENAME_MAX];
+    char cwd[10][FILENAME_MAX];
 } rover;
 
 #define FNAME(I) rover.rows[I].name
 #define FSIZE(I) rover.rows[I].size
+#define SCROLL rover.scroll[rover.tab]
+#define FSEL rover.fsel[rover.tab]
+#define CWD rover.cwd[rover.tab]
 
 static int
 rowcmp(const void *a, const void *b)
@@ -152,10 +156,10 @@ update_browser()
     int i, j;
     int ishidden, isdir;
 
-    for (i = 0, j = rover.scroll; i < HEIGHT && j < rover.nfiles; i++, j++) {
+    for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = FNAME(j)[0] == '.';
         isdir = strchr(FNAME(j), '/') != NULL;
-        if (j == rover.fsel)
+        if (j == FSEL)
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
@@ -171,12 +175,12 @@ update_browser()
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
         mvwaddnstr(rover.window, i + 1, 1, ROW, COLS - 2);
         wcolor_set(rover.window, DEFAULT, NULL);
-        if (j == rover.fsel)
+        if (j == FSEL)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
     if (rover.nfiles > HEIGHT) {
         int center, height;
-        center = (rover.scroll + (HEIGHT >> 1)) * HEIGHT / rover.nfiles;
+        center = (SCROLL + (HEIGHT >> 1)) * HEIGHT / rover.nfiles;
         height = (HEIGHT-1) * HEIGHT / rover.nfiles;
         if (!height) height = 1;
         wcolor_set(rover.window, RVC_BORDER, NULL);
@@ -192,7 +196,7 @@ update_browser()
     if (!rover.nfiles)
         strcpy(ROW, "0/0");
     else
-        sprintf(ROW, "%d/%d", rover.fsel + 1, rover.nfiles);
+        sprintf(ROW, "%d/%d", FSEL + 1, rover.nfiles);
     sprintf(STATUS+3, "%*s", 12, ROW);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, COLS - 15, STATUS);
@@ -200,21 +204,25 @@ update_browser()
     refresh();
 }
 
-/* NOTE: The caller needs to write the new path to rover.cwd
+/* NOTE: The caller needs to write the new path to CWD
  *  *before* calling this function. */
 static void
-cd()
+cd(int reset)
 {
-    rover.fsel = 0;
-    rover.scroll = 0;
-    (void) chdir(rover.cwd);
+    if (reset)
+        FSEL = SCROLL = 0;
+    (void) chdir(CWD);
     (void) mvhline(0, 0, ' ', COLS);
     color_set(RVC_CWD, NULL);
-    (void) mvaddnstr(0, 0, rover.cwd, COLS);
+    (void) mvaddnstr(0, 0, CWD, COLS);
     color_set(DEFAULT, NULL);
+    move(0, COLS-2);
+    attr_on(A_BOLD, NULL);
+    echochar(rover.tab + '0');
+    attr_off(A_BOLD, NULL);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    rover.nfiles = ls(rover.cwd, &rover.rows, rover.flags);
+    rover.nfiles = ls(CWD, &rover.rows, rover.flags);
     (void) wclear(rover.window);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -270,109 +278,120 @@ igetstr(char *buffer, int maxlen)
 int
 main()
 {
-    char *program;
-    char *key;
+    int i, ch;
+    char *program, *key;
 
     init_term();
     /* Avoid invalid free() calls in cd() by zeroing the tally. */
     rover.nfiles = 0;
     rover.flags = SHOW_FILES | SHOW_DIRS;
-    (void) getcwd(rover.cwd, FILENAME_MAX);
-    if (rover.cwd[strlen(rover.cwd)-1] != '/')
-        strcat(rover.cwd, "/");
+    strcpy(rover.cwd[0], getenv("HOME"));
+    if (rover.cwd[0][strlen(rover.cwd[0]) - 1] != '/')
+        strcat(rover.cwd[0], "/");
+    for (i = 1; i < 10; i++)
+        strcpy(rover.cwd[i], rover.cwd[0]);
+    rover.tab = 1;
+    (void) getcwd(CWD, FILENAME_MAX);
+    if (CWD[strlen(CWD)-1] != '/')
+        strcat(CWD, "/");
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    cd();
+    cd(1);
     while (1) {
-        key = keyname(getch());
+        ch = getch();
+        key = keyname(ch);
         if (!strcmp(key, RVK_QUIT))
             break;
+        else if (ch >= '0' && ch <= '9') {
+            rover.tab = ch - '0';
+            cd(0);
+        }
         else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
-            if (rover.fsel == rover.nfiles - 1)
-                rover.scroll = rover.fsel = 0;
+            if (FSEL == rover.nfiles - 1)
+                SCROLL = FSEL = 0;
             else {
-                rover.fsel++;
-                if ((rover.fsel - rover.scroll) == HEIGHT)
-                    rover.scroll++;
+                FSEL++;
+                if ((FSEL - SCROLL) == HEIGHT)
+                    SCROLL++;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
-            if (rover.fsel == 0) {
-                rover.fsel = rover.nfiles - 1;
-                rover.scroll = rover.nfiles - HEIGHT;
-                if (rover.scroll < 0)
-                    rover.scroll = 0;
+            if (FSEL == 0) {
+                FSEL = rover.nfiles - 1;
+                SCROLL = rover.nfiles - HEIGHT;
+                if (SCROLL < 0)
+                    SCROLL = 0;
             }
             else {
-                rover.fsel--;
-                if (rover.fsel < rover.scroll)
-                    rover.scroll--;
+                FSEL--;
+                if (FSEL < SCROLL)
+                    SCROLL--;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
-            rover.fsel += RV_JUMP;
-            if (rover.fsel >= rover.nfiles)
-                rover.fsel = rover.nfiles - 1;
+            FSEL += RV_JUMP;
+            if (FSEL >= rover.nfiles)
+                FSEL = rover.nfiles - 1;
             if (rover.nfiles > HEIGHT) {
-                rover.scroll += RV_JUMP;
-                if (rover.scroll > rover.nfiles - HEIGHT)
-                    rover.scroll = rover.nfiles - HEIGHT;
+                SCROLL += RV_JUMP;
+                if (SCROLL > rover.nfiles - HEIGHT)
+                    SCROLL = rover.nfiles - HEIGHT;
             }
             update_browser();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
             if (!rover.nfiles) continue;
-            rover.fsel -= RV_JUMP;
-            if (rover.fsel < 0)
-                rover.fsel = 0;
-            rover.scroll -= RV_JUMP;
-            if (rover.scroll < 0)
-                rover.scroll = 0;
+            FSEL -= RV_JUMP;
+            if (FSEL < 0)
+                FSEL = 0;
+            SCROLL -= RV_JUMP;
+            if (SCROLL < 0)
+                SCROLL = 0;
             update_browser();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles) continue;
-            if (strchr(FNAME(rover.fsel), '/') == NULL)
+            if (strchr(FNAME(FSEL), '/') == NULL)
                 continue;
-            strcat(rover.cwd, FNAME(rover.fsel));
-            cd();
+            strcat(CWD, FNAME(FSEL));
+            cd(1);
         }
         else if (!strcmp(key, RVK_CD_UP)) {
             char *dirname, first;
-            if (strlen(rover.cwd) == 1)
+            if (strlen(CWD) == 1)
                 continue;
-            rover.cwd[strlen(rover.cwd) - 1] = '\0';
-            dirname = strrchr(rover.cwd, '/') + 1;
+            CWD[strlen(CWD) - 1] = '\0';
+            dirname = strrchr(CWD, '/') + 1;
             first = dirname[0];
             dirname[0] = '\0';
-            cd();
+            cd(1);
             if ((rover.flags & SHOW_DIRS) &&
                 ((rover.flags & SHOW_HIDDEN) || (first != '.'))
                ) {
                 dirname[0] = first;
                 dirname[strlen(dirname)] = '/';
-                while (strcmp(FNAME(rover.fsel), dirname))
-                    rover.fsel++;
+                while (strcmp(FNAME(FSEL), dirname))
+                    FSEL++;
                 if (rover.nfiles > HEIGHT) {
-                    rover.scroll = rover.fsel - (HEIGHT >> 1);
-                    if (rover.scroll < 0)
-                        rover.scroll = 0;
-                    if (rover.scroll > rover.nfiles - HEIGHT)
-                        rover.scroll = rover.nfiles - HEIGHT;
+                    SCROLL = FSEL - (HEIGHT >> 1);
+                    if (SCROLL < 0)
+                        SCROLL = 0;
+                    if (SCROLL > rover.nfiles - HEIGHT)
+                        SCROLL = rover.nfiles - HEIGHT;
                 }
                 dirname[0] = '\0';
                 update_browser();
             }
         }
         else if (!strcmp(key, RVK_HOME)) {
-            strcpy(rover.cwd, getenv("HOME"));
-            if (rover.cwd[strlen(rover.cwd) - 1] != '/')
-                strcat(rover.cwd, "/");
-            cd();
+            strcpy(CWD, getenv("HOME"));
+            if (CWD[strlen(CWD) - 1] != '/')
+                strcat(CWD, "/");
+            cd(1);
         }
         else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
@@ -384,24 +403,24 @@ main()
         }
         else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles) continue;
-            if (strchr(FNAME(rover.fsel), '/') != NULL)
+            if (strchr(FNAME(FSEL), '/') != NULL)
                 continue;
             program = getenv("PAGER");
             if (program) {
                 args[0] = program;
-                args[1] = FNAME(rover.fsel);
+                args[1] = FNAME(FSEL);
                 args[2] = NULL;
                 spawn();
             }
         }
         else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles) continue;
-            if (strchr(FNAME(rover.fsel), '/') != NULL)
+            if (strchr(FNAME(FSEL), '/') != NULL)
                 continue;
             program = getenv("EDITOR");
             if (program) {
                 args[0] = program;
-                args[1] = FNAME(rover.fsel);
+                args[1] = FNAME(FSEL);
                 args[2] = NULL;
                 spawn();
             }
@@ -409,8 +428,8 @@ main()
         else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll;
             if (!rover.nfiles) continue;
-            oldsel = rover.fsel;
-            oldscroll = rover.scroll;
+            oldsel = FSEL;
+            oldscroll = SCROLL;
             *SEARCH = '\0';
             mvaddstr(LINES - 1, 0, "search: ");
             while (igetstr(SEARCH, SEARCHSZ)) {
@@ -423,22 +442,22 @@ main()
                             break;
                     if (sel < rover.nfiles) {
                         color = GREEN;
-                        rover.fsel = sel;
+                        FSEL = sel;
                         if (rover.nfiles > HEIGHT) {
                             if (sel < 3)
-                                rover.scroll = 0;
+                                SCROLL = 0;
                             else if (sel - 3 > rover.nfiles - HEIGHT)
-                                rover.scroll = rover.nfiles - HEIGHT;
+                                SCROLL = rover.nfiles - HEIGHT;
                             else
-                                rover.scroll = sel - 3;
+                                SCROLL = sel - 3;
                         }
                     }
                     else
                         color = RED;
                 }
                 else {
-                    rover.fsel = oldsel;
-                    rover.scroll = oldscroll;
+                    FSEL = oldsel;
+                    SCROLL = oldscroll;
                 }
                 update_browser();
                 strcat(SEARCH, " ");
@@ -453,15 +472,15 @@ main()
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
             rover.flags ^= SHOW_FILES;
-            cd();
+            cd(1);
         }
         else if (!strcmp(key, RVK_TG_DIRS)) {
             rover.flags ^= SHOW_DIRS;
-            cd();
+            cd(1);
         }
         else if (!strcmp(key, RVK_TG_HIDDEN)) {
             rover.flags ^= SHOW_HIDDEN;
-            cd();
+            cd(1);
         }
     }
     if (rover.nfiles) {
