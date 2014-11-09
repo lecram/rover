@@ -46,6 +46,7 @@ Quick Start
        f - toggle file listing
        d - toggle directory listing
        s - toggle hidden file/directory listing
+     0-9 - change tab
  ```
 
 
