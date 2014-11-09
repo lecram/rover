@@ -45,8 +45,8 @@ Quick Start
        h - go to parent directory
        H - go to $HOME directory
   RETURN - open $SHELL on the current directory
-   SPACE - open $PAGER on the selected file
-       e - open $EDITOR on the selected file
+   SPACE - open $PAGER with the selected file
+       e - open $EDITOR with the selected file
        / - start incremental search (RETURN to finish)
        f - toggle file listing
        d - toggle directory listing
