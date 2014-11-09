@@ -219,7 +219,9 @@ cd(int reset)
     color_set(DEFAULT, NULL);
     move(0, COLS-2);
     attr_on(A_BOLD, NULL);
+    color_set(RVC_TABNUM, NULL);
     echochar(rover.tab + '0');
+    color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
@@ -435,7 +437,9 @@ main()
             oldsel = FSEL;
             oldscroll = SCROLL;
             *SEARCH = '\0';
+            color_set(RVC_PROMPT, NULL);
             mvaddstr(LINES - 1, 0, "search: ");
+            color_set(DEFAULT, NULL);
             while (igetstr(SEARCH, SEARCHSZ)) {
                 int length, sel;
                 color_t color;

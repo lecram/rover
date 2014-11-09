@@ -25,5 +25,7 @@
 #define RVC_FILE        DEFAULT
 #define RVC_DIR         DEFAULT
 #define RVC_HIDDEN      YELLOW
+#define RVC_PROMPT      DEFAULT
+#define RVC_TABNUM      DEFAULT
 
 #define RV_JUMP         10
