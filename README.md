@@ -1,7 +1,7 @@
 Introduction
 ============
 
- Rover is an interactive application for file system navigation.
+ Rover is a file browser for the terminal.
 
 ![Rover screenshot](/../screenshots/screenshot.png?raw=true "Screenshot")
 
