@@ -40,7 +40,7 @@ Quick Start
  ```
        q - quit Rover
      j/k - move cursor up/down
-     J/K - move cursor up/down 10 times
+     J/K - move cursor up/down 10 lines
        l - enter selected directory
        h - go to parent directory
        H - go to $HOME directory
