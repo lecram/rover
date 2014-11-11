@@ -108,11 +108,24 @@ init_term()
 
 /* Update the listing view. */
 static void
-update_browser()
+update()
 {
     int i, j;
     int ishidden, isdir;
 
+    mvhline(0, 0, ' ', COLS);
+    color_set(RVC_CWD, NULL);
+    mvaddnstr(0, 0, CWD, COLS);
+    color_set(DEFAULT, NULL);
+    attr_on(A_BOLD, NULL);
+    color_set(RVC_TABNUM, NULL);
+    mvaddch(0, COLS-4, rover.tab + '0');
+    color_set(DEFAULT, NULL);
+    attr_off(A_BOLD, NULL);
+    wclear(rover.window);
+    wcolor_set(rover.window, RVC_BORDER, NULL);
+    wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+    wcolor_set(rover.window, DEFAULT, NULL);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = FNAME(j)[0] == '.';
         isdir = strchr(FNAME(j), '/') != NULL;
@@ -159,6 +172,29 @@ update_browser()
     mvaddstr(LINES - 1, COLS - 15, STATUS);
     color_set(DEFAULT, NULL);
     refresh();
+}
+
+/* SIGSEGV handler: clean up curses before exiting. */
+static void
+handle_segv(int sig)
+{
+    (void) sig;
+    clean_term();
+    puts("Received SIGSEGV (segmentation fault).");
+    exit(1);
+}
+
+/* SIGWINCH handler: resize application according to new terminal settings. */
+static void
+handle_winch(int sig)
+{
+    (void) sig;
+    delwin(rover.window);
+    endwin();
+    refresh();
+    clear();
+    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    update();
 }
 
 /* Comparison used to sort listing entries. */
@@ -241,46 +277,10 @@ cd(int reset)
     if (reset)
         FSEL = SCROLL = 0;
     chdir(CWD);
-    mvhline(0, 0, ' ', COLS);
-    color_set(RVC_CWD, NULL);
-    mvaddnstr(0, 0, CWD, COLS);
-    color_set(DEFAULT, NULL);
-    attr_on(A_BOLD, NULL);
-    color_set(RVC_TABNUM, NULL);
-    mvaddch(0, COLS-4, rover.tab + '0');
-    color_set(DEFAULT, NULL);
-    attr_off(A_BOLD, NULL);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
     rover.nfiles = ls(CWD, &rover.rows, FLAGS);
-    wclear(rover.window);
-    wcolor_set(rover.window, RVC_BORDER, NULL);
-    wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
-    wcolor_set(rover.window, DEFAULT, NULL);
-    update_browser();
-}
-
-/* SIGSEGV handler: clean up curses before exiting. */
-static void
-handle_segv(int sig)
-{
-    (void) sig;
-    clean_term();
-    puts("Received SIGSEGV (segmentation fault).");
-    exit(1);
-}
-
-/* SIGWINCH handler: resize application according to new terminal settings. */
-static void
-handle_winch(int sig)
-{
-    (void) sig;
-    delwin(rover.window);
-    endwin();
-    refresh();
-    clear();
-    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    cd(0);
+    update();
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
@@ -379,7 +379,7 @@ main(int argc, char *argv[])
                 if ((FSEL - SCROLL) == HEIGHT)
                     SCROLL++;
             }
-            update_browser();
+            update();
         }
         else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
@@ -394,7 +394,7 @@ main(int argc, char *argv[])
                 if (FSEL < SCROLL)
                     SCROLL--;
             }
-            update_browser();
+            update();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
@@ -406,7 +406,7 @@ main(int argc, char *argv[])
                 if (SCROLL > rover.nfiles - HEIGHT)
                     SCROLL = rover.nfiles - HEIGHT;
             }
-            update_browser();
+            update();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
             if (!rover.nfiles) continue;
@@ -416,7 +416,7 @@ main(int argc, char *argv[])
             SCROLL -= RV_JUMP;
             if (SCROLL < 0)
                 SCROLL = 0;
-            update_browser();
+            update();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles) continue;
@@ -449,7 +449,7 @@ main(int argc, char *argv[])
                         SCROLL = rover.nfiles - HEIGHT;
                 }
                 dirname[0] = '\0';
-                update_browser();
+                update();
             }
         }
         else if (!strcmp(key, RVK_HOME)) {
@@ -527,7 +527,7 @@ main(int argc, char *argv[])
                     FSEL = oldsel;
                     SCROLL = oldscroll;
                 }
-                update_browser();
+                update();
                 color_set(color, NULL);
                 mvaddstr(LINES - 1, 8, SEARCH);
                 mvaddch(LINES - 1, length + 8, ' ');
@@ -537,7 +537,7 @@ main(int argc, char *argv[])
             curs_set(FALSE);
             move(LINES - 1, 0);
             clrtoeol();
-            update_browser();
+            update();
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
             FLAGS ^= SHOW_FILES;
