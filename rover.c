@@ -127,9 +127,13 @@ clean_term()
     endwin();
 }
 
+void handle_winch(int sig);
+
 static void
 init_term()
 {
+    struct sigaction sa;
+
     setlocale(LC_ALL, "");
     initscr();
     cbreak(); /* Get one character at a time. */
@@ -138,6 +142,9 @@ init_term()
     intrflush(stdscr, FALSE);
     keypad(stdscr, TRUE);
     curs_set(FALSE); /* Hide blinking cursor. */
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = handle_winch;
+    sigaction(SIGWINCH, &sa, NULL);
     if (has_colors()) {
         start_color();
         init_pair(RED, COLOR_RED, COLOR_BLACK);
@@ -276,6 +283,18 @@ igetstr(char *buffer, int maxlen)
         buffer[length] = '\0';
     }
     return 1;
+}
+
+void
+handle_winch(int sig)
+{
+    (void) sig;
+    delwin(rover.window);
+    endwin();
+    refresh();
+    clear();
+    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    cd(0);
 }
 
 int
