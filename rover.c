@@ -9,6 +9,7 @@
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
 #include <sys/stat.h>
 #include <sys/wait.h>   /* waitpid() */
+#include <signal.h>     /* struct sigaction, sigaction() */
 #include <curses.h>
 
 #include "config.h"
