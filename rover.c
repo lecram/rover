@@ -254,7 +254,7 @@ cd(int reset)
     update_browser();
 }
 
-/* SIGWINCH handler; resize application according to new terminal settings. */
+/* SIGWINCH handler: resize application according to new terminal settings. */
 static void
 handle_winch(int sig)
 {
@@ -267,7 +267,7 @@ handle_winch(int sig)
     cd(0);
 }
 
-/* Do a fork-exec to external program ARGS[0] (e.g. $EDITOR). */
+/* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
 spawn()
 {
