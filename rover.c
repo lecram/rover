@@ -483,6 +483,7 @@ main(int argc, char *argv[])
             *SEARCH = '\0';
             color_set(RVC_PROMPT, NULL);
             mvaddstr(LINES - 1, 0, "search: ");
+            curs_set(TRUE);
             color_set(DEFAULT, NULL);
             while (igetstr(SEARCH, SEARCHSZ)) {
                 int length, sel;
@@ -512,12 +513,13 @@ main(int argc, char *argv[])
                     SCROLL = oldscroll;
                 }
                 update_browser();
-                strcat(SEARCH, " ");
                 color_set(color, NULL);
                 mvaddstr(LINES - 1, 8, SEARCH);
+                mvaddch(LINES - 1, length + 8, ' ');
+                move(LINES - 1, length + 8);
                 color_set(DEFAULT, NULL);
-                SEARCH[length] = '\0';
             }
+            curs_set(FALSE);
             move(LINES - 1, 0);
             clrtoeol();
             update_browser();
