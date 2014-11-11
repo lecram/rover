@@ -1,15 +1,15 @@
-CLIBS=-lcurses
+LDLIBS=-lcurses
 CFLAGS=-Wall -Wextra -Werror -O2
-PREFIX=/usr
+PREFIX=/usr/local
 INSTALL=install -Ds
 
 all: rover
 
 rover: rover.c config.h
-	$(CC) $(CFLAGS) -o $@ $< $(CLIBS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
 
 install: rover
-	$(INSTALL) rover $(PREFIX)/bin/rover
+	$(INSTALL) rover $(DESTDIR)$(PREFIX)/bin/rover
 
 .PHONE: clean
 clean:

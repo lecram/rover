@@ -66,12 +66,12 @@ header file.
 Configuration
 =============
 
- By default, rover is installed to `/usr/bin/rover`. To change this and other
+ By default, rover is installed to `/usr/local/bin/rover`. To change this and other
 build options, such as the name of the curses library, please edit `Makefile`
 before executing `make` or specify the options during invocation. For example,
 to link against `libncurses.so` and install to `/opt/bin/rover`:
  ```
- make CLIBS=-lncurses PREFIX=/opt install
+ make LDLIBS=-lncurses PREFIX=/opt install
  ```
 
  Rover configuration (mostly key bindings and colors) can only be changed
