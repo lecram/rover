@@ -13,28 +13,35 @@
 
 #include "config.h"
 
+/* String buffers. */
 #define ROWSZ 256
-char ROW[ROWSZ];
+static char ROW[ROWSZ];
 #define STATUSSZ 256
-char STATUS[STATUSSZ];
+static char STATUS[STATUSSZ];
 #define SEARCHSZ 256
-char SEARCH[SEARCHSZ];
+static char SEARCH[SEARCHSZ];
+
+/* Argument buffers for execvp(). */
 #define MAXARGS 256
-char *args[MAXARGS];
+static char *ARGS[MAXARGS];
 
 typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 
+/* Height of listing view. */
 #define HEIGHT (LINES-4)
 
+/* Listing view flags. */
 #define SHOW_FILES      0x01u
 #define SHOW_DIRS       0x02u
 #define SHOW_HIDDEN     0x04u
 
+/* Information associated to each entry in listing. */
 typedef struct {
     char *name;
     off_t size;
 } row_t;
 
+/* Global state. Some basic info is allocated for ten tabs. */
 struct rover_t {
     int tab;
     int nfiles;
@@ -46,89 +53,24 @@ struct rover_t {
     char cwd[10][FILENAME_MAX];
 } rover;
 
-#define FNAME(I) rover.rows[I].name
-#define FSIZE(I) rover.rows[I].size
-#define SCROLL rover.scroll[rover.tab]
-#define FSEL rover.fsel[rover.tab]
-#define FLAGS rover.flags[rover.tab]
-#define CWD rover.cwd[rover.tab]
+/* Macros for accessing global state. */
+#define FNAME(I)    rover.rows[I].name
+#define FSIZE(I)    rover.rows[I].size
+#define SCROLL      rover.scroll[rover.tab]
+#define FSEL        rover.fsel[rover.tab]
+#define FLAGS       rover.flags[rover.tab]
+#define CWD         rover.cwd[rover.tab]
 
-static int
-rowcmp(const void *a, const void *b)
-{
-    int isdir1, isdir2, cmpdir;
-    const row_t *r1 = a;
-    const row_t *r2 = b;
-    isdir1 = strchr(r1->name, '/') != NULL;
-    isdir2 = strchr(r2->name, '/') != NULL;
-    cmpdir = isdir2 - isdir1;
-    return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
-}
-
-void
-free_rows(row_t **rowsp, int nfiles)
-{
-    int i;
-
-    for (i = 0; i < nfiles; i++)
-        free((*rowsp)[i].name);
-    free(*rowsp);
-    *rowsp = NULL;
-}
-
-int
-ls(char *path, row_t **rowsp, uint8_t flags)
-{
-    DIR *dp;
-    struct dirent *ep;
-    struct stat statbuf;
-    row_t *rows;
-    int i, n;
-
-    if((dp = opendir(path)) == NULL)
-        return -1;
-    n = -2; /* We don't want the entries "." and "..". */
-    while (readdir(dp)) n++;
-    rewinddir(dp);
-    rows = (row_t *) malloc(n * sizeof(row_t));
-    i = 0;
-    while ((ep = readdir(dp))) {
-        if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
-            continue;
-        if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
-            continue;
-        /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
-        stat(ep->d_name, &statbuf);
-        if (S_ISDIR(statbuf.st_mode)) {
-            if (flags & SHOW_DIRS) {
-                rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
-                strcpy(rows[i].name, ep->d_name);
-                strcat(rows[i].name, "/");
-                i++;
-            }
-        }
-        else if (flags & SHOW_FILES) {
-            rows[i].name = (char *) malloc(strlen(ep->d_name) + 1);
-            strcpy(rows[i].name, ep->d_name);
-            rows[i].size = statbuf.st_size;
-            i++;
-        }
-    }
-    n = i; /* Ignore unused space in array caused by filters. */
-    qsort(rows, n, sizeof(row_t), rowcmp);
-    closedir(dp);
-    *rowsp = rows;
-    return n;
-}
-
+/* Curses clean up. Must be called before exiting browser. */
 static void
 clean_term()
 {
     endwin();
 }
 
-void handle_winch(int sig);
+static void handle_winch(int sig);
 
+/* Curses setup. */
 static void
 init_term()
 {
@@ -158,6 +100,7 @@ init_term()
     atexit(clean_term);
 }
 
+/* Update the listing view. */
 static void
 update_browser()
 {
@@ -212,6 +155,78 @@ update_browser()
     refresh();
 }
 
+/* Comparison used to sort listing entries. */
+static int
+rowcmp(const void *a, const void *b)
+{
+    int isdir1, isdir2, cmpdir;
+    const row_t *r1 = a;
+    const row_t *r2 = b;
+    isdir1 = strchr(r1->name, '/') != NULL;
+    isdir2 = strchr(r2->name, '/') != NULL;
+    cmpdir = isdir2 - isdir1;
+    return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
+}
+
+/* Get all entries for a given path (usually cwd). */
+static int
+ls(char *path, row_t **rowsp, uint8_t flags)
+{
+    DIR *dp;
+    struct dirent *ep;
+    struct stat statbuf;
+    row_t *rows;
+    int i, n;
+
+    if((dp = opendir(path)) == NULL)
+        return -1;
+    n = -2; /* We don't want the entries "." and "..". */
+    while (readdir(dp)) n++;
+    rewinddir(dp);
+    rows = (row_t *) malloc(n * sizeof(row_t));
+    i = 0;
+    while ((ep = readdir(dp))) {
+        if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+            continue;
+        if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
+            continue;
+        /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
+        stat(ep->d_name, &statbuf);
+        if (S_ISDIR(statbuf.st_mode)) {
+            if (flags & SHOW_DIRS) {
+                rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
+                strcpy(rows[i].name, ep->d_name);
+                strcat(rows[i].name, "/");
+                i++;
+            }
+        }
+        else if (flags & SHOW_FILES) {
+            rows[i].name = (char *) malloc(strlen(ep->d_name) + 1);
+            strcpy(rows[i].name, ep->d_name);
+            rows[i].size = statbuf.st_size;
+            i++;
+        }
+    }
+    n = i; /* Ignore unused space in array caused by filters. */
+    qsort(rows, n, sizeof(row_t), rowcmp);
+    closedir(dp);
+    *rowsp = rows;
+    return n;
+}
+
+/* Deallocate entries. */
+static void
+free_rows(row_t **rowsp, int nfiles)
+{
+    int i;
+
+    for (i = 0; i < nfiles; i++)
+        free((*rowsp)[i].name);
+    free(*rowsp);
+    *rowsp = NULL;
+}
+
+/* Change working directory. */
 /* NOTE: The caller needs to write the new path to CWD
  *  *before* calling this function. */
 static void
@@ -240,6 +255,20 @@ cd(int reset)
     update_browser();
 }
 
+/* SIGWINCH handler; resize application according to new terminal settings. */
+static void
+handle_winch(int sig)
+{
+    (void) sig;
+    delwin(rover.window);
+    endwin();
+    refresh();
+    clear();
+    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    cd(0);
+}
+
+/* Do a fork-exec to external program ARGS[0] (e.g. $EDITOR). */
 static void
 spawn()
 {
@@ -256,12 +285,12 @@ spawn()
     }
     else if (pid == 0) {
         /* Child process. */
-        execvp(args[0], args);
+        execvp(ARGS[0], ARGS);
     }
 }
 
 /* Interactive getstr(). */
-int
+static int
 igetstr(char *buffer, int maxlen)
 {
     int ch, length;
@@ -283,18 +312,6 @@ igetstr(char *buffer, int maxlen)
         buffer[length] = '\0';
     }
     return 1;
-}
-
-void
-handle_winch(int sig)
-{
-    (void) sig;
-    delwin(rover.window);
-    endwin();
-    refresh();
-    clear();
-    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    cd(0);
 }
 
 int
@@ -429,8 +446,8 @@ main(int argc, char *argv[])
         else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
             if (program) {
-                args[0] = program;
-                args[1] = NULL;
+                ARGS[0] = program;
+                ARGS[1] = NULL;
                 spawn();
             }
         }
@@ -440,9 +457,9 @@ main(int argc, char *argv[])
                 continue;
             program = getenv("PAGER");
             if (program) {
-                args[0] = program;
-                args[1] = FNAME(FSEL);
-                args[2] = NULL;
+                ARGS[0] = program;
+                ARGS[1] = FNAME(FSEL);
+                ARGS[2] = NULL;
                 spawn();
             }
         }
@@ -452,9 +469,9 @@ main(int argc, char *argv[])
                 continue;
             program = getenv("EDITOR");
             if (program) {
-                args[0] = program;
-                args[1] = FNAME(FSEL);
-                args[2] = NULL;
+                ARGS[0] = program;
+                ARGS[1] = FNAME(FSEL);
+                ARGS[2] = NULL;
                 spawn();
             }
         }
