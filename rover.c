@@ -239,10 +239,9 @@ cd(int reset)
     color_set(RVC_CWD, NULL);
     mvaddnstr(0, 0, CWD, COLS);
     color_set(DEFAULT, NULL);
-    move(0, COLS-2);
     attr_on(A_BOLD, NULL);
     color_set(RVC_TABNUM, NULL);
-    echochar(rover.tab + '0');
+    mvaddch(0, COLS-4, rover.tab + '0');
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
     if (rover.nfiles)
