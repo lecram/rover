@@ -126,6 +126,12 @@ update()
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
+    /* Selection might not be visible, due to window shrinking.
+       In that case the scroll must be moved to make it visible again. */
+    if (FSEL < SCROLL)
+        SCROLL = FSEL;
+    else if (FSEL >= SCROLL + HEIGHT)
+        SCROLL = FSEL - HEIGHT + 1;
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = FNAME(j)[0] == '.';
         isdir = strchr(FNAME(j), '/') != NULL;
