@@ -69,6 +69,7 @@ clean_term()
     endwin();
 }
 
+static void handle_segv(int sig);
 static void handle_winch(int sig);
 
 /* Curses setup. */
@@ -86,6 +87,10 @@ init_term()
     keypad(stdscr, TRUE);
     curs_set(FALSE); /* Hide blinking cursor. */
     memset(&sa, 0, sizeof(struct sigaction));
+    /* Setup SIGSEGV handler. */
+    sa.sa_handler = handle_segv;
+    sigaction(SIGSEGV, &sa, NULL);
+    /* Setup SIGWINCH handler. */
     sa.sa_handler = handle_winch;
     sigaction(SIGWINCH, &sa, NULL);
     if (has_colors()) {
@@ -253,6 +258,16 @@ cd(int reset)
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
     update_browser();
+}
+
+/* SIGSEGV handler: clean up curses before exiting. */
+static void
+handle_segv(int sig)
+{
+    (void) sig;
+    clean_term();
+    puts("Received SIGSEGV (segmentation fault).");
+    exit(1);
 }
 
 /* SIGWINCH handler: resize application according to new terminal settings. */
