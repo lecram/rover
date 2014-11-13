@@ -236,8 +236,8 @@ update()
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
-    /* Selection might not be visible, due to window shrinking.
-       In that case the scroll must be moved to make it visible again. */
+    /* Selection might not be visible, due to cursor wrapping or window
+       shrinking. In that case, the scroll must be moved to make it visible. */
     if (FSEL < SCROLL)
         SCROLL = FSEL;
     else if (FSEL >= SCROLL + HEIGHT)
@@ -598,28 +598,12 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
-            if (FSEL == rover.nfiles - 1)
-                SCROLL = FSEL = 0;
-            else {
-                FSEL++;
-                if ((FSEL - SCROLL) == HEIGHT)
-                    SCROLL++;
-            }
+            FSEL = (FSEL + 1) % rover.nfiles;
             update();
         }
         else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
-            if (FSEL == 0) {
-                FSEL = rover.nfiles - 1;
-                SCROLL = rover.nfiles - HEIGHT;
-                if (SCROLL < 0)
-                    SCROLL = 0;
-            }
-            else {
-                FSEL--;
-                if (FSEL < SCROLL)
-                    SCROLL--;
-            }
+            FSEL = FSEL ? FSEL - 1 : rover.nfiles - 1;
             update();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
