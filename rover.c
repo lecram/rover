@@ -493,12 +493,12 @@ static int adddir(const char *path) {
     if (ret < 0) return ret;
     return mkdir(path, st.st_mode);
 }
-static int movfile(const char *path) {
-    int ret;
+static int movfile(const char *srcpath) {
+    char dstpath[FILENAME_MAX];
 
-    ret = cpyfile(path);
-    if (ret < 0) return ret;
-    return delfile(path);
+    strcpy(dstpath, CWD);
+    strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
+    return rename(srcpath, dstpath);
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
