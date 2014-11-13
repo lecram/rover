@@ -260,7 +260,7 @@ update()
         else
             strcpy(ROW, FNAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        if (marking && MARKED(i))
+        if (marking && MARKED(j))
             mvwaddch(rover.window, i + 1, 1, '*');
         else
             mvwaddch(rover.window, i + 1, 1, ' ');
