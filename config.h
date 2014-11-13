@@ -19,6 +19,7 @@
 #define RVK_TG_MARK     "m"
 #define RVK_INVMARK     "M"
 #define RVK_MARKALL     "a"
+#define RVK_DELETE      "X"
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
 #define RVC_CWD         GREEN

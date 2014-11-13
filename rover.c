@@ -415,6 +415,48 @@ cd(int reset)
     update();
 }
 
+static void
+delete_dir(const char *path)
+{
+    DIR *dp;
+    struct dirent *ep;
+    struct stat statbuf;
+    char subpath[FILENAME_MAX];
+
+    if((dp = opendir(path)) == NULL)
+        return;
+    while ((ep = readdir(dp))) {
+        if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+            continue;
+        sprintf(subpath, "%s%s", path, ep->d_name);
+        stat(subpath, &statbuf);
+        if (S_ISDIR(statbuf.st_mode)) {
+            strcat(subpath, "/");
+            delete_dir(subpath);
+        }
+        else
+            unlink(subpath);
+    }
+    closedir(dp);
+    rmdir(path);
+}
+
+static void
+delete_marked()
+{
+    int i;
+    char path[FILENAME_MAX];
+
+    for (i = 0; i < rover.marks.bulk; i++)
+        if (rover.marks.entries[i]) {
+            sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
+            if (strchr(rover.marks.entries[i], '/'))
+                delete_dir(path);
+            else
+                unlink(path);
+        }
+}
+
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
 spawn()
@@ -710,6 +752,10 @@ main(int argc, char *argv[])
                     MARKED(i) = 1;
                 }
             update();
+        }
+        else if (!strcmp(key, RVK_DELETE)) {
+            delete_marked();
+            cd(1);
         }
     }
     if (rover.nfiles)
