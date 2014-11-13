@@ -48,7 +48,6 @@ typedef struct {
 
 typedef struct {
     char dirpath[FILENAME_MAX];
-    int inverse;
     int bulk;
     int nentries;
     char **entries;
@@ -80,13 +79,11 @@ void
 init_marks(marks_t *marks)
 {
     strcpy(marks->dirpath, "");
-    marks->inverse = 0;
     marks->bulk = BULK_INIT;
     marks->nentries = 0;
     marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
 }
 
-/* If marks->inverse is nonzero, this will actually mark all! */
 void
 mark_none(marks_t *marks)
 {
@@ -105,7 +102,6 @@ mark_none(marks_t *marks)
     }
 }
 
-/* If marks->inverse is nonzero, this will actually unmark entry! */
 void
 add_mark(marks_t *marks, char *dirpath, char *entry)
 {
@@ -141,7 +137,6 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
     marks->nentries++;
 }
 
-/* If marks->inverse is nonzero, this will actually mark entry! */
 void
 del_mark(marks_t *marks, char *entry)
 {
@@ -260,7 +255,7 @@ update()
         else
             strcpy(ROW, FNAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        if (marking && (MARKED(i) ^ rover.marks.inverse))
+        if (marking && MARKED(i))
             mvwaddch(rover.window, i + 1, 1, '*');
         else
             mvwaddch(rover.window, i + 1, 1, ' ');
@@ -699,19 +694,21 @@ main(int argc, char *argv[])
             update();
         }
         else if (!strcmp(key, RVK_INVMARK)) {
-            rover.marks.inverse = !rover.marks.inverse;
+            for (i = 0; i < rover.nfiles; i++) {
+                if (MARKED(i))
+                    del_mark(&rover.marks, FNAME(i));
+                else
+                    add_mark(&rover.marks, CWD, FNAME(i));
+                MARKED(i) = !MARKED(i);
+            }
             update();
         }
-        else if (!strcmp(key, RVK_TG_MARKALL)) {
-            strcpy(rover.marks.dirpath, CWD);
-            if (rover.marks.nentries) {
-                for (i = 0; i < rover.nfiles; i++)
-                    MARKED(i) = 0;
-                mark_none(&rover.marks);
-                rover.marks.inverse = 0;
-            }
-            else
-                rover.marks.inverse = !rover.marks.inverse;
+        else if (!strcmp(key, RVK_MARKALL)) {
+            for (i = 0; i < rover.nfiles; i++)
+                if (!MARKED(i)) {
+                    add_mark(&rover.marks, CWD, FNAME(i));
+                    MARKED(i) = 1;
+                }
             update();
         }
     }
