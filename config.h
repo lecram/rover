@@ -21,6 +21,7 @@
 #define RVK_MARKALL     "a"
 #define RVK_DELETE      "X"
 #define RVK_COPY        "C"
+#define RVK_MOVE        "V"
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
 #define RVC_CWD         GREEN

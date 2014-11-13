@@ -462,9 +462,9 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 }
 
 /* Wrappers for file operations. */
-static PROCESS delete = unlink;
+static PROCESS delfile = unlink;
 static PROCESS deldir = rmdir;
-static int copy(const char *srcpath) {
+static int cpyfile(const char *srcpath) {
     int src, dst, ret;
     size_t size;
     struct stat st;
@@ -492,6 +492,13 @@ static int adddir(const char *path) {
     ret = stat(CWD, &st);
     if (ret < 0) return ret;
     return mkdir(path, st.st_mode);
+}
+static int movfile(const char *path) {
+    int ret;
+
+    ret = cpyfile(path);
+    if (ret < 0) return ret;
+    return delfile(path);
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
@@ -791,12 +798,17 @@ main(int argc, char *argv[])
             update();
         }
         else if (!strcmp(key, RVK_DELETE)) {
-            process_marked(NULL, delete, deldir);
+            process_marked(NULL, delfile, deldir);
             mark_none(&rover.marks);
             cd(1);
         }
         else if (!strcmp(key, RVK_COPY)) {
-            process_marked(adddir, copy, NULL);
+            process_marked(adddir, cpyfile, NULL);
+            mark_none(&rover.marks);
+            cd(1);
+        }
+        else if (!strcmp(key, RVK_MOVE)) {
+            process_marked(adddir, movfile, NULL);
             mark_none(&rover.marks);
             cd(1);
         }
