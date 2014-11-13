@@ -55,7 +55,7 @@ typedef struct {
 } marks_t;
 
 /* Global state. Some basic info is allocated for ten tabs. */
-struct rover_t {
+static struct rover_t {
     int tab;
     int nfiles;
     int scroll[10];
@@ -78,7 +78,7 @@ struct rover_t {
 
 typedef int (*PROCESS)(const char *path);
 
-void
+static void
 init_marks(marks_t *marks)
 {
     strcpy(marks->dirpath, "");
@@ -87,7 +87,7 @@ init_marks(marks_t *marks)
     marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
 }
 
-void
+static void
 mark_none(marks_t *marks)
 {
     int i;
@@ -105,7 +105,7 @@ mark_none(marks_t *marks)
     }
 }
 
-void
+static void
 add_mark(marks_t *marks, char *dirpath, char *entry)
 {
     int i;
@@ -140,7 +140,7 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
     marks->nentries++;
 }
 
-void
+static void
 del_mark(marks_t *marks, char *entry)
 {
     int i;
@@ -156,7 +156,7 @@ del_mark(marks_t *marks, char *entry)
     else mark_none(marks);
 }
 
-void
+static void
 finish_marks(marks_t *marks)
 {
     int i;
