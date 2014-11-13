@@ -5,9 +5,10 @@
 #include <sys/types.h>  /* pid_t, ... */
 #include <stdio.h>      /* FILENAME_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
-#include <unistd.h>     /* chdir(), getcwd() */
+#include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
 #include <sys/stat.h>
+#include <fcntl.h>      /* open() */
 #include <sys/wait.h>   /* waitpid() */
 #include <signal.h>     /* struct sigaction, sigaction() */
 #include <curses.h>
@@ -460,6 +461,39 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
         }
 }
 
+/* Wrappers for file operations. */
+static PROCESS delete = unlink;
+static PROCESS deldir = rmdir;
+static int copy(const char *srcpath) {
+    int src, dst, ret;
+    size_t size;
+    struct stat st;
+    char buf[BUFSIZ];
+    char dstpath[FILENAME_MAX];
+
+    ret = src = open(srcpath, O_RDONLY);
+    if (ret < 0) return ret;
+    ret = fstat(src, &st);
+    if (ret < 0) return ret;
+    strcpy(dstpath, CWD);
+    strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
+    ret = dst = creat(dstpath, st.st_mode);
+    if (ret < 0) return ret;
+    while ((size = read(src, buf, BUFSIZ)) > 0)
+        write(dst, buf, size);
+    close(src);
+    close(dst);
+    return 0;
+}
+static int adddir(const char *path) {
+    int ret;
+    struct stat st;
+
+    ret = stat(CWD, &st);
+    if (ret < 0) return ret;
+    return mkdir(path, st.st_mode);
+}
+
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
 spawn()
@@ -757,7 +791,12 @@ main(int argc, char *argv[])
             update();
         }
         else if (!strcmp(key, RVK_DELETE)) {
-            process_marked(NULL, unlink, rmdir);
+            process_marked(NULL, delete, deldir);
+            mark_none(&rover.marks);
+            cd(1);
+        }
+        else if (!strcmp(key, RVK_COPY)) {
+            process_marked(adddir, copy, NULL);
             mark_none(&rover.marks);
             cd(1);
         }
