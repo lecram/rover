@@ -96,6 +96,7 @@ mark_none(marks_t *marks)
     for (i = 0; i < marks->bulk && marks->nentries; i++)
         if (marks->entries[i]) {
             free(marks->entries[i]);
+            marks->entries[i] = NULL;
             marks->nentries--;
         }
     if (marks->bulk > BULK_THRESH) {
