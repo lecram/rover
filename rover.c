@@ -121,7 +121,7 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
             marks->entries = (char **) realloc(
                 marks->entries, marks->bulk * sizeof(char *)
             );
-            memset(&marks->entries[marks->nentries], 0, extra);
+            memset(&marks->entries[marks->nentries], 0, extra * sizeof(char *));
             i = marks->nentries;
         }
         else {
