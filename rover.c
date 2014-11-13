@@ -92,6 +92,7 @@ mark_none(marks_t *marks)
 {
     int i;
 
+    strcpy(marks->dirpath, "");
     for (i = 0; i < marks->bulk && marks->nentries; i++)
         if (marks->entries[i]) {
             free(marks->entries[i]);
