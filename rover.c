@@ -75,6 +75,8 @@ struct rover_t {
 #define FLAGS       rover.flags[rover.tab]
 #define CWD         rover.cwd[rover.tab]
 
+typedef int (*PROCESS)(const char *path);
+
 void
 init_marks(marks_t *marks)
 {
@@ -416,13 +418,14 @@ cd(int reset)
 }
 
 static void
-delete_dir(const char *path)
+process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
     DIR *dp;
     struct dirent *ep;
     struct stat statbuf;
     char subpath[FILENAME_MAX];
 
+    if (pre) pre(path);
     if((dp = opendir(path)) == NULL)
         return;
     while ((ep = readdir(dp))) {
@@ -432,17 +435,17 @@ delete_dir(const char *path)
         stat(subpath, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             strcat(subpath, "/");
-            delete_dir(subpath);
+            process_dir(pre, proc, pos, subpath);
         }
         else
-            unlink(subpath);
+            proc(subpath);
     }
     closedir(dp);
-    rmdir(path);
+    if (pos) pos(path);
 }
 
 static void
-delete_marked()
+process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 {
     int i;
     char path[FILENAME_MAX];
@@ -451,9 +454,9 @@ delete_marked()
         if (rover.marks.entries[i]) {
             sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
             if (strchr(rover.marks.entries[i], '/'))
-                delete_dir(path);
+                process_dir(pre, proc, pos, path);
             else
-                unlink(path);
+                proc(path);
         }
 }
 
@@ -754,7 +757,8 @@ main(int argc, char *argv[])
             update();
         }
         else if (!strcmp(key, RVK_DELETE)) {
-            delete_marked();
+            process_marked(NULL, unlink, rmdir);
+            mark_none(&rover.marks);
             cd(1);
         }
     }
