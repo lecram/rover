@@ -36,11 +36,23 @@ typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 #define SHOW_DIRS       0x02u
 #define SHOW_HIDDEN     0x04u
 
+#define BULK_INIT   5
+#define BULK_THRESH 256
+
 /* Information associated to each entry in listing. */
 typedef struct {
     char *name;
     off_t size;
+    int marked;
 } row_t;
+
+typedef struct {
+    char dirpath[FILENAME_MAX];
+    int inverse;
+    int bulk;
+    int nentries;
+    char **entries;
+} marks_t;
 
 /* Global state. Some basic info is allocated for ten tabs. */
 struct rover_t {
@@ -52,15 +64,112 @@ struct rover_t {
     row_t *rows;
     WINDOW *window;
     char cwd[10][FILENAME_MAX];
+    marks_t marks;
 } rover;
 
 /* Macros for accessing global state. */
 #define FNAME(I)    rover.rows[I].name
 #define FSIZE(I)    rover.rows[I].size
+#define MARKED(I)   rover.rows[I].marked
 #define SCROLL      rover.scroll[rover.tab]
 #define FSEL        rover.fsel[rover.tab]
 #define FLAGS       rover.flags[rover.tab]
 #define CWD         rover.cwd[rover.tab]
+
+void
+init_marks(marks_t *marks)
+{
+    strcpy(marks->dirpath, "");
+    marks->inverse = 0;
+    marks->bulk = BULK_INIT;
+    marks->nentries = 0;
+    marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
+}
+
+/* If marks->inverse is nonzero, this will actually mark all! */
+void
+mark_none(marks_t *marks)
+{
+    int i;
+
+    for (i = 0; i < marks->bulk && marks->nentries; i++)
+        if (marks->entries[i]) {
+            free(marks->entries[i]);
+            marks->nentries--;
+        }
+    if (marks->bulk > BULK_THRESH) {
+        /* Reset bulk to free some memory. */
+        free(marks->entries);
+        marks->bulk = BULK_INIT;
+        marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
+    }
+}
+
+/* If marks->inverse is nonzero, this will actually unmark entry! */
+void
+add_mark(marks_t *marks, char *dirpath, char *entry)
+{
+    int i;
+
+    if (!strcmp(marks->dirpath, dirpath)) {
+        /* Append mark to directory. */
+        if (marks->nentries == marks->bulk) {
+            /* Expand bulk to accomodate new entry. */
+            int extra = marks->bulk >> 1;
+            marks->bulk += extra; /* bulk *= 1.5; */
+            marks->entries = (char **) realloc(
+                marks->entries, marks->bulk * sizeof(char *)
+            );
+            memset(&marks->entries[marks->nentries], 0, extra);
+            i = marks->nentries;
+        }
+        else {
+            /* Search for empty slot (there must be one). */
+            for (i = 0; i < marks->bulk; i++)
+                if (!marks->entries[i])
+                    break;
+        }
+    }
+    else {
+        /* Directory changed. Discard old marks. */
+        mark_none(marks);
+        strcpy(marks->dirpath, dirpath);
+        i = 0;
+    }
+    marks->entries[i] = (char *) malloc(strlen(entry) + 1);
+    strcpy(marks->entries[i], entry);
+    marks->nentries++;
+}
+
+/* If marks->inverse is nonzero, this will actually mark entry! */
+void
+del_mark(marks_t *marks, char *entry)
+{
+    int i;
+
+    if (marks->nentries > 1) {
+        for (i = 0; i < marks->bulk; i++)
+            if (marks->entries[i] && !strcmp(marks->entries[i], entry))
+                break;
+        free(marks->entries[i]);
+        marks->entries[i] = NULL;
+        marks->nentries--;
+    }
+    else mark_none(marks);
+}
+
+void
+finish_marks(marks_t *marks)
+{
+    int i;
+
+    for (i = 0; i < marks->bulk && marks->nentries; i++)
+        if (marks->entries[i]) {
+            free(marks->entries[i]);
+            marks->nentries--;
+        }
+    free(marks->entries);
+}
 
 /* Curses clean up. Must be called before exiting browser. */
 static void
@@ -112,6 +221,7 @@ update()
 {
     int i, j;
     int ishidden, isdir;
+    int marking;
 
     mvhline(0, 0, ' ', COLS);
     color_set(RVC_CWD, NULL);
@@ -132,6 +242,7 @@ update()
         SCROLL = FSEL;
     else if (FSEL >= SCROLL + HEIGHT)
         SCROLL = FSEL - HEIGHT + 1;
+    marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = FNAME(j)[0] == '.';
         isdir = strchr(FNAME(j), '/') != NULL;
@@ -145,11 +256,15 @@ update()
             wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir)
             sprintf(ROW, "%s%*d", FNAME(j),
-                    COLS - strlen(FNAME(j)) - 2, (int) FSIZE(j));
+                    COLS - strlen(FNAME(j)) - 4, (int) FSIZE(j));
         else
             strcpy(ROW, FNAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        mvwaddnstr(rover.window, i + 1, 1, ROW, COLS - 2);
+        if (marking && (MARKED(i) ^ rover.marks.inverse))
+            mvwaddch(rover.window, i + 1, 1, '*');
+        else
+            mvwaddch(rover.window, i + 1, 1, ' ');
+        mvwaddnstr(rover.window, i + 1, 3, ROW, COLS - 4);
         wcolor_set(rover.window, DEFAULT, NULL);
         if (j == FSEL)
             wattr_off(rover.window, A_REVERSE, NULL);
@@ -280,12 +395,28 @@ free_rows(row_t **rowsp, int nfiles)
 static void
 cd(int reset)
 {
+    int i, j;
+
     if (reset)
         FSEL = SCROLL = 0;
     chdir(CWD);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
     rover.nfiles = ls(CWD, &rover.rows, FLAGS);
+    if (!strcmp(CWD, rover.marks.dirpath)) {
+        for (i = 0; i < rover.nfiles; i++) {
+            for (j = 0; j < rover.marks.bulk; j++)
+                if (
+                    rover.marks.entries[j] &&
+                    !strcmp(rover.marks.entries[j], FNAME(i))
+                )
+                    break;
+            MARKED(i) = j < rover.marks.bulk;
+        }
+    }
+    else
+        for (i = 0; i < rover.nfiles; i++)
+            MARKED(i) = 0;
     update();
 }
 
@@ -366,6 +497,7 @@ main(int argc, char *argv[])
             strcat(rover.cwd[i], "/");
     rover.tab = 1;
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    init_marks(&rover.marks);
     cd(1);
     while (1) {
         ch = getch();
@@ -557,10 +689,35 @@ main(int argc, char *argv[])
             FLAGS ^= SHOW_HIDDEN;
             cd(1);
         }
+        else if (!strcmp(key, RVK_TG_MARK)) {
+            if (MARKED(FSEL))
+                del_mark(&rover.marks, FNAME(FSEL));
+            else
+                add_mark(&rover.marks, CWD, FNAME(FSEL));
+            MARKED(FSEL) = !MARKED(FSEL);
+            FSEL = (FSEL + 1) % rover.nfiles;
+            update();
+        }
+        else if (!strcmp(key, RVK_INVMARK)) {
+            rover.marks.inverse = !rover.marks.inverse;
+            update();
+        }
+        else if (!strcmp(key, RVK_TG_MARKALL)) {
+            strcpy(rover.marks.dirpath, CWD);
+            if (rover.marks.nentries) {
+                for (i = 0; i < rover.nfiles; i++)
+                    MARKED(i) = 0;
+                mark_none(&rover.marks);
+                rover.marks.inverse = 0;
+            }
+            else
+                rover.marks.inverse = !rover.marks.inverse;
+            update();
+        }
     }
-    if (rover.nfiles) {
+    if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    }
+    finish_marks(&rover.marks);
     delwin(rover.window);
     return 0;
 }

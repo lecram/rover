@@ -16,6 +16,9 @@
 #define RVK_TG_FILES    "f"
 #define RVK_TG_DIRS     "d"
 #define RVK_TG_HIDDEN   "s"
+#define RVK_TG_MARK     "m"
+#define RVK_INVMARK     "M"
+#define RVK_TG_MARKALL  "a"
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
 #define RVC_CWD         GREEN
