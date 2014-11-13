@@ -426,7 +426,12 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
     struct stat statbuf;
     char subpath[FILENAME_MAX];
 
-    if (pre) pre(path);
+    if (pre) {
+        char dstpath[FILENAME_MAX];
+        strcpy(dstpath, CWD);
+        strcat(dstpath, path + strlen(rover.marks.dirpath));
+        pre(dstpath);
+    }
     if((dp = opendir(path)) == NULL)
         return;
     while ((ep = readdir(dp))) {
