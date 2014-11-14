@@ -58,6 +58,9 @@ Quick Start
      0-9 - change tab
  ```
 
+**Important Note**: Currently, Rover never asks for confirmation on any file
+operation. Please be careful to not accidentally remove/overwrite your files.
+
 
 Dependencies
 ============
