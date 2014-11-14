@@ -807,11 +807,14 @@ main(int argc, char *argv[])
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
+                int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
-                    int n = strlen(FNAME(i));
-                    if (FNAME(i)[n - 1] == '/') n--;
-                    if (!strncmp(FNAME(i), INPUT, n)) {
+                    if (
+                        !strncmp(FNAME(i), INPUT, length) &&
+                        (!strcmp(FNAME(i) + length, "") ||
+                         !strcmp(FNAME(i) + length, "/"))
+                    ) {
                         ok = 0;
                         break;
                     }
@@ -831,11 +834,14 @@ main(int argc, char *argv[])
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
+                int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
-                    int n = strlen(FNAME(i));
-                    if (FNAME(i)[n - 1] == '/') n--;
-                    if (!strncmp(FNAME(i), INPUT, n)) {
+                    if (
+                        !strncmp(FNAME(i), INPUT, length) &&
+                        (!strcmp(FNAME(i) + length, "") ||
+                         !strcmp(FNAME(i) + length, "/"))
+                    ) {
                         ok = 0;
                         break;
                     }
@@ -852,14 +858,17 @@ main(int argc, char *argv[])
         else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
             char *prompt = "rename: ";
-            strcpy(INPUT, "");
-            update_input(prompt, DEFAULT);
+            strcpy(INPUT, FNAME(FSEL));
+            update_input(prompt, RED);
             while (igetstr(INPUT, INPUTSZ)) {
+                int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
-                    int n = strlen(FNAME(i));
-                    if (FNAME(i)[n - 1] == '/') n--;
-                    if (!strncmp(FNAME(i), INPUT, n)) {
+                    if (
+                        !strncmp(FNAME(i), INPUT, length) &&
+                        (!strcmp(FNAME(i) + length, "") ||
+                         !strcmp(FNAME(i) + length, "/"))
+                    ) {
                         ok = 0;
                         break;
                     }
