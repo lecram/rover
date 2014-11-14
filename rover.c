@@ -50,6 +50,7 @@ typedef struct {
     int marked;
 } row_t;
 
+/* Dynamic array of marked entries. */
 typedef struct {
     char dirpath[FILENAME_MAX];
     int bulk;
@@ -90,6 +91,7 @@ init_marks(marks_t *marks)
     marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
 }
 
+/* Unmark all entries. */
 static void
 mark_none(marks_t *marks)
 {
@@ -425,6 +427,16 @@ cd(int reset)
     update_view();
 }
 
+/* Recursively process a source directory using CWD as destination root.
+ * For each node (i.e. directory), do the following:
+ *  1. call pre(destination);
+ *  2. call proc() on every child leaf (i.e. files);
+ *  3. recurse into every child node;
+ *  4. call pos(source).
+ * E.g. to move directory /src/ (and all its contents) inside /dst/:
+ *  strcpy(CWD, "/dst/");
+ *  process_dir(adddir, movfile, deldir, "/src/");
+ */
 static void
 process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
@@ -456,6 +468,10 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
     if (pos) pos(path);
 }
 
+/* Process all marked entries using CWD as destination root.
+ * All marked entries that are directories will be recursively processed.
+ * See process_dir() for details on the parameters.
+ */
 static void
 process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 {
@@ -572,6 +588,7 @@ igetstr(char *buffer, int maxlen)
     return 1;
 }
 
+/* Update line input on the screen. */
 static void
 update_input(char *prompt, color_t color)
 {
@@ -588,6 +605,7 @@ update_input(char *prompt, color_t color)
     color_set(DEFAULT, NULL);
 }
 
+/* Show a message and wait for any keypress. */
 static void
 message(const char *msg, color_t color)
 {
