@@ -29,6 +29,8 @@ static char *ARGS[MAXARGS];
 
 typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 
+#define STATUSPOS   COLS - 16
+
 /* Height of listing view. */
 #define HEIGHT (LINES-4)
 
@@ -37,6 +39,7 @@ typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 #define SHOW_DIRS       0x02u
 #define SHOW_HIDDEN     0x04u
 
+/* Marks parameters. */
 #define BULK_INIT   5
 #define BULK_THRESH 256
 
@@ -290,7 +293,7 @@ update()
         sprintf(ROW, "%d/%d", FSEL + 1, rover.nfiles);
     sprintf(STATUS+3, "%*s", 12, ROW);
     color_set(RVC_STATUS, NULL);
-    mvaddstr(LINES - 1, COLS - 16, STATUS);
+    mvaddstr(LINES - 1, STATUSPOS, STATUS);
     color_set(DEFAULT, NULL);
     refresh();
 }
@@ -552,6 +555,22 @@ igetstr(char *buffer, int maxlen)
         buffer[length] = '\0';
     }
     return 1;
+}
+
+static void
+message(const char *msg, color_t color)
+{
+    int len, pos;
+
+    len = strlen(msg);
+    pos = (STATUSPOS - len) >> 1;
+    attr_on(A_BOLD, NULL);
+    color_set(color, NULL);
+    mvaddstr(LINES - 1, pos, msg);
+    color_set(DEFAULT, NULL);
+    attr_off(A_BOLD, NULL);
+    getch();
+    mvhline(LINES - 1, pos, ' ', len);
 }
 
 int
