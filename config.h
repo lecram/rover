@@ -36,5 +36,6 @@
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR   ACS_CKBOARD
+#define RVS_MARK        ACS_DIAMOND
 
 #define RV_JUMP         10

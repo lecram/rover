@@ -261,7 +261,7 @@ update()
             strcpy(ROW, FNAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
         if (marking && MARKED(j))
-            mvwaddch(rover.window, i + 1, 1, ACS_DIAMOND);
+            mvwaddch(rover.window, i + 1, 1, RVS_MARK);
         else
             mvwaddch(rover.window, i + 1, 1, ' ');
         mvwaddnstr(rover.window, i + 1, 3, ROW, COLS - 4);
