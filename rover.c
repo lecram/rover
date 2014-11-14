@@ -175,7 +175,7 @@ update()
         sprintf(ROW, "%d/%d", FSEL + 1, rover.nfiles);
     sprintf(STATUS+3, "%*s", 12, ROW);
     color_set(RVC_STATUS, NULL);
-    mvaddstr(LINES - 1, COLS - 15, STATUS);
+    mvaddstr(LINES - 1, COLS - 16, STATUS);
     color_set(DEFAULT, NULL);
     refresh();
 }
