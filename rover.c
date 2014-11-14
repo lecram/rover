@@ -222,7 +222,7 @@ init_term()
 
 /* Update the listing view. */
 static void
-update()
+update_view()
 {
     int i, j;
     int ishidden, isdir;
@@ -320,7 +320,7 @@ handle_winch(int sig)
     refresh();
     clear();
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    update();
+    update_view();
 }
 
 /* Comparison used to sort listing entries. */
@@ -422,7 +422,7 @@ cd(int reset)
     else
         for (i = 0; i < rover.nfiles; i++)
             MARKED(i) = 0;
-    update();
+    update_view();
 }
 
 static void
@@ -570,6 +570,22 @@ igetstr(char *buffer, int maxlen)
 }
 
 static void
+update_input(char *prompt, color_t color)
+{
+    int plen, ilen;
+
+    plen = strlen(prompt);
+    ilen = strlen(INPUT);
+    color_set(RVC_PROMPT, NULL);
+    mvaddstr(LINES - 1, 0, prompt);
+    color_set(color, NULL);
+    mvaddstr(LINES - 1, plen, INPUT);
+    mvaddch(LINES - 1, ilen + plen, ' ');
+    move(LINES - 1, ilen + plen);
+    color_set(DEFAULT, NULL);
+}
+
+static void
 message(const char *msg, color_t color)
 {
     int len, pos;
@@ -630,12 +646,12 @@ main(int argc, char *argv[])
         else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
             FSEL = (FSEL + 1) % rover.nfiles;
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
             FSEL = FSEL ? FSEL - 1 : rover.nfiles - 1;
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
@@ -647,7 +663,7 @@ main(int argc, char *argv[])
                 if (SCROLL > rover.nfiles - HEIGHT)
                     SCROLL = rover.nfiles - HEIGHT;
             }
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
             if (!rover.nfiles) continue;
@@ -657,7 +673,7 @@ main(int argc, char *argv[])
             SCROLL -= RV_JUMP;
             if (SCROLL < 0)
                 SCROLL = 0;
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles) continue;
@@ -690,7 +706,7 @@ main(int argc, char *argv[])
                         SCROLL = rover.nfiles - HEIGHT;
                 }
                 dirname[0] = '\0';
-                update();
+                update_view();
             }
         }
         else if (!strcmp(key, RVK_HOME)) {
@@ -733,17 +749,16 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll, length;
+            char *prompt = "search: ";
             if (!rover.nfiles) continue;
             oldsel = FSEL;
             oldscroll = SCROLL;
             strcpy(INPUT, "");
-            color_set(RVC_PROMPT, NULL);
-            mvaddstr(LINES - 1, 0, "search: ");
+            update_input(prompt, DEFAULT);
             curs_set(TRUE);
-            color_set(DEFAULT, NULL);
             while (igetstr(INPUT, INPUTSZ)) {
                 int sel;
-                color_t color;
+                color_t color = RED;
                 length = strlen(INPUT);
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
@@ -761,23 +776,17 @@ main(int argc, char *argv[])
                                 SCROLL = sel - 3;
                         }
                     }
-                    else
-                        color = RED;
                 }
                 else {
                     FSEL = oldsel;
                     SCROLL = oldscroll;
                 }
-                update();
-                color_set(color, NULL);
-                mvaddstr(LINES - 1, 8, INPUT);
-                mvaddch(LINES - 1, length + 8, ' ');
-                move(LINES - 1, length + 8);
-                color_set(DEFAULT, NULL);
+                update_view();
+                update_input(prompt, color);
             }
             curs_set(FALSE);
-            mvhline(LINES - 1, 0, ' ', length + 8);
-            update();
+            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            update_view();
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
             FLAGS ^= SHOW_FILES;
@@ -792,12 +801,11 @@ main(int argc, char *argv[])
             cd(1);
         }
         else if (!strcmp(key, RVK_NEW_FILE)) {
-            int ok, length;
+            int ok = 0;
+            char *prompt = "new file: ";
             strcpy(INPUT, "");
-            color_set(RVC_PROMPT, NULL);
-            mvaddstr(LINES - 1, 0, "new file: ");
+            update_input(prompt, DEFAULT);
             curs_set(TRUE);
-            color_set(DEFAULT, NULL);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++)
@@ -805,28 +813,22 @@ main(int argc, char *argv[])
                         ok = 0;
                         break;
                     }
-                length = strlen(INPUT);
-                color_set(ok ? GREEN : RED, NULL);
-                mvaddstr(LINES - 1, 10, INPUT);
-                mvaddch(LINES - 1, length + 10, ' ');
-                move(LINES - 1, length + 10);
-                color_set(DEFAULT, NULL);
+                update_input(prompt, ok ? GREEN : RED);
             }
             curs_set(FALSE);
-            mvhline(LINES - 1, 0, ' ', length + 10);
-            if (length) {
+            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            if (strlen(INPUT)) {
                 if (ok) addfile(INPUT);
                 else message("File already exists.", RED);
             }
             cd(1);
         }
         else if (!strcmp(key, RVK_NEW_DIR)) {
-            int ok, length;
+            int ok = 0;
+            char *prompt = "new directory: ";
             strcpy(INPUT, "");
-            color_set(RVC_PROMPT, NULL);
-            mvaddstr(LINES - 1, 0, "new directory: ");
+            update_input(prompt, DEFAULT);
             curs_set(TRUE);
-            color_set(DEFAULT, NULL);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++)
@@ -834,16 +836,11 @@ main(int argc, char *argv[])
                         ok = 0;
                         break;
                     }
-                length = strlen(INPUT);
-                color_set(ok ? GREEN : RED, NULL);
-                mvaddstr(LINES - 1, 15, INPUT);
-                mvaddch(LINES - 1, length + 15, ' ');
-                move(LINES - 1, length + 15);
-                color_set(DEFAULT, NULL);
+                update_input(prompt, ok ? GREEN : RED);
             }
             curs_set(FALSE);
-            mvhline(LINES - 1, 0, ' ', length + 15);
-            if (length) {
+            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            if (strlen(INPUT)) {
                 if (ok) adddir(INPUT);
                 else message("File already exists.", RED);
             }
@@ -856,7 +853,7 @@ main(int argc, char *argv[])
                 add_mark(&rover.marks, CWD, FNAME(FSEL));
             MARKED(FSEL) = !MARKED(FSEL);
             FSEL = (FSEL + 1) % rover.nfiles;
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_INVMARK)) {
             for (i = 0; i < rover.nfiles; i++) {
@@ -866,7 +863,7 @@ main(int argc, char *argv[])
                     add_mark(&rover.marks, CWD, FNAME(i));
                 MARKED(i) = !MARKED(i);
             }
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_MARKALL)) {
             for (i = 0; i < rover.nfiles; i++)
@@ -874,7 +871,7 @@ main(int argc, char *argv[])
                     add_mark(&rover.marks, CWD, FNAME(i));
                     MARKED(i) = 1;
                 }
-            update();
+            update_view();
         }
         else if (!strcmp(key, RVK_DELETE)) {
             process_marked(NULL, delfile, deldir);
