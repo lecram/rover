@@ -823,10 +823,9 @@ main(int argc, char *argv[])
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
-                if (ok) addfile(INPUT);
+                if (ok) { addfile(INPUT); cd(1); }
                 else message("File already exists.", RED);
             }
-            cd(1);
         }
         else if (!strcmp(key, RVK_NEW_DIR)) {
             int ok = 0;
@@ -850,10 +849,9 @@ main(int argc, char *argv[])
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
-                if (ok) adddir(INPUT);
+                if (ok) { adddir(INPUT); cd(1); }
                 else message("File already exists.", RED);
             }
-            cd(1);
         }
         else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
@@ -877,10 +875,9 @@ main(int argc, char *argv[])
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
-                if (ok) rename(FNAME(FSEL), INPUT);
+                if (ok) { rename(FNAME(FSEL), INPUT); cd(1); }
                 else message("File already exists.", RED);
             }
-            cd(1);
         }
         else if (!strcmp(key, RVK_TG_MARK)) {
             if (MARKED(FSEL))
