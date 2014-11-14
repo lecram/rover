@@ -174,6 +174,8 @@ finish_marks(marks_t *marks)
     free(marks->entries);
 }
 
+static void message(const char *msg, color_t color);
+
 /* Curses clean up. Must be called before exiting browser. */
 static void
 clean_term()
@@ -448,8 +450,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
             strcat(subpath, "/");
             process_dir(pre, proc, pos, subpath);
         }
-        else
-            proc(subpath);
+        else proc(subpath);
     }
     closedir(dp);
     if (pos) pos(path);
@@ -464,10 +465,13 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
-            if (strchr(rover.marks.entries[i], '/'))
-                process_dir(pre, proc, pos, path);
-            else
-                proc(path);
+            if (strchr(rover.marks.entries[i], '/')) {
+                if (!strncmp(path, CWD, strlen(path)))
+                    message("Cannot copy/move directory inside itself.", RED);
+                else
+                    process_dir(pre, proc, pos, path);
+            }
+            else proc(path);
         }
 }
 
