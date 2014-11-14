@@ -551,9 +551,12 @@ igetstr(char *buffer, int maxlen)
     int ch, length;
 
     length = strlen(buffer);
+    curs_set(TRUE);
     ch = getch();
-    if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER)
+    if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER) {
+        curs_set(FALSE);
         return 0;
+    }
     else if (ch == erasechar() || ch == KEY_LEFT || ch == KEY_BACKSPACE) {
         if (length)
             buffer[--length] = '\0';
@@ -755,7 +758,6 @@ main(int argc, char *argv[])
             oldscroll = SCROLL;
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
-            curs_set(TRUE);
             while (igetstr(INPUT, INPUTSZ)) {
                 int sel;
                 color_t color = RED;
@@ -784,7 +786,6 @@ main(int argc, char *argv[])
                 update_view();
                 update_input(prompt, color);
             }
-            curs_set(FALSE);
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             update_view();
         }
@@ -805,7 +806,6 @@ main(int argc, char *argv[])
             char *prompt = "new file: ";
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
-            curs_set(TRUE);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++)
@@ -815,7 +815,6 @@ main(int argc, char *argv[])
                     }
                 update_input(prompt, ok ? GREEN : RED);
             }
-            curs_set(FALSE);
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
                 if (ok) addfile(INPUT);
@@ -828,7 +827,6 @@ main(int argc, char *argv[])
             char *prompt = "new directory: ";
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
-            curs_set(TRUE);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++)
@@ -838,7 +836,6 @@ main(int argc, char *argv[])
                     }
                 update_input(prompt, ok ? GREEN : RED);
             }
-            curs_set(FALSE);
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
                 if (ok) adddir(INPUT);
