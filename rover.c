@@ -843,6 +843,27 @@ main(int argc, char *argv[])
             }
             cd(1);
         }
+        else if (!strcmp(key, RVK_RENAME)) {
+            int ok = 0;
+            char *prompt = "rename: ";
+            strcpy(INPUT, "");
+            update_input(prompt, DEFAULT);
+            while (igetstr(INPUT, INPUTSZ)) {
+                ok = 1;
+                for (i = 0; i < rover.nfiles; i++)
+                    if (!strcmp(FNAME(i), INPUT)) {
+                        ok = 0;
+                        break;
+                    }
+                update_input(prompt, ok ? GREEN : RED);
+            }
+            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            if (strlen(INPUT)) {
+                if (ok) rename(FNAME(FSEL), INPUT);
+                else message("File already exists.", RED);
+            }
+            cd(1);
+        }
         else if (!strcmp(key, RVK_TG_MARK)) {
             if (MARKED(FSEL))
                 del_mark(&rover.marks, FNAME(FSEL));
