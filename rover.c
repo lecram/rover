@@ -808,11 +808,14 @@ main(int argc, char *argv[])
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
-                for (i = 0; i < rover.nfiles; i++)
-                    if (!strcmp(FNAME(i), INPUT)) {
+                for (i = 0; i < rover.nfiles; i++) {
+                    int n = strlen(FNAME(i));
+                    if (FNAME(i)[n - 1] == '/') n--;
+                    if (!strncmp(FNAME(i), INPUT, n)) {
                         ok = 0;
                         break;
                     }
+                }
                 update_input(prompt, ok ? GREEN : RED);
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
@@ -829,11 +832,14 @@ main(int argc, char *argv[])
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
-                for (i = 0; i < rover.nfiles; i++)
-                    if (!strcmp(FNAME(i), INPUT)) {
+                for (i = 0; i < rover.nfiles; i++) {
+                    int n = strlen(FNAME(i));
+                    if (FNAME(i)[n - 1] == '/') n--;
+                    if (!strncmp(FNAME(i), INPUT, n)) {
                         ok = 0;
                         break;
                     }
+                }
                 update_input(prompt, ok ? GREEN : RED);
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
@@ -850,11 +856,14 @@ main(int argc, char *argv[])
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
                 ok = 1;
-                for (i = 0; i < rover.nfiles; i++)
-                    if (!strcmp(FNAME(i), INPUT)) {
+                for (i = 0; i < rover.nfiles; i++) {
+                    int n = strlen(FNAME(i));
+                    if (FNAME(i)[n - 1] == '/') n--;
+                    if (!strncmp(FNAME(i), INPUT, n)) {
                         ok = 0;
                         break;
                     }
+                }
                 update_input(prompt, ok ? GREEN : RED);
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
