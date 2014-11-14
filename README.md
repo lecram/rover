@@ -48,9 +48,13 @@ Quick Start
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
        / - start incremental search (RETURN to finish)
-       f - toggle file listing
-       d - toggle directory listing
-       s - toggle hidden file/directory listing
+   f/d/s - toggle file/directory/hidden listing
+     n/N - create new file/directory
+       r - rename selected file or directory
+       m - toggle mark on the selected entry
+       M - toggle mark on all visible entries
+       a - mark all visible entries
+   X/C/V - delete/copy/move all marked entries
      0-9 - change tab
  ```
 
