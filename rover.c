@@ -742,6 +742,7 @@ main(int argc, char *argv[])
                 ARGS[0] = program;
                 ARGS[1] = NULL;
                 spawn();
+                cd(1);
             }
         }
         else if (!strcmp(key, RVK_VIEW)) {
@@ -766,6 +767,7 @@ main(int argc, char *argv[])
                 ARGS[1] = FNAME(FSEL);
                 ARGS[2] = NULL;
                 spawn();
+                cd(0);
             }
         }
         else if (!strcmp(key, RVK_SEARCH)) {
