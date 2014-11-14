@@ -28,4 +28,7 @@
 #define RVC_PROMPT      DEFAULT
 #define RVC_TABNUM      DEFAULT
 
+/* Special symbols used by the TUI. See <curses.h> for available constants. */
+#define RVS_SCROLLBAR   ACS_CKBOARD
+
 #define RV_JUMP         10
