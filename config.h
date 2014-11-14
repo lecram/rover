@@ -16,6 +16,8 @@
 #define RVK_TG_FILES    "f"
 #define RVK_TG_DIRS     "d"
 #define RVK_TG_HIDDEN   "s"
+#define RVK_NEW_FILE    "n"
+#define RVK_NEW_DIR     "N"
 #define RVK_TG_MARK     "m"
 #define RVK_INVMARK     "M"
 #define RVK_MARKALL     "a"

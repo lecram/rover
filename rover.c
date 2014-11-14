@@ -20,8 +20,8 @@
 static char ROW[ROWSZ];
 #define STATUSSZ 256
 static char STATUS[STATUSSZ];
-#define SEARCHSZ 256
-static char SEARCH[SEARCHSZ];
+#define INPUTSZ 256
+static char INPUT[INPUTSZ];
 
 /* Argument buffers for execvp(). */
 #define MAXARGS 256
@@ -478,6 +478,14 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 /* Wrappers for file operations. */
 static PROCESS delfile = unlink;
 static PROCESS deldir = rmdir;
+static int addfile(const char *path) {
+    /* Using creat(2) because mknod(2) doesn't seem to be portable. */
+    int ret;
+
+    ret = creat(path, 0644);
+    if (ret < 0) return ret;
+    return close(ret);
+}
 static int cpyfile(const char *srcpath) {
     int src, dst, ret;
     size_t size;
@@ -724,22 +732,22 @@ main(int argc, char *argv[])
             }
         }
         else if (!strcmp(key, RVK_SEARCH)) {
-            int oldsel, oldscroll;
+            int oldsel, oldscroll, length;
             if (!rover.nfiles) continue;
             oldsel = FSEL;
             oldscroll = SCROLL;
-            *SEARCH = '\0';
+            strcpy(INPUT, "");
             color_set(RVC_PROMPT, NULL);
             mvaddstr(LINES - 1, 0, "search: ");
             curs_set(TRUE);
             color_set(DEFAULT, NULL);
-            while (igetstr(SEARCH, SEARCHSZ)) {
-                int length, sel;
+            while (igetstr(INPUT, INPUTSZ)) {
+                int sel;
                 color_t color;
-                length = strlen(SEARCH);
+                length = strlen(INPUT);
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
-                        if (!strncmp(FNAME(sel), SEARCH, length))
+                        if (!strncmp(FNAME(sel), INPUT, length))
                             break;
                     if (sel < rover.nfiles) {
                         color = GREEN;
@@ -762,14 +770,13 @@ main(int argc, char *argv[])
                 }
                 update();
                 color_set(color, NULL);
-                mvaddstr(LINES - 1, 8, SEARCH);
+                mvaddstr(LINES - 1, 8, INPUT);
                 mvaddch(LINES - 1, length + 8, ' ');
                 move(LINES - 1, length + 8);
                 color_set(DEFAULT, NULL);
             }
             curs_set(FALSE);
-            move(LINES - 1, 0);
-            clrtoeol();
+            mvhline(LINES - 1, 0, ' ', length + 8);
             update();
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
@@ -782,6 +789,64 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_TG_HIDDEN)) {
             FLAGS ^= SHOW_HIDDEN;
+            cd(1);
+        }
+        else if (!strcmp(key, RVK_NEW_FILE)) {
+            int ok, length;
+            strcpy(INPUT, "");
+            color_set(RVC_PROMPT, NULL);
+            mvaddstr(LINES - 1, 0, "new file: ");
+            curs_set(TRUE);
+            color_set(DEFAULT, NULL);
+            while (igetstr(INPUT, INPUTSZ)) {
+                ok = 1;
+                for (i = 0; i < rover.nfiles; i++)
+                    if (!strcmp(FNAME(i), INPUT)) {
+                        ok = 0;
+                        break;
+                    }
+                length = strlen(INPUT);
+                color_set(ok ? GREEN : RED, NULL);
+                mvaddstr(LINES - 1, 10, INPUT);
+                mvaddch(LINES - 1, length + 10, ' ');
+                move(LINES - 1, length + 10);
+                color_set(DEFAULT, NULL);
+            }
+            curs_set(FALSE);
+            mvhline(LINES - 1, 0, ' ', length + 10);
+            if (length) {
+                if (ok) addfile(INPUT);
+                else message("File already exists.", RED);
+            }
+            cd(1);
+        }
+        else if (!strcmp(key, RVK_NEW_DIR)) {
+            int ok, length;
+            strcpy(INPUT, "");
+            color_set(RVC_PROMPT, NULL);
+            mvaddstr(LINES - 1, 0, "new directory: ");
+            curs_set(TRUE);
+            color_set(DEFAULT, NULL);
+            while (igetstr(INPUT, INPUTSZ)) {
+                ok = 1;
+                for (i = 0; i < rover.nfiles; i++)
+                    if (!strcmp(FNAME(i), INPUT)) {
+                        ok = 0;
+                        break;
+                    }
+                length = strlen(INPUT);
+                color_set(ok ? GREEN : RED, NULL);
+                mvaddstr(LINES - 1, 15, INPUT);
+                mvaddch(LINES - 1, length + 15, ' ');
+                move(LINES - 1, length + 15);
+                color_set(DEFAULT, NULL);
+            }
+            curs_set(FALSE);
+            mvhline(LINES - 1, 0, ' ', length + 15);
+            if (length) {
+                if (ok) adddir(INPUT);
+                else message("File already exists.", RED);
+            }
             cd(1);
         }
         else if (!strcmp(key, RVK_TG_MARK)) {
