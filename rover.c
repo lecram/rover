@@ -822,7 +822,7 @@ main(int argc, char *argv[])
             cd(1);
         }
         else if (!strcmp(key, RVK_MOVE)) {
-            process_marked(adddir, movfile, NULL);
+            process_marked(adddir, movfile, deldir);
             mark_none(&rover.marks);
             cd(1);
         }
