@@ -610,6 +610,12 @@ message(const char *msg, color_t color)
     attr_off(A_BOLD, NULL);
 }
 
+static void
+clear_message()
+{
+    mvhline(LINES - 1, 0, ' ', STATUSPOS);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -644,7 +650,7 @@ main(int argc, char *argv[])
     while (1) {
         ch = getch();
         key = keyname(ch);
-        mvhline(LINES - 1, 0, ' ', STATUSPOS); /* Clear message area. */
+        clear_message();
         if (!strcmp(key, RVK_QUIT)) break;
         else if (ch >= '0' && ch <= '9') {
             rover.tab = ch - '0';
@@ -773,7 +779,7 @@ main(int argc, char *argv[])
                 update_view();
                 update_input(prompt, color);
             }
-            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            clear_message();
             update_view();
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
@@ -808,7 +814,7 @@ main(int argc, char *argv[])
                 }
                 update_input(prompt, ok ? GREEN : RED);
             }
-            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            clear_message();
             if (strlen(INPUT)) {
                 if (ok) { addfile(INPUT); cd(1); }
                 else message("File already exists.", RED);
@@ -834,7 +840,7 @@ main(int argc, char *argv[])
                 }
                 update_input(prompt, ok ? GREEN : RED);
             }
-            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            clear_message();
             if (strlen(INPUT)) {
                 if (ok) { adddir(INPUT); cd(1); }
                 else message("File already exists.", RED);
@@ -860,7 +866,7 @@ main(int argc, char *argv[])
                 }
                 update_input(prompt, ok ? GREEN : RED);
             }
-            mvhline(LINES - 1, 0, ' ', STATUSPOS);
+            clear_message();
             if (strlen(INPUT)) {
                 if (ok) { rename(ENAME(ESEL), INPUT); cd(1); }
                 else message("File already exists.", RED);
@@ -898,7 +904,7 @@ main(int argc, char *argv[])
                 message("Delete marked entries? (Y to confirm)", YELLOW);
                 if (getch() == 'Y')
                     process_marked(NULL, delfile, deldir);
-                mvhline(LINES - 1, 0, ' ', STATUSPOS); /* Clear message area. */
+                clear_message();
             }
             else message("No entries marked for deletion.", RED);
         }
