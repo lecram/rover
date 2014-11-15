@@ -63,7 +63,7 @@ static struct rover_t {
     int tab;
     int nfiles;
     int scroll[10];
-    int fsel[10];
+    int esel[10];
     uint8_t flags[10];
     row_t *rows;
     WINDOW *window;
@@ -72,13 +72,15 @@ static struct rover_t {
 } rover;
 
 /* Macros for accessing global state. */
-#define FNAME(I)    rover.rows[I].name
-#define FSIZE(I)    rover.rows[I].size
+#define ENAME(I)    rover.rows[I].name
+#define ESIZE(I)    rover.rows[I].size
 #define MARKED(I)   rover.rows[I].marked
 #define SCROLL      rover.scroll[rover.tab]
-#define FSEL        rover.fsel[rover.tab]
+#define ESEL        rover.esel[rover.tab]
 #define FLAGS       rover.flags[rover.tab]
 #define CWD         rover.cwd[rover.tab]
+
+#define ISDIR(E)    (strchr((E), '/') != NULL)
 
 typedef int (*PROCESS)(const char *path);
 
@@ -178,13 +180,6 @@ free_marks(marks_t *marks)
 
 static void message(const char *msg, color_t color);
 
-/* Curses clean up. Must be called before exiting browser. */
-static void
-clean_term()
-{
-    endwin();
-}
-
 static void handle_segv(int sig);
 static void handle_winch(int sig);
 
@@ -219,7 +214,7 @@ init_term()
         init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
         init_pair(WHITE, COLOR_WHITE, COLOR_BLACK);
     }
-    atexit(clean_term);
+    atexit((void (*)(void)) endwin);
 }
 
 /* Update the listing view. */
@@ -245,15 +240,15 @@ update_view()
     wcolor_set(rover.window, DEFAULT, NULL);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
-    if (FSEL < SCROLL)
-        SCROLL = FSEL;
-    else if (FSEL >= SCROLL + HEIGHT)
-        SCROLL = FSEL - HEIGHT + 1;
+    if (ESEL < SCROLL)
+        SCROLL = ESEL;
+    else if (ESEL >= SCROLL + HEIGHT)
+        SCROLL = ESEL - HEIGHT + 1;
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
-        ishidden = FNAME(j)[0] == '.';
-        isdir = strchr(FNAME(j), '/') != NULL;
-        if (j == FSEL)
+        ishidden = ENAME(j)[0] == '.';
+        isdir = ISDIR(ENAME(j));
+        if (j == ESEL)
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
@@ -262,10 +257,10 @@ update_view()
         else
             wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir)
-            sprintf(ROW, "%s%*d", FNAME(j),
-                    COLS - strlen(FNAME(j)) - 4, (int) FSIZE(j));
+            sprintf(ROW, "%s%*d", ENAME(j),
+                    COLS - strlen(ENAME(j)) - 4, (int) ESIZE(j));
         else
-            strcpy(ROW, FNAME(j));
+            strcpy(ROW, ENAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
         if (marking && MARKED(j))
             mvwaddch(rover.window, i + 1, 1, RVS_MARK);
@@ -273,7 +268,7 @@ update_view()
             mvwaddch(rover.window, i + 1, 1, ' ');
         mvwaddnstr(rover.window, i + 1, 3, ROW, COLS - 4);
         wcolor_set(rover.window, DEFAULT, NULL);
-        if (j == FSEL)
+        if (j == ESEL)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
     if (rover.nfiles > HEIGHT) {
@@ -294,8 +289,8 @@ update_view()
     if (!rover.nfiles)
         strcpy(ROW, "0/0");
     else
-        sprintf(ROW, "%d/%d", FSEL + 1, rover.nfiles);
-    sprintf(STATUS+3, "%*s", 12, ROW);
+        sprintf(ROW, "%d/%d", ESEL + 1, rover.nfiles);
+    sprintf(STATUS+3, "%12s", ROW);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, STATUS);
     color_set(DEFAULT, NULL);
@@ -307,7 +302,7 @@ static void
 handle_segv(int sig)
 {
     (void) sig;
-    clean_term();
+    endwin();
     puts("Received SIGSEGV (segmentation fault).");
     exit(1);
 }
@@ -332,8 +327,8 @@ rowcmp(const void *a, const void *b)
     int isdir1, isdir2, cmpdir;
     const row_t *r1 = a;
     const row_t *r2 = b;
-    isdir1 = strchr(r1->name, '/') != NULL;
-    isdir2 = strchr(r2->name, '/') != NULL;
+    isdir1 = ISDIR(r1->name);
+    isdir2 = ISDIR(r2->name);
     cmpdir = isdir2 - isdir1;
     return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
 }
@@ -348,8 +343,7 @@ ls(char *path, row_t **rowsp, uint8_t flags)
     row_t *rows;
     int i, n;
 
-    if((dp = opendir(path)) == NULL)
-        return -1;
+    if(!(dp = opendir(path))) return -1;
     n = -2; /* We don't want the entries "." and "..". */
     while (readdir(dp)) n++;
     rewinddir(dp);
@@ -404,7 +398,7 @@ cd(int reset)
     int i, j;
 
     if (reset)
-        FSEL = SCROLL = 0;
+        ESEL = SCROLL = 0;
     chdir(CWD);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
@@ -414,7 +408,7 @@ cd(int reset)
             for (j = 0; j < rover.marks.bulk; j++)
                 if (
                     rover.marks.entries[j] &&
-                    !strcmp(rover.marks.entries[j], FNAME(i))
+                    !strcmp(rover.marks.entries[j], ENAME(i))
                 )
                     break;
             MARKED(i) = j < rover.marks.bulk;
@@ -450,8 +444,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
         strcat(dstpath, path + strlen(rover.marks.dirpath));
         pre(dstpath);
     }
-    if((dp = opendir(path)) == NULL)
-        return;
+    if(!(dp = opendir(path))) return;
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
@@ -480,7 +473,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
-            if (strchr(rover.marks.entries[i], '/')) {
+            if (ISDIR(rover.marks.entries[i])) {
                 if (!strncmp(path, CWD, strlen(path)))
                     message("Cannot copy/move directory inside itself.", RED);
                 else
@@ -548,7 +541,7 @@ spawn()
     pid = fork();
     if (pid > 0) {
         /* fork() succeeded. */
-        clean_term();
+        endwin();
         waitpid(pid, &status, 0);
         init_term();
         doupdate();
@@ -631,13 +624,12 @@ main(int argc, char *argv[])
     init_term();
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
-        rover.fsel[i] = rover.scroll[i] = 0;
+        rover.esel[i] = rover.scroll[i] = 0;
         rover.flags[i] = SHOW_FILES | SHOW_DIRS;
     }
     strcpy(rover.cwd[0], getenv("HOME"));
     for (i = 1; i < argc && i < 10; i++) {
-        d = opendir(argv[i]);
-        if (d) {
+        if ((d = opendir(argv[i]))) {
             strcpy(rover.cwd[i], argv[i]);
             closedir(d);
         }
@@ -664,19 +656,19 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
-            FSEL = (FSEL + 1) % rover.nfiles;
+            ESEL = (ESEL + 1) % rover.nfiles;
             update_view();
         }
         else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
-            FSEL = FSEL ? FSEL - 1 : rover.nfiles - 1;
+            ESEL = ESEL ? ESEL - 1 : rover.nfiles - 1;
             update_view();
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
-            FSEL += RV_JUMP;
-            if (FSEL >= rover.nfiles)
-                FSEL = rover.nfiles - 1;
+            ESEL += RV_JUMP;
+            if (ESEL >= rover.nfiles)
+                ESEL = rover.nfiles - 1;
             if (rover.nfiles > HEIGHT) {
                 SCROLL += RV_JUMP;
                 if (SCROLL > rover.nfiles - HEIGHT)
@@ -686,19 +678,17 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
             if (!rover.nfiles) continue;
-            FSEL -= RV_JUMP;
-            if (FSEL < 0)
-                FSEL = 0;
+            ESEL -= RV_JUMP;
+            if (ESEL < 0)
+                ESEL = 0;
             SCROLL -= RV_JUMP;
             if (SCROLL < 0)
                 SCROLL = 0;
             update_view();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
-            if (!rover.nfiles) continue;
-            if (strchr(FNAME(FSEL), '/') == NULL)
-                continue;
-            strcat(CWD, FNAME(FSEL));
+            if (!rover.nfiles || !ISDIR(ENAME(ESEL))) continue;
+            strcat(CWD, ENAME(ESEL));
             cd(1);
         }
         else if (!strcmp(key, RVK_CD_UP)) {
@@ -715,10 +705,10 @@ main(int argc, char *argv[])
                ) {
                 dirname[0] = first;
                 dirname[strlen(dirname)] = '/';
-                while (strcmp(FNAME(FSEL), dirname))
-                    FSEL++;
+                while (strcmp(ENAME(ESEL), dirname))
+                    ESEL++;
                 if (rover.nfiles > HEIGHT) {
-                    SCROLL = FSEL - (HEIGHT >> 1);
+                    SCROLL = ESEL - (HEIGHT >> 1);
                     if (SCROLL < 0)
                         SCROLL = 0;
                     if (SCROLL > rover.nfiles - HEIGHT)
@@ -744,25 +734,21 @@ main(int argc, char *argv[])
             }
         }
         else if (!strcmp(key, RVK_VIEW)) {
-            if (!rover.nfiles) continue;
-            if (strchr(FNAME(FSEL), '/') != NULL)
-                continue;
+            if (!rover.nfiles || ISDIR(ENAME(ESEL))) continue;
             program = getenv("PAGER");
             if (program) {
                 ARGS[0] = program;
-                ARGS[1] = FNAME(FSEL);
+                ARGS[1] = ENAME(ESEL);
                 ARGS[2] = NULL;
                 spawn();
             }
         }
         else if (!strcmp(key, RVK_EDIT)) {
-            if (!rover.nfiles) continue;
-            if (strchr(FNAME(FSEL), '/') != NULL)
-                continue;
+            if (!rover.nfiles || ISDIR(ENAME(ESEL))) continue;
             program = getenv("EDITOR");
             if (program) {
                 ARGS[0] = program;
-                ARGS[1] = FNAME(FSEL);
+                ARGS[1] = ENAME(ESEL);
                 ARGS[2] = NULL;
                 spawn();
                 cd(0);
@@ -772,7 +758,7 @@ main(int argc, char *argv[])
             int oldsel, oldscroll, length;
             char *prompt = "search: ";
             if (!rover.nfiles) continue;
-            oldsel = FSEL;
+            oldsel = ESEL;
             oldscroll = SCROLL;
             strcpy(INPUT, "");
             update_input(prompt, DEFAULT);
@@ -782,11 +768,11 @@ main(int argc, char *argv[])
                 length = strlen(INPUT);
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
-                        if (!strncmp(FNAME(sel), INPUT, length))
+                        if (!strncmp(ENAME(sel), INPUT, length))
                             break;
                     if (sel < rover.nfiles) {
                         color = GREEN;
-                        FSEL = sel;
+                        ESEL = sel;
                         if (rover.nfiles > HEIGHT) {
                             if (sel < 3)
                                 SCROLL = 0;
@@ -798,7 +784,7 @@ main(int argc, char *argv[])
                     }
                 }
                 else {
-                    FSEL = oldsel;
+                    ESEL = oldsel;
                     SCROLL = oldscroll;
                 }
                 update_view();
@@ -829,9 +815,9 @@ main(int argc, char *argv[])
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
                     if (
-                        !strncmp(FNAME(i), INPUT, length) &&
-                        (!strcmp(FNAME(i) + length, "") ||
-                         !strcmp(FNAME(i) + length, "/"))
+                        !strncmp(ENAME(i), INPUT, length) &&
+                        (!strcmp(ENAME(i) + length, "") ||
+                         !strcmp(ENAME(i) + length, "/"))
                     ) {
                         ok = 0;
                         break;
@@ -855,9 +841,9 @@ main(int argc, char *argv[])
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
                     if (
-                        !strncmp(FNAME(i), INPUT, length) &&
-                        (!strcmp(FNAME(i) + length, "") ||
-                         !strcmp(FNAME(i) + length, "/"))
+                        !strncmp(ENAME(i), INPUT, length) &&
+                        (!strcmp(ENAME(i) + length, "") ||
+                         !strcmp(ENAME(i) + length, "/"))
                     ) {
                         ok = 0;
                         break;
@@ -874,16 +860,16 @@ main(int argc, char *argv[])
         else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
             char *prompt = "rename: ";
-            strcpy(INPUT, FNAME(FSEL));
+            strcpy(INPUT, ENAME(ESEL));
             update_input(prompt, RED);
             while (igetstr(INPUT, INPUTSZ)) {
                 int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
                     if (
-                        !strncmp(FNAME(i), INPUT, length) &&
-                        (!strcmp(FNAME(i) + length, "") ||
-                         !strcmp(FNAME(i) + length, "/"))
+                        !strncmp(ENAME(i), INPUT, length) &&
+                        (!strcmp(ENAME(i) + length, "") ||
+                         !strcmp(ENAME(i) + length, "/"))
                     ) {
                         ok = 0;
                         break;
@@ -893,25 +879,25 @@ main(int argc, char *argv[])
             }
             mvhline(LINES - 1, 0, ' ', STATUSPOS);
             if (strlen(INPUT)) {
-                if (ok) { rename(FNAME(FSEL), INPUT); cd(1); }
+                if (ok) { rename(ENAME(ESEL), INPUT); cd(1); }
                 else message("File already exists.", RED);
             }
         }
         else if (!strcmp(key, RVK_TG_MARK)) {
-            if (MARKED(FSEL))
-                del_mark(&rover.marks, FNAME(FSEL));
+            if (MARKED(ESEL))
+                del_mark(&rover.marks, ENAME(ESEL));
             else
-                add_mark(&rover.marks, CWD, FNAME(FSEL));
-            MARKED(FSEL) = !MARKED(FSEL);
-            FSEL = (FSEL + 1) % rover.nfiles;
+                add_mark(&rover.marks, CWD, ENAME(ESEL));
+            MARKED(ESEL) = !MARKED(ESEL);
+            ESEL = (ESEL + 1) % rover.nfiles;
             update_view();
         }
         else if (!strcmp(key, RVK_INVMARK)) {
             for (i = 0; i < rover.nfiles; i++) {
                 if (MARKED(i))
-                    del_mark(&rover.marks, FNAME(i));
+                    del_mark(&rover.marks, ENAME(i));
                 else
-                    add_mark(&rover.marks, CWD, FNAME(i));
+                    add_mark(&rover.marks, CWD, ENAME(i));
                 MARKED(i) = !MARKED(i);
             }
             update_view();
@@ -919,7 +905,7 @@ main(int argc, char *argv[])
         else if (!strcmp(key, RVK_MARKALL)) {
             for (i = 0; i < rover.nfiles; i++)
                 if (!MARKED(i)) {
-                    add_mark(&rover.marks, CWD, FNAME(i));
+                    add_mark(&rover.marks, CWD, ENAME(i));
                     MARKED(i) = 1;
                 }
             update_view();
