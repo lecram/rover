@@ -282,6 +282,13 @@ update_view()
         wcolor_set(rover.window, DEFAULT, NULL);
     }
     wrefresh(rover.window);
+    if (rover.marks.nentries) {
+        sprintf(STATUS, "%7d)", rover.marks.nentries);
+        *strrchr(STATUS, ' ') = '(';
+        color_set(RVC_NMARKS, NULL);
+        mvaddstr(0, COLS-15, STATUS);
+        color_set(DEFAULT, NULL);
+    }
     STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
     STATUS[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
