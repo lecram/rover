@@ -595,7 +595,7 @@ update_input(char *prompt, color_t color)
     color_set(DEFAULT, NULL);
 }
 
-/* Show a message and wait for any keypress. */
+/* Show a message on the status bar. */
 static void
 message(const char *msg, color_t color)
 {
@@ -608,8 +608,6 @@ message(const char *msg, color_t color)
     mvaddstr(LINES - 1, pos, msg);
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
-    getch();
-    mvhline(LINES - 1, pos, ' ', len);
 }
 
 int
@@ -646,8 +644,8 @@ main(int argc, char *argv[])
     while (1) {
         ch = getch();
         key = keyname(ch);
-        if (!strcmp(key, RVK_QUIT))
-            break;
+        mvhline(LINES - 1, 0, ' ', STATUSPOS); /* Clear message area. */
+        if (!strcmp(key, RVK_QUIT)) break;
         else if (ch >= '0' && ch <= '9') {
             rover.tab = ch - '0';
             cd(0);
@@ -895,12 +893,25 @@ main(int argc, char *argv[])
                 }
             update_view();
         }
-        else if (!strcmp(key, RVK_DELETE))
-            process_marked(NULL, delfile, deldir);
-        else if (!strcmp(key, RVK_COPY))
-            process_marked(adddir, cpyfile, NULL);
-        else if (!strcmp(key, RVK_MOVE))
-            process_marked(adddir, movfile, deldir);
+        else if (!strcmp(key, RVK_DELETE)) {
+            if (rover.marks.nentries) {
+                message("Delete marked entries? (Y to confirm)", YELLOW);
+                if (getch() == 'Y')
+                    process_marked(NULL, delfile, deldir);
+                mvhline(LINES - 1, 0, ' ', STATUSPOS); /* Clear message area. */
+            }
+            else message("No entries marked for deletion.", RED);
+        }
+        else if (!strcmp(key, RVK_COPY)) {
+            if (rover.marks.nentries)
+                process_marked(adddir, cpyfile, NULL);
+            else message("No entries marked for copying.", RED);
+        }
+        else if (!strcmp(key, RVK_MOVE)) {
+            if (rover.marks.nentries)
+                process_marked(adddir, movfile, deldir);
+            else message("No entries marked for moving.", RED);
+        }
     }
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);

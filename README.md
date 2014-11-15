@@ -58,8 +58,9 @@ Quick Start
      0-9 - change tab
  ```
 
-**Important Note**: Currently, Rover never asks for confirmation on any file
-operation. Please be careful to not accidentally remove/overwrite your files.
+**Important Note**: Currently, Rover never asks for confirmation before
+overwriting existing files while copying/moving marked entries. Please be
+careful to not accidentally lose your data.
 
 
 Dependencies
