@@ -164,7 +164,7 @@ del_mark(marks_t *marks, char *entry)
 }
 
 static void
-finish_marks(marks_t *marks)
+free_marks(marks_t *marks)
 {
     int i;
 
@@ -384,7 +384,6 @@ ls(char *path, row_t **rowsp, uint8_t flags)
     return n;
 }
 
-/* Deallocate entries. */
 static void
 free_rows(row_t **rowsp, int nfiles)
 {
@@ -630,7 +629,6 @@ main(int argc, char *argv[])
     DIR *d;
 
     init_term();
-    /* Avoid invalid free() calls in cd() by zeroing the tally. */
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
         rover.fsel[i] = rover.scroll[i] = 0;
@@ -944,7 +942,7 @@ main(int argc, char *argv[])
     }
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    finish_marks(&rover.marks);
+    free_marks(&rover.marks);
     delwin(rover.window);
     return 0;
 }
