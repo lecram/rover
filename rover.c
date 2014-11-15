@@ -180,6 +180,7 @@ free_marks(marks_t *marks)
 }
 
 static void message(const char *msg, color_t color);
+static void clear_message();
 
 static void handle_segv(int sig);
 static void handle_winch(int sig);
@@ -395,6 +396,8 @@ cd(int reset)
 {
     int i, j;
 
+    message("Loading...", CYAN);
+    refresh();
     if (reset) ESEL = SCROLL = 0;
     chdir(CWD);
     if (rover.nfiles)
@@ -413,6 +416,7 @@ cd(int reset)
     }
     else for (i = 0; i < rover.nfiles; i++)
         MARKED(i) = 0;
+    clear_message();
     update_view();
 }
 
@@ -466,6 +470,9 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     int i;
     char path[FILENAME_MAX];
 
+    clear_message();
+    message("Processing...", CYAN);
+    refresh();
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
@@ -610,6 +617,7 @@ message(const char *msg, color_t color)
     attr_off(A_BOLD, NULL);
 }
 
+/* Clear message area, leaving only status info. */
 static void
 clear_message()
 {
