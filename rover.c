@@ -27,12 +27,9 @@ static char INPUT[INPUTSZ];
 #define MAXARGS 256
 static char *ARGS[MAXARGS];
 
-typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
-
-#define STATUSPOS   COLS - 16
-
-/* Height of listing view. */
-#define HEIGHT (LINES-4)
+/* Listing view parameters. */
+#define HEIGHT      (LINES-4)
+#define STATUSPOS   (COLS-16)
 
 /* Listing view flags. */
 #define SHOW_FILES      0x01u
@@ -80,8 +77,12 @@ static struct rover_t {
 #define FLAGS       rover.flags[rover.tab]
 #define CWD         rover.cwd[rover.tab]
 
+/* Helpers. */
+#define MIN(A, B)   ((A) < (B) ? (A) : (B))
+#define MAX(A, B)   ((A) > (B) ? (A) : (B))
 #define ISDIR(E)    (strchr((E), '/') != NULL)
 
+typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
 typedef int (*PROCESS)(const char *path);
 
 static void
@@ -240,10 +241,7 @@ update_view()
     wcolor_set(rover.window, DEFAULT, NULL);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
-    if (ESEL < SCROLL)
-        SCROLL = ESEL;
-    else if (ESEL >= SCROLL + HEIGHT)
-        SCROLL = ESEL - HEIGHT + 1;
+    SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = ENAME(j)[0] == '.';
@@ -397,8 +395,7 @@ cd(int reset)
 {
     int i, j;
 
-    if (reset)
-        ESEL = SCROLL = 0;
+    if (reset) ESEL = SCROLL = 0;
     chdir(CWD);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
@@ -414,9 +411,8 @@ cd(int reset)
             MARKED(i) = j < rover.marks.bulk;
         }
     }
-    else
-        for (i = 0; i < rover.nfiles; i++)
-            MARKED(i) = 0;
+    else for (i = 0; i < rover.nfiles; i++)
+        MARKED(i) = 0;
     update_view();
 }
 
@@ -481,6 +477,8 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
             }
             else proc(path);
         }
+    mark_none(&rover.marks);
+    cd(1);
 }
 
 /* Wrappers for file operations. */
@@ -666,24 +664,15 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
-            ESEL += RV_JUMP;
-            if (ESEL >= rover.nfiles)
-                ESEL = rover.nfiles - 1;
-            if (rover.nfiles > HEIGHT) {
-                SCROLL += RV_JUMP;
-                if (SCROLL > rover.nfiles - HEIGHT)
-                    SCROLL = rover.nfiles - HEIGHT;
-            }
+            ESEL = MIN(ESEL + RV_JUMP, rover.nfiles - 1);
+            if (rover.nfiles > HEIGHT)
+                SCROLL = MIN(SCROLL + RV_JUMP, rover.nfiles - HEIGHT);
             update_view();
         }
         else if (!strcmp(key, RVK_JUMP_UP)) {
             if (!rover.nfiles) continue;
-            ESEL -= RV_JUMP;
-            if (ESEL < 0)
-                ESEL = 0;
-            SCROLL -= RV_JUMP;
-            if (SCROLL < 0)
-                SCROLL = 0;
+            ESEL = MAX(ESEL - RV_JUMP, 0);
+            SCROLL = MAX(SCROLL - RV_JUMP, 0);
             update_view();
         }
         else if (!strcmp(key, RVK_CD_DOWN)) {
@@ -693,8 +682,7 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_CD_UP)) {
             char *dirname, first;
-            if (strlen(CWD) == 1)
-                continue;
+            if (strlen(CWD) == 1) continue;
             CWD[strlen(CWD) - 1] = '\0';
             dirname = strrchr(CWD, '/') + 1;
             first = dirname[0];
@@ -709,10 +697,7 @@ main(int argc, char *argv[])
                     ESEL++;
                 if (rover.nfiles > HEIGHT) {
                     SCROLL = ESEL - (HEIGHT >> 1);
-                    if (SCROLL < 0)
-                        SCROLL = 0;
-                    if (SCROLL > rover.nfiles - HEIGHT)
-                        SCROLL = rover.nfiles - HEIGHT;
+                    SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
                 }
                 dirname[0] = '\0';
                 update_view();
@@ -910,21 +895,12 @@ main(int argc, char *argv[])
                 }
             update_view();
         }
-        else if (!strcmp(key, RVK_DELETE)) {
+        else if (!strcmp(key, RVK_DELETE))
             process_marked(NULL, delfile, deldir);
-            mark_none(&rover.marks);
-            cd(1);
-        }
-        else if (!strcmp(key, RVK_COPY)) {
+        else if (!strcmp(key, RVK_COPY))
             process_marked(adddir, cpyfile, NULL);
-            mark_none(&rover.marks);
-            cd(1);
-        }
-        else if (!strcmp(key, RVK_MOVE)) {
+        else if (!strcmp(key, RVK_MOVE))
             process_marked(adddir, movfile, deldir);
-            mark_none(&rover.marks);
-            cd(1);
-        }
     }
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
