@@ -430,21 +430,23 @@ cd(int reset)
  *  strcpy(CWD, "/dst/");
  *  process_dir(adddir, movfile, deldir, "/src/");
  */
-static void
+static int
 process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
+    int ret;
     DIR *dp;
     struct dirent *ep;
     struct stat statbuf;
     char subpath[FILENAME_MAX];
 
+    ret = 0;
     if (pre) {
         char dstpath[FILENAME_MAX];
         strcpy(dstpath, CWD);
         strcat(dstpath, path + strlen(rover.marks.dirpath));
-        pre(dstpath);
+        ret |= pre(dstpath);
     }
-    if(!(dp = opendir(path))) return;
+    if(!(dp = opendir(path))) return -1;
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
@@ -452,12 +454,13 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
         stat(subpath, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             strcat(subpath, "/");
-            process_dir(pre, proc, pos, subpath);
+            ret |= process_dir(pre, proc, pos, subpath);
         }
-        else proc(subpath);
+        else ret |= proc(subpath);
     }
     closedir(dp);
-    if (pos) pos(path);
+    if (pos) ret |= pos(path);
+    return ret;
 }
 
 /* Process all marked entries using CWD as destination root.
@@ -467,7 +470,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 static void
 process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 {
-    int i;
+    int i, ret;
     char path[FILENAME_MAX];
 
     clear_message();
@@ -475,17 +478,22 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     refresh();
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
+            ret = 0;
             sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
             if (ISDIR(rover.marks.entries[i])) {
                 if (!strncmp(path, CWD, strlen(path)))
-                    message("Cannot copy/move directory inside itself.", RED);
+                    ret = -1;
                 else
-                    process_dir(pre, proc, pos, path);
+                    ret = process_dir(pre, proc, pos, path);
             }
-            else proc(path);
+            else ret = proc(path);
+            if (!ret) del_mark(&rover.marks, rover.marks.entries[i]);
         }
-    mark_none(&rover.marks);
     cd(1);
+    if (!rover.marks.nentries)
+        message("All entries successfully processed.", GREEN);
+    else
+        message("Some errors occured .", RED);
 }
 
 /* Wrappers for file operations. */
