@@ -427,6 +427,19 @@ cd(int reset)
     update_view();
 }
 
+/* Select a target entry, if it is present. */
+static void
+try_to_sel(const char *target)
+{
+    ESEL = 0;
+    while (strcoll(ENAME(ESEL), target) < 0)
+        ESEL++;
+    if (rover.nfiles > HEIGHT) {
+        SCROLL = ESEL - (HEIGHT >> 1);
+        SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
+    }
+}
+
 /* Recursively process a source directory using CWD as destination root.
  * For each node (i.e. directory), do the following:
  *  1. call pre(destination);
@@ -496,7 +509,10 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
             else ret = proc(path);
             if (!ret) del_mark(&rover.marks, rover.marks.entries[i]);
         }
+    strcpy(INPUT, ENAME(ESEL));
     cd(1);
+    try_to_sel(INPUT);
+    update_view();
     if (!rover.marks.nentries)
         message("Done.", GREEN);
     else
@@ -715,20 +731,11 @@ main(int argc, char *argv[])
             first = dirname[0];
             dirname[0] = '\0';
             cd(1);
-            if ((FLAGS & SHOW_DIRS) &&
-                ((FLAGS & SHOW_HIDDEN) || (first != '.'))
-               ) {
-                dirname[0] = first;
-                dirname[strlen(dirname)] = '/';
-                while (strcmp(ENAME(ESEL), dirname))
-                    ESEL++;
-                if (rover.nfiles > HEIGHT) {
-                    SCROLL = ESEL - (HEIGHT >> 1);
-                    SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
-                }
-                dirname[0] = '\0';
-                update_view();
-            }
+            dirname[0] = first;
+            dirname[strlen(dirname)] = '/';
+            try_to_sel(dirname);
+            dirname[0] = '\0';
+            update_view();
         }
         else if (!strcmp(key, RVK_HOME)) {
             strcpy(CWD, getenv("HOME"));
@@ -839,7 +846,12 @@ main(int argc, char *argv[])
             }
             clear_message();
             if (strlen(INPUT)) {
-                if (ok) { addfile(INPUT); cd(1); }
+                if (ok) {
+                    addfile(INPUT);
+                    cd(1);
+                    try_to_sel(INPUT);
+                    update_view();
+                }
                 else message("File already exists.", RED);
             }
         }
@@ -865,7 +877,12 @@ main(int argc, char *argv[])
             }
             clear_message();
             if (strlen(INPUT)) {
-                if (ok) { adddir(INPUT); cd(1); }
+                if (ok) {
+                    adddir(INPUT);
+                    cd(1);
+                    try_to_sel(INPUT);
+                    update_view();
+                }
                 else message("File already exists.", RED);
             }
         }
@@ -927,7 +944,7 @@ main(int argc, char *argv[])
                 message("Delete marked entries? (Y to confirm)", YELLOW);
                 if (getch() == 'Y')
                     process_marked(NULL, delfile, deldir);
-                clear_message();
+                else clear_message();
             }
             else message("No entries marked for deletion.", RED);
         }
