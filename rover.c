@@ -498,9 +498,9 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
         }
     cd(1);
     if (!rover.marks.nentries)
-        message("All entries successfully processed.", GREEN);
+        message("Done.", GREEN);
     else
-        message("Some errors occured .", RED);
+        message("Some errors occured.", RED);
 }
 
 /* Wrappers for file operations. */
