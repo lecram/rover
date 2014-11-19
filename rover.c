@@ -432,12 +432,25 @@ static void
 try_to_sel(const char *target)
 {
     ESEL = 0;
-    while (strcoll(ENAME(ESEL), target) < 0)
+    while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
     if (rover.nfiles > HEIGHT) {
         SCROLL = ESEL - (HEIGHT >> 1);
         SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
     }
+}
+
+/* Reload CWD, but try to keep selection. */
+static void
+reload()
+{
+    if (rover.nfiles) {
+        strcpy(INPUT, ENAME(ESEL));
+        cd(1);
+        try_to_sel(INPUT);
+        update_view();
+    }
+    else cd(1);
 }
 
 /* Recursively process a source directory using CWD as destination root.
@@ -509,10 +522,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
             else ret = proc(path);
             if (!ret) del_mark(&rover.marks, rover.marks.entries[i]);
         }
-    strcpy(INPUT, ENAME(ESEL));
-    cd(1);
-    try_to_sel(INPUT);
-    update_view();
+    reload();
     if (!rover.marks.nentries)
         message("Done.", GREEN);
     else
@@ -749,7 +759,7 @@ main(int argc, char *argv[])
                 ARGS[0] = program;
                 ARGS[1] = NULL;
                 spawn();
-                cd(1);
+                reload();
             }
         }
         else if (!strcmp(key, RVK_VIEW)) {
@@ -814,15 +824,15 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_TG_FILES)) {
             FLAGS ^= SHOW_FILES;
-            cd(1);
+            reload();
         }
         else if (!strcmp(key, RVK_TG_DIRS)) {
             FLAGS ^= SHOW_DIRS;
-            cd(1);
+            reload();
         }
         else if (!strcmp(key, RVK_TG_HIDDEN)) {
             FLAGS ^= SHOW_HIDDEN;
-            cd(1);
+            reload();
         }
         else if (!strcmp(key, RVK_NEW_FILE)) {
             int ok = 0;
@@ -908,7 +918,12 @@ main(int argc, char *argv[])
             }
             clear_message();
             if (strlen(INPUT)) {
-                if (ok) { rename(ENAME(ESEL), INPUT); cd(1); }
+                if (ok) {
+                    rename(ENAME(ESEL), INPUT);
+                    cd(1);
+                    try_to_sel(INPUT);
+                    update_view();
+                }
                 else message("File already exists.", RED);
             }
         }
