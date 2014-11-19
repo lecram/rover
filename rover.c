@@ -709,7 +709,7 @@ main(int argc, char *argv[])
         }
         else if (!strcmp(key, RVK_CD_UP)) {
             char *dirname, first;
-            if (strlen(CWD) == 1) continue;
+            if (!strcmp(CWD, "/")) continue;
             CWD[strlen(CWD) - 1] = '\0';
             dirname = strrchr(CWD, '/') + 1;
             first = dirname[0];
