@@ -28,9 +28,9 @@
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
 #define RVC_CWD         GREEN
-#define RVC_STATUS      BLUE
-#define RVC_BORDER      CYAN
-#define RVC_SCROLLBAR   BLUE
+#define RVC_STATUS      CYAN
+#define RVC_BORDER      BLUE
+#define RVC_SCROLLBAR   CYAN
 #define RVC_FILE        DEFAULT
 #define RVC_DIR         DEFAULT
 #define RVC_HIDDEN      YELLOW
