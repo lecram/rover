@@ -39,6 +39,7 @@ Quick Start
  Using:
  ```
        q - quit Rover
+       ? - show rover manual
      j/k - move cursor down/up
      J/K - move cursor down/up 10 lines
        l - enter selected directory
