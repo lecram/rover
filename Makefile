@@ -2,7 +2,7 @@ LDLIBS=-lcurses
 CFLAGS=-Wall -Wextra -Werror -O2
 PREFIX=/usr/local
 MANPREFIX=$(PREFIX)/man
-INSTALL=install -Ds
+INSTALL=install -D
 
 all: rover
 
