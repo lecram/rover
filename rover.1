@@ -3,10 +3,10 @@
 rover \- file browser for the terminal
 .SH SYNOPSIS
 .B rover
-[\fI\,DIRECTORY \/\fR[\fI\,DIRECTORY \/\fR[\fI\,DIRECTORY \/\fR[...]]]]
+[\fIDIRECTORY\fR [\fIDIRECTORY\fR [\fIDIRECTORY\fR [...]]]]
 .br
 .B rover
-[\fI\,OPTION\/\fR]
+[\fIOPTION\fR]
 .SH DESCRIPTION
 Browse current working directory or the ones specified.
 .SH OPTIONS
@@ -25,22 +25,22 @@ Full path of the home directory.
 Colon\-separated path list for program directories.
 .TP
 .B SHELL
-Name of shell program (e.g. \fI\,/bin/sh\/\fP).
+Name of shell program (e.g. \fI/bin/sh\fP).
 .TP
 .B PAGER
-Name of pager program (e.g. \fI\,less\/\fP).
+Name of pager program (e.g. \fIless\fP).
 .TP
 .B EDITOR
-Name of editor program (e.g. \fI\,vim\/\fP or \fI\,emacs\/\fP).
+Name of editor program (e.g. \fIvim\fP or \fIemacs\fP).
 .SH EXAMPLES
 .TP
 Open current working directory on all tabs:
 rover
 .TP
-Open a tab for directory \fI\,foo\/\fP and another for \fI\,bar\/\fP:
+Open a tab for directory \fIfoo\fP and another for \fIbar\fP:
 rover foo bar
 .TP
-Open one tab for each directory inside \fI\,/usr/\/\fP:
+Open one tab for each directory inside \fI/usr/\fP:
 rover /usr/*/
 .SH COMMANDS
 .TP
@@ -99,8 +99,8 @@ Delete/copy/move all marked entries.
 Change tab.
 .SH CONFIGURATION
 .PP
-If you want to change Rover key bindings or colors, you can edit the \fI\,
-config.h\/\fP file in the source distribution and recompile the program. Rover
+If you want to change Rover key bindings or colors, you can edit the
+\fIconfig.h\fP file in the source distribution and recompile the program. Rover
 will not use or create any external file during its execution, except when asked
 to do so by user commands.
 .SH NOTES
@@ -110,9 +110,9 @@ existing files while copying/moving marked entries. Please be careful to not
 accidentally lose your data.
 .PP
 There are always exactly 10 tabs open, numbered from 0 to 9. The tab number 0
-always start at $HOME. If more than nine directories are specified, only the
+always start at \fB$HOME\fR. If more than nine directories are specified, only the
 first nine are used for tabs 1\-9 and the rest is ignored. Tabs for which an
-invalid path were assigned will also start at $HOME. Remaining tabs not
+invalid path were assigned will also start at \fB$HOME\fR. Remaining tabs not
 specified on the command line start at the current working directory.
 .PP
 Rover homepage: <https://github.com/lecram/rover>.
