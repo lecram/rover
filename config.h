@@ -1,7 +1,9 @@
+#define RV_VERSION      "0.0.0"
+
 /* CTRL+X: "^X"
- * ALT+X: "M-X"
- */
+   ALT+X: "M-X" */
 #define RVK_QUIT        "q"
+#define RVK_HELP        "?"
 #define RVK_DOWN        "j"
 #define RVK_UP          "k"
 #define RVK_JUMP_DOWN   "J"

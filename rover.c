@@ -665,6 +665,24 @@ main(int argc, char *argv[])
     char *program, *key;
     DIR *d;
 
+    if (argc == 2) {
+        if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
+            printf("rover %s\n", RV_VERSION);
+            return 0;
+        } else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+            printf(
+                "Usage: rover [DIRECTORY [DIRECTORY [DIRECTORY [...]]]]\n"
+                "  or:  rover [OPTION]\n"
+                "Browse current working directory or the ones specified.\n\n"
+                "Options:\n"
+                "  -h, --help       print this help message and exit\n"
+                "  -v, --version    print program version and exit\n\n"
+                "See rover(1) for more information.\n\n"
+                "Rover homepage: <https://github.com/lecram/rover>.\n"
+            );
+            return 0;
+        }
+    }
     init_term();
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
@@ -697,6 +715,11 @@ main(int argc, char *argv[])
         else if (ch >= '0' && ch <= '9') {
             rover.tab = ch - '0';
             cd(0);
+        } else if (!strcmp(key, RVK_HELP)) {
+            ARGS[0] = "man";
+            ARGS[1] = "rover";
+            ARGS[2] = NULL;
+            spawn();
         } else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
             ESEL = (ESEL + 1) % rover.nfiles;

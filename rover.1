@@ -1,0 +1,112 @@
+.TH ROVER 1 rover\-0.0.0
+.SH NAME
+rover \- file browser for the terminal
+.SH SYNOPSIS
+.B rover
+[\fI\,DIRECTORY \/\fR[\fI\,DIRECTORY \/\fR[\fI\,DIRECTORY \/\fR[...]]]]
+.br
+.B rover
+[\fI\,OPTION\/\fR]
+.SH DESCRIPTION
+Browse current working directory or the ones specified.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+print help message and exit
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+print program version and exit
+.SH ENVIRONMENT VARIABLES
+.TP
+.B HOME
+Full path of the home directory.
+.TP
+.B PATH
+Colon\-separated path list for program directories.
+.TP
+.B SHELL
+Name of shell program (e.g. \fI\,/bin/sh\/\fP).
+.TP
+.B PAGER
+Name of pager program (e.g. \fI\,less\/\fP).
+.TP
+.B EDITOR
+Name of editor program (e.g. \fI\,vim\/\fP or \fI\,emacs\/\fP).
+.SH EXAMPLES
+.TP
+Open current working directory on all tabs:
+rover
+.TP
+Open a tab for directory \fI\,foo\/\fP and another for \fI\,bar\/\fP:
+rover foo bar
+.TP
+Open one tab for each directory inside \fI\,/usr/\/\fP:
+rover /usr/*/
+.SH COMMANDS
+.TP
+.B q
+Quit rover.
+.TP
+.B j/k
+Move cursor down/up.
+.TP
+.B J/K
+Move cursor down/up 10 lines.
+.TP
+.B l
+Enter selected directory.
+.TP
+.B h
+Go to parent directory.
+.TP
+.B H
+Go to \fB$HOME\fR directory.
+.TP
+.B <RETURN>
+Open \fB$SHELL\fR on the current directory.
+.TP
+.B <SPACE>
+Open \fB$PAGER\fR with the selected file.
+.TP
+.B e
+Open \fB$EDITOR\fR with the selected file.
+.TP
+.B /
+Start incremental search (\fB<RETURN>\fR to finish).
+.TP
+.B f/d/s
+Toggle file/directory/hidden listing.
+.TP
+.B n/N
+Create new file/directory.
+.TP
+.B r
+Rename selected file or directory.
+.TP
+.B m
+Toggle mark on the selected entry.
+.TP
+.B M
+Toggle mark on all visible entries.
+.TP
+.B a
+Mark all visible entries.
+.TP
+.B X/C/V
+Delete/copy/move all marked entries.
+.TP
+.B 0-9
+Change tab.
+.SH NOTES
+.PP
+\fBImportant\fR: Currently, Rover never asks for confirmation before overwriting
+existing files while copying/moving marked entries. Please be careful to not
+accidentally lose your data.
+.PP
+There are always exactly 10 tabs open, numbered from 0 to 9. The tab number 0
+always start at $HOME. If more than nine directories are specified, only the
+first nine are used for tabs 1\-9 and the rest is ignored. Tabs for which an
+invalid path were assigned will also start at $HOME. Remaining tabs not
+specified on the command line start at the current working directory.
+.PP
+Rover homepage: <https://github.com/lecram/rover>.
