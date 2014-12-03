@@ -910,7 +910,7 @@ main(int argc, char *argv[])
             while (igetstr(INPUT, INPUTSZ)) {
                 int length = strlen(INPUT);
                 ok = 1;
-                for (i = 0; i < rover.nfiles; i++) {
+                for (i = 0; i < rover.nfiles; i++)
                     if (
                         !strncmp(ENAME(i), INPUT, length) &&
                         (!strcmp(ENAME(i) + length, "") ||
@@ -919,7 +919,6 @@ main(int argc, char *argv[])
                         ok = 0;
                         break;
                     }
-                }
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
