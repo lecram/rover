@@ -429,6 +429,9 @@ static void
 try_to_sel(const char *target)
 {
     ESEL = 0;
+    if (!ISDIR(target))
+        while ((ESEL+1) < rover.nfiles && ISDIR(ENAME(ESEL)))
+            ESEL++;
     while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
     if (rover.nfiles > HEIGHT) {
@@ -897,7 +900,12 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
             char *prompt = "rename: ";
+            char *last;
+            int isdir;
             strcpy(INPUT, ENAME(ESEL));
+            last = INPUT + strlen(INPUT) - 1;
+            if ((isdir = *last == '/'))
+                *last = '\0';
             update_input(prompt, RED);
             while (igetstr(INPUT, INPUTSZ)) {
                 int length = strlen(INPUT);
@@ -916,6 +924,8 @@ main(int argc, char *argv[])
             }
             clear_message();
             if (strlen(INPUT)) {
+                if (isdir)
+                    strcat(INPUT, "/");
                 if (ok) {
                     if (!rename(ENAME(ESEL), INPUT) && MARKED(ESEL)) {
                         del_mark(&rover.marks, ENAME(ESEL));
