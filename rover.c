@@ -917,7 +917,10 @@ main(int argc, char *argv[])
             clear_message();
             if (strlen(INPUT)) {
                 if (ok) {
-                    rename(ENAME(ESEL), INPUT);
+                    if (!rename(ENAME(ESEL), INPUT) && MARKED(ESEL)) {
+                        del_mark(&rover.marks, ENAME(ESEL));
+                        add_mark(&rover.marks, CWD, INPUT);
+                    }
                     cd(1);
                     try_to_sel(INPUT);
                     update_view();
