@@ -7,8 +7,7 @@ Introduction
 
  The main goal is to provide a faster way to explore a file system from the
 terminal, compared to what's possible by using `cd`, `ls`, etc. Rover
-is designed to be simple and portable. It was originally written to be
-used on a headless Raspberry Pi accessed via ssh. The [Ranger file manager](http://ranger.nongnu.org/)
+is designed to be simple and portable. The [Ranger file manager](http://ranger.nongnu.org/)
 was a major inspiration for the user interface design, but Rover has
 significantly less features and dependencies.
 
@@ -68,8 +67,8 @@ Dependencies
 ============
 
  Rover is supposed to run on any Unix-like system with a curses implementation.
-To build Rover, you need a C compiler (supporting at least C89) and a `curses.h`
-header file.
+To build Rover, you need an ANSI C compiler and a curses library with the
+corresponding header file.
 
 
 Configuration
@@ -96,5 +95,5 @@ via the appropriate environment variables. For example, to specify an editor:
 Copyright
 =========
 
- All of the code and documentation in Rover has been dedicated to the
-   public domain.
+ All of the Rover source code and documentation is released into the public
+domain and provided without warranty of any kind.
