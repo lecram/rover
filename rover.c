@@ -279,7 +279,7 @@ update_view()
         mvwvline(rover.window, center-(height>>1)+1, COLS-1, RVS_SCROLLBAR, height);
         wcolor_set(rover.window, DEFAULT, NULL);
     }
-    wrefresh(rover.window);
+    wnoutrefresh(rover.window);
     if (rover.marks.nentries) {
         sprintf(STATUS, "%7d)", rover.marks.nentries);
         *strrchr(STATUS, ' ') = '(';
@@ -298,7 +298,7 @@ update_view()
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, STATUS);
     color_set(DEFAULT, NULL);
-    refresh();
+    doupdate();
 }
 
 /* SIGSEGV handler: clean up curses before exiting. */
