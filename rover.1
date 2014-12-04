@@ -16,6 +16,51 @@ print help message and exit
 .TP
 \fB\-v\fR, \fB\-\-version\fR
 print program version and exit
+.SH CONCEPTS
+.SS TABS
+.PP
+Rover is operated via a tabbed interface. At any given moment, one (and only
+one) tab is visible on the screen. There are always ten tabs in total, numbered
+from 0 to 9. The number of the tab currently visible is shown on the top right
+corner of the screen. To view a different tab, one just needs to press its
+corresponding number. Each tab has a \fBcurrent working directory\fR (\fBCWD\fR)
+associated to it, also shown on the top of the screen. The \fBCWD\fR of the
+visible tab is changed as the user navigates through the file system.
+.PP
+It's also possible to set the \fBCWD\fR of tabs at Rover start-up by passing the
+desired paths as command-line arguments. The tab number 0 always starts at
+\fB$HOME\fR. If more than nine directories are specified, only the first nine
+are used for tabs 1\-9 and the rest is ignored. Tabs for which an invalid path
+were assigned will also start at \fB$HOME\fR. Remaining tabs not specified on
+the command line start at the current working directory of the parent process.
+.SS ENTRIES
+.PP
+An \fBentry\fR is anything that may be found inside a directory in some file
+system: a file, a directory, a link, a socket, a FIFO, etc. In its most basic
+usage, Rover will gather the list of entries in a given directory and present
+them on the screen, one per line.
+.PP
+There will always be one (and only one) highlighted entry visible. This is both
+the \fBcursor\fR location and the current \fBselection\fR. The highlighting
+moves as the user navigates the entry list with cursor commands. Simple
+operations, like entering a subdirectory or renaming a file, are done by first
+selecting the relevant entry and them using the appropriate command (see the
+\fBCOMMANDS\fR section). For commands that operate on more than one entry at
+once (batch commands), selection is not sufficient, since it's not possible to
+select more than one entry. Batch commands are performed on marked entries.
+.SS MARKS
+.PP
+For some file operations, it is convenient to first \fBmark\fR all entries that
+are to be processed, so that the appropriate command only needs to be issued
+once. For such purpose, Rover allows an arbitrary number of entries to be
+marked, with the limitation that they must be all in the same directory.
+.PP
+Unlike simple selection, the effect of marks is not constrained by visibility.
+This is so one can mark a number of entries in some directory, navigate to other
+directory, and then finally issue a copy or move command. Moreover, marks are
+shared over all tabs. This allows one to mark some entries in one tab that is
+pointed to the "source" directory of the operation and then issue the command on
+another tab that is pointed to the "destination" directory.
 .SH COMMANDS
 .TP
 .B q
@@ -98,11 +143,5 @@ to do so by user commands.
 \fBImportant\fR: Currently, Rover never asks for confirmation before overwriting
 existing files while copying/moving marked entries. Please be careful to not
 accidentally lose your data.
-.PP
-There are always exactly 10 tabs open, numbered from 0 to 9. The tab number 0
-always start at \fB$HOME\fR. If more than nine directories are specified, only the
-first nine are used for tabs 1\-9 and the rest is ignored. Tabs for which an
-invalid path were assigned will also start at \fB$HOME\fR. Remaining tabs not
-specified on the command line start at the current working directory.
 .PP
 Rover homepage: <https://github.com/lecram/rover>.
