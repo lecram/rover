@@ -36,18 +36,18 @@ the command line start at the current working directory of the parent process.
 .SS ENTRIES
 .PP
 An \fBentry\fR is anything that may be found inside a directory in some file
-system: a file, a directory, a link, a socket, a FIFO, etc. In its most basic
-usage, Rover will gather the list of entries in a given directory and present
-them on the screen, one per line.
+system. It may be a file, a directory, a link, a socket, a FIFO, etc. In its
+most basic usage, Rover will gather the list of entries inside the \fBCWD\fR
+and present them on the screen, one per line.
 .PP
-There will always be one (and only one) highlighted entry visible. This is both
-the \fBcursor\fR location and the current \fBselection\fR. The highlighting
-moves as the user navigates the entry list with cursor commands. Simple
-operations, like entering a subdirectory or renaming a file, are done by first
-selecting the relevant entry and them using the appropriate command (see the
-\fBCOMMANDS\fR section). For commands that operate on more than one entry at
-once (batch commands), selection is not sufficient, since it's not possible to
-select more than one entry. Batch commands are performed on marked entries.
+There is always one (and only one) highlighted entry visible. This is both the
+\fBcursor\fR location and the current \fBselection\fR. The highlighting moves as
+the user navigates the entry list with cursor commands. Simple operations, like
+entering a subdirectory or renaming a file, are done by first selecting the
+relevant entry and them issuing the appropriate command (see the \fBCOMMANDS\fR
+section). For commands that operate on more than one entry at once (batch
+commands), selection is not sufficient, since it's not possible to select more
+than one entry. Batch commands are performed on marked entries.
 .SS MARKS
 .PP
 For some file operations, it is convenient to first \fBmark\fR all entries that
