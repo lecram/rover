@@ -91,7 +91,7 @@ init_marks(marks_t *marks)
     strcpy(marks->dirpath, "");
     marks->bulk = BULK_INIT;
     marks->nentries = 0;
-    marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
+    marks->entries = calloc(marks->bulk, sizeof *marks->entries);
 }
 
 /* Unmark all entries. */
@@ -111,7 +111,7 @@ mark_none(marks_t *marks)
         /* Reset bulk to free some memory. */
         free(marks->entries);
         marks->bulk = BULK_INIT;
-        marks->entries = (char **) calloc(marks->bulk, sizeof(char *));
+        marks->entries = calloc(marks->bulk, sizeof *marks->entries);
     }
 }
 
@@ -126,10 +126,10 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
             /* Expand bulk to accomodate new entry. */
             int extra = marks->bulk >> 1;
             marks->bulk += extra; /* bulk *= 1.5; */
-            marks->entries = (char **) realloc(
-                marks->entries, marks->bulk * sizeof(char *)
-            );
-            memset(&marks->entries[marks->nentries], 0, extra * sizeof(char *));
+            marks->entries = realloc(marks->entries,
+                                     marks->bulk * sizeof *marks->entries);
+            memset(&marks->entries[marks->nentries], 0,
+                   extra * sizeof *marks->entries);
             i = marks->nentries;
         } else {
             /* Search for empty slot (there must be one). */
@@ -143,7 +143,7 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
         strcpy(marks->dirpath, dirpath);
         i = 0;
     }
-    marks->entries[i] = (char *) malloc(strlen(entry) + 1);
+    marks->entries[i] = malloc(strlen(entry) + 1);
     strcpy(marks->entries[i], entry);
     marks->nentries++;
 }
@@ -197,7 +197,7 @@ init_term()
     intrflush(stdscr, FALSE);
     keypad(stdscr, TRUE);
     curs_set(FALSE); /* Hide blinking cursor. */
-    memset(&sa, 0, sizeof(struct sigaction));
+    memset(&sa, 0, sizeof (struct sigaction));
     /* Setup SIGSEGV handler. */
     sa.sa_handler = handle_segv;
     sigaction(SIGSEGV, &sa, NULL);
@@ -351,7 +351,7 @@ ls(char *path, row_t **rowsp, uint8_t flags)
     n = -2; /* We don't want the entries "." and "..". */
     while (readdir(dp)) n++;
     rewinddir(dp);
-    rows = (row_t *) malloc(n * sizeof(row_t));
+    rows = malloc(n * sizeof *rows);
     i = 0;
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
@@ -362,20 +362,20 @@ ls(char *path, row_t **rowsp, uint8_t flags)
         stat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {
-                rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
+                rows[i].name = malloc(strlen(ep->d_name) + 2);
                 strcpy(rows[i].name, ep->d_name);
                 strcat(rows[i].name, "/");
                 i++;
             }
         } else if (flags & SHOW_FILES) {
-            rows[i].name = (char *) malloc(strlen(ep->d_name) + 1);
+            rows[i].name = malloc(strlen(ep->d_name) + 1);
             strcpy(rows[i].name, ep->d_name);
             rows[i].size = statbuf.st_size;
             i++;
         }
     }
     n = i; /* Ignore unused space in array caused by filters. */
-    qsort(rows, n, sizeof(row_t), rowcmp);
+    qsort(rows, n, sizeof (*rows), rowcmp);
     closedir(dp);
     *rowsp = rows;
     return n;
