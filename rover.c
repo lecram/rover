@@ -394,7 +394,7 @@ free_rows(row_t **rowsp, int nfiles)
 
 /* Change working directory. */
 /* NOTE: The caller needs to write the new path to CWD
- *  *before* calling this function. */
+    *before* calling this function. */
 static void
 cd(int reset)
 {
@@ -454,15 +454,14 @@ reload()
 }
 
 /* Recursively process a source directory using CWD as destination root.
- * For each node (i.e. directory), do the following:
- *  1. call pre(destination);
- *  2. call proc() on every child leaf (i.e. files);
- *  3. recurse into every child node;
- *  4. call pos(source).
- * E.g. to move directory /src/ (and all its contents) inside /dst/:
- *  strcpy(CWD, "/dst/");
- *  process_dir(adddir, movfile, deldir, "/src/");
- */
+   For each node (i.e. directory), do the following:
+    1. call pre(destination);
+    2. call proc() on every child leaf (i.e. files);
+    3. recurse into every child node;
+    4. call pos(source).
+   E.g. to move directory /src/ (and all its contents) inside /dst/:
+    strcpy(CWD, "/dst/");
+    process_dir(adddir, movfile, deldir, "/src/"); */
 static int
 process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
@@ -497,9 +496,8 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 }
 
 /* Process all marked entries using CWD as destination root.
- * All marked entries that are directories will be recursively processed.
- * See process_dir() for details on the parameters.
- */
+   All marked entries that are directories will be recursively processed.
+   See process_dir() for details on the parameters. */
 static void
 process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 {
