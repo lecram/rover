@@ -255,7 +255,7 @@ update_view()
             wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir)
             sprintf(ROW, "%s%*d", ENAME(j),
-                    COLS - strlen(ENAME(j)) - 4, (int) ESIZE(j));
+                    (int) (COLS - strlen(ENAME(j)) - 4), (int) ESIZE(j));
         else
             strcpy(ROW, ENAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
@@ -663,7 +663,8 @@ int
 main(int argc, char *argv[])
 {
     int i, ch;
-    char *program, *key;
+    char *program;
+    const char *key;
     DIR *d;
 
     if (argc == 2) {
