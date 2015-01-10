@@ -12,6 +12,5 @@ install: rover
 	$(INSTALL) rover $(DESTDIR)$(PREFIX)/bin/rover
 	$(INSTALL) rover.1 $(DESTDIR)$(MANPREFIX)/man1/rover.1
 
-.PHONE: clean
 clean:
 	$(RM) rover
