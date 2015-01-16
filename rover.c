@@ -307,7 +307,7 @@ handle_segv(int sig)
 {
     (void) sig;
     endwin();
-    puts("Received SIGSEGV (segmentation fault).");
+    fprintf(stderr, "Received SIGSEGV (segmentation fault).\n");
     exit(1);
 }
 
