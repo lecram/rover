@@ -11,6 +11,7 @@
 #include <fcntl.h>      /* open() */
 #include <sys/wait.h>   /* waitpid() */
 #include <signal.h>     /* struct sigaction, sigaction() */
+#include <errno.h>
 #include <curses.h>
 
 #include "config.h"
@@ -568,11 +569,18 @@ static int adddir(const char *path) {
     return mkdir(path, st.st_mode);
 }
 static int movfile(const char *srcpath) {
+    int ret;
     char dstpath[FILENAME_MAX];
 
     strcpy(dstpath, CWD);
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
-    return rename(srcpath, dstpath);
+    ret = rename(srcpath, dstpath);
+    if (ret < 0 && errno == EXDEV) {
+        ret = cpyfile(srcpath);
+        if (ret < 0) return ret;
+        ret = delfile(srcpath);
+    }
+    return ret;
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
