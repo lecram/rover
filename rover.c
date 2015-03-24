@@ -46,7 +46,7 @@ typedef struct {
     char *name;
     off_t size;
     int marked;
-} row_t;
+} Row;
 
 /* Dynamic array of marked entries. */
 typedef struct {
@@ -54,19 +54,19 @@ typedef struct {
     int bulk;
     int nentries;
     char **entries;
-} marks_t;
+} Marks;
 
 /* Global state. Some basic info is allocated for ten tabs. */
-static struct rover_t {
+static struct Rover {
     int tab;
     int nfiles;
     int scroll[10];
     int esel[10];
     uint8_t flags[10];
-    row_t *rows;
+    Row *rows;
     WINDOW *window;
     char cwd[10][FILENAME_MAX];
-    marks_t marks;
+    Marks marks;
 } rover;
 
 /* Macros for accessing global state. */
@@ -83,11 +83,11 @@ static struct rover_t {
 #define MAX(A, B)   ((A) > (B) ? (A) : (B))
 #define ISDIR(E)    (strchr((E), '/') != NULL)
 
-typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} color_t;
+typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
 typedef int (*PROCESS)(const char *path);
 
 static void
-init_marks(marks_t *marks)
+init_marks(Marks *marks)
 {
     strcpy(marks->dirpath, "");
     marks->bulk = BULK_INIT;
@@ -97,7 +97,7 @@ init_marks(marks_t *marks)
 
 /* Unmark all entries. */
 static void
-mark_none(marks_t *marks)
+mark_none(Marks *marks)
 {
     int i;
 
@@ -117,7 +117,7 @@ mark_none(marks_t *marks)
 }
 
 static void
-add_mark(marks_t *marks, char *dirpath, char *entry)
+add_mark(Marks *marks, char *dirpath, char *entry)
 {
     int i;
 
@@ -150,7 +150,7 @@ add_mark(marks_t *marks, char *dirpath, char *entry)
 }
 
 static void
-del_mark(marks_t *marks, char *entry)
+del_mark(Marks *marks, char *entry)
 {
     int i;
 
@@ -166,7 +166,7 @@ del_mark(marks_t *marks, char *entry)
 }
 
 static void
-free_marks(marks_t *marks)
+free_marks(Marks *marks)
 {
     int i;
 
@@ -178,7 +178,7 @@ free_marks(marks_t *marks)
     free(marks->entries);
 }
 
-static void message(const char *msg, color_t color);
+static void message(const char *msg, Color color);
 static void clear_message();
 
 static void handle_segv(int sig);
@@ -330,8 +330,8 @@ static int
 rowcmp(const void *a, const void *b)
 {
     int isdir1, isdir2, cmpdir;
-    const row_t *r1 = a;
-    const row_t *r2 = b;
+    const Row *r1 = a;
+    const Row *r2 = b;
     isdir1 = ISDIR(r1->name);
     isdir2 = ISDIR(r2->name);
     cmpdir = isdir2 - isdir1;
@@ -340,12 +340,12 @@ rowcmp(const void *a, const void *b)
 
 /* Get all entries for a given path (usually cwd). */
 static int
-ls(char *path, row_t **rowsp, uint8_t flags)
+ls(char *path, Row **rowsp, uint8_t flags)
 {
     DIR *dp;
     struct dirent *ep;
     struct stat statbuf;
-    row_t *rows;
+    Row *rows;
     int i, n;
 
     if(!(dp = opendir(path))) return -1;
@@ -383,7 +383,7 @@ ls(char *path, row_t **rowsp, uint8_t flags)
 }
 
 static void
-free_rows(row_t **rowsp, int nfiles)
+free_rows(Row **rowsp, int nfiles)
 {
     int i;
 
@@ -630,7 +630,7 @@ igetstr(char *buffer, int maxlen)
 
 /* Update line input on the screen. */
 static void
-update_input(char *prompt, color_t color)
+update_input(char *prompt, Color color)
 {
     int plen, ilen;
 
@@ -647,7 +647,7 @@ update_input(char *prompt, color_t color)
 
 /* Show a message on the status bar. */
 static void
-message(const char *msg, color_t color)
+message(const char *msg, Color color)
 {
     int len, pos;
 
@@ -808,7 +808,7 @@ main(int argc, char *argv[])
             update_input(prompt, DEFAULT);
             while (igetstr(INPUT, INPUTSZ)) {
                 int sel;
-                color_t color = RED;
+                Color color = RED;
                 length = strlen(INPUT);
                 if (length) {
                     for (sel = 0; sel < rover.nfiles; sel++)
