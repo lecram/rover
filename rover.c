@@ -345,9 +345,9 @@ rowcmp(const void *a, const void *b)
     return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
 }
 
-/* Get all entries for a given path (usually cwd). */
+/* Get all entries in current working directory. */
 static int
-ls(char *path, Row **rowsp, uint8_t flags)
+ls(Row **rowsp, uint8_t flags)
 {
     DIR *dp;
     struct dirent *ep;
@@ -355,7 +355,7 @@ ls(char *path, Row **rowsp, uint8_t flags)
     Row *rows;
     int i, n;
 
-    if(!(dp = opendir(path))) return -1;
+    if(!(dp = opendir("."))) return -1;
     n = -2; /* We don't want the entries "." and "..". */
     while (readdir(dp)) n++;
     rewinddir(dp);
@@ -414,7 +414,7 @@ cd(int reset)
     chdir(CWD);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    rover.nfiles = ls(CWD, &rover.rows, FLAGS);
+    rover.nfiles = ls(&rover.rows, FLAGS);
     if (!strcmp(CWD, rover.marks.dirpath)) {
         for (i = 0; i < rover.nfiles; i++) {
             for (j = 0; j < rover.marks.bulk; j++)
