@@ -206,14 +206,21 @@ init_term()
     sa.sa_handler = handle_winch;
     sigaction(SIGWINCH, &sa, NULL);
     if (has_colors()) {
+        short bg;
         start_color();
-        init_pair(RED, COLOR_RED, COLOR_BLACK);
-        init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
-        init_pair(YELLOW, COLOR_YELLOW,COLOR_BLACK);
-        init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
-        init_pair(CYAN, COLOR_CYAN, COLOR_BLACK);
-        init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
-        init_pair(WHITE, COLOR_WHITE, COLOR_BLACK);
+#ifdef NCURSES_EXT_FUNCS
+        use_default_colors();
+        bg = -1;
+#else
+        bg = COLOR_BLACK;
+#endif
+        init_pair(RED, COLOR_RED, bg);
+        init_pair(GREEN, COLOR_GREEN, bg);
+        init_pair(YELLOW, COLOR_YELLOW, bg);
+        init_pair(BLUE, COLOR_BLUE, bg);
+        init_pair(CYAN, COLOR_CYAN, bg);
+        init_pair(MAGENTA, COLOR_MAGENTA, bg);
+        init_pair(WHITE, COLOR_WHITE, bg);
     }
     atexit((void (*)(void)) endwin);
 }
