@@ -42,14 +42,14 @@ static char *ARGS[MAXARGS];
 #define BULK_THRESH 256
 
 /* Information associated to each entry in listing. */
-typedef struct {
+typedef struct Row {
     char *name;
     off_t size;
     int marked;
 } Row;
 
 /* Dynamic array of marked entries. */
-typedef struct {
+typedef struct Marks {
     char dirpath[FILENAME_MAX];
     int bulk;
     int nentries;
@@ -83,7 +83,7 @@ static struct Rover {
 #define MAX(A, B)   ((A) > (B) ? (A) : (B))
 #define ISDIR(E)    (strchr((E), '/') != NULL)
 
-typedef enum {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
+typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
 typedef int (*PROCESS)(const char *path);
 
 static void
@@ -198,13 +198,6 @@ init_term()
     intrflush(stdscr, FALSE);
     keypad(stdscr, TRUE);
     curs_set(FALSE); /* Hide blinking cursor. */
-    memset(&sa, 0, sizeof (struct sigaction));
-    /* Setup SIGSEGV handler. */
-    sa.sa_handler = handle_segv;
-    sigaction(SIGSEGV, &sa, NULL);
-    /* Setup SIGWINCH handler. */
-    sa.sa_handler = handle_winch;
-    sigaction(SIGWINCH, &sa, NULL);
     if (has_colors()) {
         short bg;
         start_color();
@@ -223,6 +216,13 @@ init_term()
         init_pair(WHITE, COLOR_WHITE, bg);
     }
     atexit((void (*)(void)) endwin);
+    memset(&sa, 0, sizeof (struct sigaction));
+    /* Setup SIGSEGV handler. */
+    sa.sa_handler = handle_segv;
+    sigaction(SIGSEGV, &sa, NULL);
+    /* Setup SIGWINCH handler. */
+    sa.sa_handler = handle_winch;
+    sigaction(SIGWINCH, &sa, NULL);
 }
 
 /* Update the listing view. */
@@ -366,7 +366,7 @@ ls(Row **rowsp, uint8_t flags)
             continue;
         if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
             continue;
-        /* FIXME: ANSI C doesn't have lstat(). How do we handle symlinks? */
+        /* FIXME: POSIX < 200112L doesn't have lstat(). How do we handle symlinks? */
         stat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {
@@ -400,9 +400,7 @@ free_rows(Row **rowsp, int nfiles)
     *rowsp = NULL;
 }
 
-/* Change working directory. */
-/* NOTE: The caller needs to write the new path to CWD
-    *before* calling this function. */
+/* Change working directory to the path in CWD. */
 static void
 cd(int reset)
 {
