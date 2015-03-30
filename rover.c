@@ -231,18 +231,26 @@ static void
 update_view()
 {
     int i, j;
+    int numsize;
     int ishidden, isdir;
     int marking;
 
     mvhline(0, 0, ' ', COLS);
-    color_set(RVC_CWD, NULL);
-    mvaddnstr(0, 0, CWD, COLS);
-    color_set(DEFAULT, NULL);
     attr_on(A_BOLD, NULL);
     color_set(RVC_TABNUM, NULL);
-    mvaddch(0, COLS-4, rover.tab + '0');
+    mvaddch(0, COLS - 2, rover.tab + '0');
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
+    if (rover.marks.nentries) {
+        numsize = sprintf(STATUS, "%d", rover.marks.nentries);
+        color_set(RVC_NMARKS, NULL);
+        mvaddstr(0, COLS - 3 - numsize, STATUS);
+        color_set(DEFAULT, NULL);
+    } else
+        numsize = -1;
+    color_set(RVC_CWD, NULL);
+    mvaddnstr(0, 0, CWD, COLS - 4 - numsize);
+    color_set(DEFAULT, NULL);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
@@ -288,13 +296,6 @@ update_view()
         wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
         mvwvline(rover.window, center-(height>>1)+1, COLS-1, RVS_SCROLLBAR, height);
         wcolor_set(rover.window, DEFAULT, NULL);
-    }
-    if (rover.marks.nentries) {
-        sprintf(STATUS, "%7d)", rover.marks.nentries);
-        *strrchr(STATUS, ' ') = '(';
-        color_set(RVC_NMARKS, NULL);
-        mvaddstr(0, COLS-15, STATUS);
-        color_set(DEFAULT, NULL);
     }
     STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
