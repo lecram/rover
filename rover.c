@@ -367,8 +367,7 @@ ls(Row **rowsp, uint8_t flags)
             continue;
         if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
             continue;
-        /* FIXME: POSIX < 200112L doesn't have lstat(). How do we handle symlinks? */
-        stat(ep->d_name, &statbuf);
+        lstat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {
                 rows[i].name = malloc(strlen(ep->d_name) + 2);
