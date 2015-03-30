@@ -243,7 +243,6 @@ update_view()
     mvaddch(0, COLS-4, rover.tab + '0');
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
-    wclear(rover.window);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     wcolor_set(rover.window, DEFAULT, NULL);
@@ -277,6 +276,8 @@ update_view()
         if (j == ESEL)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
+    for (;i < HEIGHT; i++)
+        mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
     if (rover.nfiles > HEIGHT) {
         int center, height;
         center = (SCROLL + (HEIGHT >> 1)) * HEIGHT / rover.nfiles;
@@ -288,7 +289,6 @@ update_view()
         mvwvline(rover.window, center-(height>>1)+1, COLS-1, RVS_SCROLLBAR, height);
         wcolor_set(rover.window, DEFAULT, NULL);
     }
-    wnoutrefresh(rover.window);
     if (rover.marks.nentries) {
         sprintf(STATUS, "%7d)", rover.marks.nentries);
         *strrchr(STATUS, ' ') = '(';
@@ -307,7 +307,7 @@ update_view()
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, STATUS);
     color_set(DEFAULT, NULL);
-    doupdate();
+    wrefresh(rover.window);
 }
 
 /* SIGSEGV handler: clean up curses before exiting. */
