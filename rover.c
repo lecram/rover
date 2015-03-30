@@ -3,7 +3,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/types.h>  /* pid_t, ... */
-#include <stdio.h>      /* FILENAME_MAX */
+#include <stdio.h>
+#include <limits.h>     /* PATH_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
 #include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
@@ -50,7 +51,7 @@ typedef struct Row {
 
 /* Dynamic array of marked entries. */
 typedef struct Marks {
-    char dirpath[FILENAME_MAX];
+    char dirpath[PATH_MAX];
     int bulk;
     int nentries;
     char **entries;
@@ -65,7 +66,7 @@ static struct Rover {
     uint8_t flags[10];
     Row *rows;
     WINDOW *window;
-    char cwd[10][FILENAME_MAX];
+    char cwd[10][PATH_MAX];
     Marks marks;
 } rover;
 
@@ -475,11 +476,11 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
     DIR *dp;
     struct dirent *ep;
     struct stat statbuf;
-    char subpath[FILENAME_MAX];
+    char subpath[PATH_MAX];
 
     ret = 0;
     if (pre) {
-        char dstpath[FILENAME_MAX];
+        char dstpath[PATH_MAX];
         strcpy(dstpath, CWD);
         strcat(dstpath, path + strlen(rover.marks.dirpath));
         ret |= pre(dstpath);
@@ -508,7 +509,7 @@ static void
 process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
 {
     int i, ret;
-    char path[FILENAME_MAX];
+    char path[PATH_MAX];
 
     clear_message();
     message("Processing...", CYAN);
@@ -549,7 +550,7 @@ static int cpyfile(const char *srcpath) {
     size_t size;
     struct stat st;
     char buf[BUFSIZ];
-    char dstpath[FILENAME_MAX];
+    char dstpath[PATH_MAX];
 
     ret = src = open(srcpath, O_RDONLY);
     if (ret < 0) return ret;
@@ -575,7 +576,7 @@ static int adddir(const char *path) {
 }
 static int movfile(const char *srcpath) {
     int ret;
-    char dstpath[FILENAME_MAX];
+    char dstpath[PATH_MAX];
 
     strcpy(dstpath, CWD);
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
@@ -707,12 +708,12 @@ main(int argc, char *argv[])
     strcpy(rover.cwd[0], getenv("HOME"));
     for (i = 1; i < argc && i < 10; i++) {
         if ((d = opendir(argv[i]))) {
-            strcpy(rover.cwd[i], argv[i]);
+            realpath(argv[i], rover.cwd[i]);
             closedir(d);
         } else
             strcpy(rover.cwd[i], rover.cwd[0]);
     }
-    getcwd(rover.cwd[i], FILENAME_MAX);
+    getcwd(rover.cwd[i], PATH_MAX);
     for (i++; i < 10; i++)
         strcpy(rover.cwd[i], rover.cwd[i-1]);
     for (i = 0; i < 10; i++)
