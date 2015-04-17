@@ -607,7 +607,7 @@ spawn()
         endwin();
         waitpid(pid, &status, 0);
         init_term();
-        doupdate();
+        handle_winch(0);
     } else if (pid == 0) {
         /* Child process. */
         execvp(ARGS[0], ARGS);
