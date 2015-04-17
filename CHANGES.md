@@ -1,6 +1,6 @@
 # Change Log
 
-## [NEXT]
+## [0.1.1] - 2015-04-17
 
 ### Bug Fixes
 
