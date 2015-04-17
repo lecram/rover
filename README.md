@@ -67,8 +67,8 @@ Dependencies
 ============
 
  Rover is supposed to run on any Unix-like system with a curses implementation.
-To build Rover, you need an ANSI C compiler and a curses library with the
-corresponding header file.
+To build Rover, you need a C compiler and a curses library with the corresponding
+header file.
 
 
 Configuration

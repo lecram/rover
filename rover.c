@@ -242,7 +242,7 @@ update_view()
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
     if (rover.marks.nentries) {
-        numsize = sprintf(STATUS, "%d", rover.marks.nentries);
+        numsize = snprintf(STATUS, STATUSSZ, "%d", rover.marks.nentries);
         color_set(RVC_NMARKS, NULL);
         mvaddstr(0, COLS - 3 - numsize, STATUS);
         color_set(DEFAULT, NULL);
@@ -270,7 +270,7 @@ update_view()
         else
             wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir)
-            sprintf(ROW, "%s%*d", ENAME(j),
+            snprintf(ROW, ROWSZ, "%s%*d", ENAME(j),
                     (int) (COLS - strlen(ENAME(j)) - 4), (int) ESIZE(j));
         else
             strcpy(ROW, ENAME(j));
@@ -303,8 +303,8 @@ update_view()
     if (!rover.nfiles)
         strcpy(ROW, "0/0");
     else
-        sprintf(ROW, "%d/%d", ESEL + 1, rover.nfiles);
-    sprintf(STATUS+3, "%12s", ROW);
+        snprintf(ROW, ROWSZ, "%d/%d", ESEL + 1, rover.nfiles);
+    snprintf(STATUS+3, STATUSSZ-3, "%12s", ROW);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, STATUS);
     color_set(DEFAULT, NULL);
@@ -489,7 +489,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
     while ((ep = readdir(dp))) {
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
-        sprintf(subpath, "%s%s", path, ep->d_name);
+        snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
         stat(subpath, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             strcat(subpath, "/");
@@ -517,7 +517,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             ret = 0;
-            sprintf(path, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
+            snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
             if (ISDIR(rover.marks.entries[i])) {
                 if (!strncmp(path, CWD, strlen(path)))
                     ret = -1;
