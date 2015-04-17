@@ -179,18 +179,79 @@ free_marks(Marks *marks)
     free(marks->entries);
 }
 
-static void message(const char *msg, Color color);
-static void clear_message();
+static void update_view();
 
-static void handle_segv(int sig);
-static void handle_winch(int sig);
+/* SIGSEGV handler: clean up curses before exiting. */
+static void
+handle_segv(int sig)
+{
+    (void) sig;
+    endwin();
+    fprintf(stderr, "Received SIGSEGV (segmentation fault).\n");
+    exit(1);
+}
+
+/* SIGWINCH handler: resize application according to new terminal settings. */
+static void
+handle_winch(int sig)
+{
+    (void) sig;
+    delwin(rover.window);
+    endwin();
+    refresh();
+    clear();
+    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+    update_view();
+}
+
+static void
+enable_handlers()
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof (struct sigaction));
+    sa.sa_handler = handle_segv;
+    sigaction(SIGSEGV, &sa, NULL);
+    sa.sa_handler = handle_winch;
+    sigaction(SIGWINCH, &sa, NULL);
+}
+
+static void
+disable_handlers()
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof (struct sigaction));
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGWINCH, &sa, NULL);
+}
+
+/* Do a fork-exec to external program (e.g. $EDITOR). */
+static void
+spawn()
+{
+    pid_t pid;
+    int status;
+
+    pid = fork();
+    if (pid > 0) {
+        /* fork() succeeded. */
+        disable_handlers();
+        endwin();
+        waitpid(pid, &status, 0);
+        enable_handlers();
+        kill(getpid(), SIGWINCH);
+    } else if (pid == 0) {
+        /* Child process. */
+        execvp(ARGS[0], ARGS);
+    }
+}
 
 /* Curses setup. */
 static void
 init_term()
 {
-    struct sigaction sa;
-
     setlocale(LC_ALL, "");
     initscr();
     cbreak(); /* Get one character at a time. */
@@ -217,13 +278,7 @@ init_term()
         init_pair(WHITE, COLOR_WHITE, bg);
     }
     atexit((void (*)(void)) endwin);
-    memset(&sa, 0, sizeof (struct sigaction));
-    /* Setup SIGSEGV handler. */
-    sa.sa_handler = handle_segv;
-    sigaction(SIGSEGV, &sa, NULL);
-    /* Setup SIGWINCH handler. */
-    sa.sa_handler = handle_winch;
-    sigaction(SIGWINCH, &sa, NULL);
+    enable_handlers();
 }
 
 /* Update the listing view. */
@@ -311,27 +366,26 @@ update_view()
     wrefresh(rover.window);
 }
 
-/* SIGSEGV handler: clean up curses before exiting. */
+/* Show a message on the status bar. */
 static void
-handle_segv(int sig)
+message(const char *msg, Color color)
 {
-    (void) sig;
-    endwin();
-    fprintf(stderr, "Received SIGSEGV (segmentation fault).\n");
-    exit(1);
+    int len, pos;
+
+    len = strlen(msg);
+    pos = (STATUSPOS - len) >> 1;
+    attr_on(A_BOLD, NULL);
+    color_set(color, NULL);
+    mvaddstr(LINES - 1, pos, msg);
+    color_set(DEFAULT, NULL);
+    attr_off(A_BOLD, NULL);
 }
 
-/* SIGWINCH handler: resize application according to new terminal settings. */
+/* Clear message area, leaving only status info. */
 static void
-handle_winch(int sig)
+clear_message()
 {
-    (void) sig;
-    delwin(rover.window);
-    endwin();
-    refresh();
-    clear();
-    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    update_view();
+    mvhline(LINES - 1, 0, ' ', STATUSPOS);
 }
 
 /* Comparison used to sort listing entries. */
@@ -589,31 +643,6 @@ static int movfile(const char *srcpath) {
     return ret;
 }
 
-/* Do a fork-exec to external program (e.g. $EDITOR). */
-static void
-spawn()
-{
-    pid_t pid;
-    int status;
-    struct sigaction sa;
-
-    pid = fork();
-    if (pid > 0) {
-        /* fork() succeeded. */
-        memset(&sa, 0, sizeof (struct sigaction));
-        sa.sa_handler = SIG_DFL;
-        sigaction(SIGSEGV, &sa, NULL);
-        sigaction(SIGWINCH, &sa, NULL);
-        endwin();
-        waitpid(pid, &status, 0);
-        init_term();
-        handle_winch(0);
-    } else if (pid == 0) {
-        /* Child process. */
-        execvp(ARGS[0], ARGS);
-    }
-}
-
 /* Interactive getstr(). */
 static int
 igetstr(char *buffer, int maxlen)
@@ -654,28 +683,6 @@ update_input(char *prompt, Color color)
     mvaddch(LINES - 1, ilen + plen, ' ');
     move(LINES - 1, ilen + plen);
     color_set(DEFAULT, NULL);
-}
-
-/* Show a message on the status bar. */
-static void
-message(const char *msg, Color color)
-{
-    int len, pos;
-
-    len = strlen(msg);
-    pos = (STATUSPOS - len) >> 1;
-    attr_on(A_BOLD, NULL);
-    color_set(color, NULL);
-    mvaddstr(LINES - 1, pos, msg);
-    color_set(DEFAULT, NULL);
-    attr_off(A_BOLD, NULL);
-}
-
-/* Clear message area, leaving only status info. */
-static void
-clear_message()
-{
-    mvhline(LINES - 1, 0, ' ', STATUSPOS);
 }
 
 int
