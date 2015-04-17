@@ -595,7 +595,12 @@ spawn()
 {
     pid_t pid;
     int status;
+    struct sigaction sa;
 
+    memset(&sa, 0, sizeof (struct sigaction));
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGWINCH, &sa, NULL);
     pid = fork();
     if (pid > 0) {
         /* fork() succeeded. */
