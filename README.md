@@ -6,31 +6,22 @@ Introduction
 ![Rover screenshot](/../screenshots/screenshot.png?raw=true "Screenshot")
 
  The main goal is to provide a faster way to explore a file system from the
-terminal, compared to what's possible by using `cd`, `ls`, etc. Rover
-is designed to be simple and portable. The [Ranger file manager](http://ranger.nongnu.org/)
-was a major inspiration for the user interface design, but Rover has
-significantly less features and dependencies.
+terminal, compared to what's possible by using `cd`, `ls`, etc. Rover has
+vi-like key bindings for navigation and can open files in $PAGER and $EDITOR.
+Basic file system operations are also implemented (see rover(1) for details).
+Rover is designed to be simple, fast and portable.
 
 
 Quick Start
 ===========
 
- Building:
+ Building and Installing:
  ```
  $ make
- ```
-
- Installing:
- ```
  $ sudo make install
  ```
 
  Running:
- ```
- $ rover
- ```
-
- Specify path for some (up to 9) tabs at startup:
  ```
  $ rover [DIR1 [DIR2 [DIR3 [...]]]]
  ```
@@ -68,7 +59,8 @@ Dependencies
 
  Rover is supposed to run on any Unix-like system with a curses implementation.
 To build Rover, you need a C compiler and a curses library with the corresponding
-header file.
+header file. A makefile is provided, but since all the code is in a single C
+source file, it shouldn't be hard to build Rover without make(1).
 
 
 Configuration
