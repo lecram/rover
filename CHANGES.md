@@ -1,6 +1,6 @@
 # Change Log
 
-## NEXT
+## [NEXT]
 
 ### Bug Fixes
 
@@ -11,6 +11,6 @@
 - When listing symbolic links, show link size instead of target size.
 - Remove possible buffer overflows.
 
-## 0.1.0 (2015-03-07)
+## [0.1.0] - 2015-03-07
 
 First version.
