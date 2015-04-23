@@ -324,10 +324,15 @@ update_view()
             wcolor_set(rover.window, RVC_DIR, NULL);
         else
             wcolor_set(rover.window, RVC_FILE, NULL);
-        if (!isdir)
-            snprintf(ROW, ROWSZ, "%s%*d", ENAME(j),
-                    (int) (COLS - strlen(ENAME(j)) - 4), (int) ESIZE(j));
-        else
+        if (!isdir) {
+            char *human_suffix, *suffixes = "BKMGTPEZY";
+            off_t human_size = ESIZE(j);
+            for (human_suffix = suffixes; human_size >= 1024; human_suffix++)
+                human_size = (human_size + 512) / 1024;
+            snprintf(ROW, ROWSZ, "%s%*d %c", ENAME(j),
+                     (int) (COLS - strlen(ENAME(j)) - 6),
+                     (int) human_size, *human_suffix);
+        } else
             strcpy(ROW, ENAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
         if (marking && MARKED(j))
