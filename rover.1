@@ -91,7 +91,7 @@ Open \fB$PAGER\fR with the selected file.
 Open \fB$EDITOR\fR with the selected file.
 .TP
 .B /
-Start incremental search (\fB<RETURN>\fR to finish).
+Start incremental search.
 .TP
 .B f/d/s
 Toggle file/directory/hidden listing.
@@ -116,6 +116,34 @@ Delete/copy/move all marked entries.
 .TP
 .B 0-9
 Change tab.
+.SH LINE EDITING
+.PP
+Some commands will prompt for an input string. For example, in order to rename a
+file, the user must supply the new name. This string will appear at the bottom
+of the screen and must be edited interactivelly using the keyboard. Printable
+keys will insert characters at the cursor position. The following shortcuts are
+available for line editing:
+.TP
+.B <TAB>
+Finish editing and \fBcancel\fR command.
+.TP
+.B <RETURN>
+Finish editing and \fBconfirm\fR command.
+.TP
+.B <LEFT>/<RIGHT>
+Move insertion cursor left/right.
+.TP
+.B <UP>/<DOWN>
+Move insertion cursor to beginning/end of string.
+.TP
+.B <BACKSPACE>
+Remove one character before cursor.
+.TP
+.B <DELETE>
+Remove one character after cursor.
+.TP
+.B <CONTROL>+u
+Clear line (remove all characters).
 .SH ENVIRONMENT VARIABLES
 .TP
 .B HOME

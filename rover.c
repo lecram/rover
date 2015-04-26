@@ -24,6 +24,7 @@ static char ROW[ROWSZ];
 static char STATUS[STATUSSZ];
 #define INPUTSZ 256
 static char INPUT[INPUTSZ];
+#define EDITSZ 256
 
 /* Argument buffers for execvp(). */
 #define MAXARGS 256
@@ -57,6 +58,12 @@ typedef struct Marks {
     char **entries;
 } Marks;
 
+/* Line editing state. */
+typedef struct Edit {
+    char buffer[EDITSZ];
+    int left, right;
+} Edit;
+
 /* Global state. Some basic info is allocated for ten tabs. */
 static struct Rover {
     int tab;
@@ -68,6 +75,7 @@ static struct Rover {
     WINDOW *window;
     char cwd[10][PATH_MAX];
     Marks marks;
+    Edit edit;
 } rover;
 
 /* Macros for accessing global state. */
@@ -84,6 +92,18 @@ static struct Rover {
 #define MAX(A, B)   ((A) > (B) ? (A) : (B))
 #define ISDIR(E)    (strchr((E), '/') != NULL)
 
+/* Line Editing Macros. */
+#define EDIT_FULL(E)       ((E).left > (E).right)
+#define EDIT_CAN_LEFT(E)   ((E).left)
+#define EDIT_CAN_RIGHT(E)  ((E).right < EDITSZ-1)
+#define EDIT_LEFT(E)       (E).buffer[(E).right--] = (E).buffer[--(E).left]
+#define EDIT_RIGHT(E)      (E).buffer[(E).left++] = (E).buffer[++(E).right]
+#define EDIT_INSERT(E, C)  (E).buffer[(E).left++] = (C)
+#define EDIT_BACKSPACE(E)  (E).left--
+#define EDIT_DELETE(E)     (E).right++
+#define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = EDITSZ-1; } while(0)
+
+typedef enum EditStat {CONTINUE, CONFIRM, CANCEL} EditStat;
 typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
 typedef int (*PROCESS)(const char *path);
 
@@ -653,29 +673,51 @@ static int movfile(const char *srcpath) {
     return ret;
 }
 
-/* Interactive getstr(). */
-static int
-igetstr(char *buffer, int maxlen)
+static void
+start_line_edit(const char *init_input)
 {
-    int ch, length;
-
-    length = strlen(buffer);
     curs_set(TRUE);
-    ch = getch();
-    if (ch == '\r' || ch == '\n' || ch == KEY_DOWN || ch == KEY_ENTER) {
+    strncpy(INPUT, init_input, INPUTSZ);
+    strncpy(rover.edit.buffer, init_input, EDITSZ);
+    rover.edit.left = strlen(init_input);
+    rover.edit.right = EDITSZ - 1;
+}
+
+/* Read input and change editing state accordingly. */
+static EditStat
+get_line_edit()
+{
+    int ch = getch();
+    if (ch == '\r' || ch == '\n' || ch == KEY_ENTER) {
         curs_set(FALSE);
-        return 0;
-    } else if (ch == erasechar() || ch == KEY_LEFT || ch == KEY_BACKSPACE) {
-        if (length)
-            buffer[--length] = '\0';
+        return CONFIRM;
+    } else if (ch == '\t') {
+        curs_set(FALSE);
+        return CANCEL;
+    } else if (EDIT_CAN_LEFT(rover.edit) && ch == KEY_LEFT) {
+        EDIT_LEFT(rover.edit);
+    } else if (EDIT_CAN_RIGHT(rover.edit) && ch == KEY_RIGHT) {
+        EDIT_RIGHT(rover.edit);
+    } else if (ch == KEY_UP) {
+        while (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
+    } else if (ch == KEY_DOWN) {
+        while (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
+    } else if (ch == erasechar() || ch == KEY_BACKSPACE) {
+        if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
+    } else if (ch == KEY_DC) {
+        if (EDIT_CAN_RIGHT(rover.edit)) EDIT_DELETE(rover.edit);
     } else if (ch == killchar()) {
-        length = 0;
-        buffer[0] = '\0';
-    } else if (length < maxlen - 1 && isprint(ch)) {
-        buffer[length++] = ch;
-        buffer[length] = '\0';
+        EDIT_CLEAR(rover.edit);
+        clear_message();
+    } else if (!EDIT_FULL(rover.edit) && isprint(ch)) {
+        EDIT_INSERT(rover.edit, ch);
     }
-    return 1;
+    /* Copy edit contents to INPUT and append null character. */
+    strncpy(INPUT, rover.edit.buffer, MIN(rover.edit.left, INPUTSZ-1));
+    strncpy(&INPUT[rover.edit.left], &rover.edit.buffer[rover.edit.right+1],
+            MIN(EDITSZ-rover.edit.right-1, INPUTSZ-rover.edit.left-1));
+    INPUT[MIN(rover.edit.left+EDITSZ-rover.edit.right-1, INPUTSZ-1)] = '\0';
+    return CONTINUE;
 }
 
 /* Update line input on the screen. */
@@ -690,8 +732,8 @@ update_input(char *prompt, Color color)
     mvaddstr(LINES - 1, 0, prompt);
     color_set(color, NULL);
     mvaddstr(LINES - 1, plen, INPUT);
-    mvaddch(LINES - 1, ilen + plen, ' ');
-    move(LINES - 1, ilen + plen);
+    mvaddch(LINES - 1, plen + ilen, ' ');
+    move(LINES - 1, plen + rover.edit.left);
     color_set(DEFAULT, NULL);
 }
 
@@ -702,6 +744,7 @@ main(int argc, char *argv[])
     char *program;
     const char *key;
     DIR *d;
+    EditStat edit_stat;
 
     if (argc == 2) {
         if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -832,9 +875,9 @@ main(int argc, char *argv[])
             if (!rover.nfiles) continue;
             oldsel = ESEL;
             oldscroll = SCROLL;
-            strcpy(INPUT, "");
+            start_line_edit("");
             update_input(prompt, DEFAULT);
-            while (igetstr(INPUT, INPUTSZ)) {
+            while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int sel;
                 Color color = RED;
                 length = strlen(INPUT);
@@ -861,6 +904,10 @@ main(int argc, char *argv[])
                 update_view();
                 update_input(prompt, color);
             }
+            if (edit_stat == CANCEL) {
+                ESEL = oldsel;
+                SCROLL = oldscroll;
+            }
             clear_message();
             update_view();
         } else if (!strcmp(key, RVK_TG_FILES)) {
@@ -875,9 +922,9 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_NEW_FILE)) {
             int ok = 0;
             char *prompt = "new file: ";
-            strcpy(INPUT, "");
+            start_line_edit("");
             update_input(prompt, DEFAULT);
-            while (igetstr(INPUT, INPUTSZ)) {
+            while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
@@ -893,7 +940,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (strlen(INPUT)) {
+            if (edit_stat == CONFIRM && strlen(INPUT)) {
                 if (ok) {
                     addfile(INPUT);
                     cd(1);
@@ -905,9 +952,9 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_NEW_DIR)) {
             int ok = 0;
             char *prompt = "new directory: ";
-            strcpy(INPUT, "");
+            start_line_edit("");
             update_input(prompt, DEFAULT);
-            while (igetstr(INPUT, INPUTSZ)) {
+            while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++) {
@@ -923,7 +970,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (strlen(INPUT)) {
+            if (edit_stat == CONFIRM && strlen(INPUT)) {
                 if (ok) {
                     adddir(INPUT);
                     cd(1);
@@ -941,8 +988,9 @@ main(int argc, char *argv[])
             last = INPUT + strlen(INPUT) - 1;
             if ((isdir = *last == '/'))
                 *last = '\0';
+            start_line_edit(INPUT);
             update_input(prompt, RED);
-            while (igetstr(INPUT, INPUTSZ)) {
+            while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = 1;
                 for (i = 0; i < rover.nfiles; i++)
@@ -957,7 +1005,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (strlen(INPUT)) {
+            if (edit_stat == CONFIRM && strlen(INPUT)) {
                 if (isdir)
                     strcat(INPUT, "/");
                 if (ok) {
