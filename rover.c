@@ -24,7 +24,6 @@ static char ROW[ROWSZ];
 static char STATUS[STATUSSZ];
 #define INPUTSZ 256
 static char INPUT[INPUTSZ];
-#define EDITSZ 256
 
 /* Argument buffers for execvp(). */
 #define MAXARGS 256
@@ -60,7 +59,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-    char buffer[EDITSZ];
+    char buffer[INPUTSZ-1];
     int left, right;
 } Edit;
 
@@ -93,15 +92,15 @@ static struct Rover {
 #define ISDIR(E)    (strchr((E), '/') != NULL)
 
 /* Line Editing Macros. */
-#define EDIT_FULL(E)       ((E).left > (E).right)
+#define EDIT_FULL(E)       ((E).left == (E).right)
 #define EDIT_CAN_LEFT(E)   ((E).left)
-#define EDIT_CAN_RIGHT(E)  ((E).right < EDITSZ-1)
+#define EDIT_CAN_RIGHT(E)  ((E).right < INPUTSZ-1)
 #define EDIT_LEFT(E)       (E).buffer[(E).right--] = (E).buffer[--(E).left]
 #define EDIT_RIGHT(E)      (E).buffer[(E).left++] = (E).buffer[++(E).right]
 #define EDIT_INSERT(E, C)  (E).buffer[(E).left++] = (C)
 #define EDIT_BACKSPACE(E)  (E).left--
 #define EDIT_DELETE(E)     (E).right++
-#define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = EDITSZ-1; } while(0)
+#define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = INPUTSZ-1; } while(0)
 
 typedef enum EditStat {CONTINUE, CONFIRM, CANCEL} EditStat;
 typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
@@ -678,9 +677,9 @@ start_line_edit(const char *init_input)
 {
     curs_set(TRUE);
     strncpy(INPUT, init_input, INPUTSZ);
-    strncpy(rover.edit.buffer, init_input, EDITSZ);
+    strncpy(rover.edit.buffer, init_input, INPUTSZ);
     rover.edit.left = strlen(init_input);
-    rover.edit.right = EDITSZ - 1;
+    rover.edit.right = INPUTSZ - 1;
 }
 
 /* Read input and change editing state accordingly. */
@@ -713,10 +712,10 @@ get_line_edit()
         EDIT_INSERT(rover.edit, ch);
     }
     /* Copy edit contents to INPUT and append null character. */
-    strncpy(INPUT, rover.edit.buffer, MIN(rover.edit.left, INPUTSZ-1));
+    strncpy(INPUT, rover.edit.buffer, rover.edit.left);
     strncpy(&INPUT[rover.edit.left], &rover.edit.buffer[rover.edit.right+1],
-            MIN(EDITSZ-rover.edit.right-1, INPUTSZ-rover.edit.left-1));
-    INPUT[MIN(rover.edit.left+EDITSZ-rover.edit.right-1, INPUTSZ-1)] = '\0';
+            INPUTSZ-rover.edit.left-1);
+    INPUT[rover.edit.left+INPUTSZ-rover.edit.right-1] = '\0';
     return CONTINUE;
 }
 
