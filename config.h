@@ -11,6 +11,7 @@
 #define RVK_CD_DOWN     "l"
 #define RVK_CD_UP       "h"
 #define RVK_HOME        "H"
+#define RVK_REFRESH     "R"
 #define RVK_SHELL       "^M"
 #define RVK_VIEW        " "
 #define RVK_EDIT        "e"

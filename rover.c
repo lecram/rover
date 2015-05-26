@@ -841,6 +841,8 @@ main(int argc, char *argv[])
             if (CWD[strlen(CWD) - 1] != '/')
                 strcat(CWD, "/");
             cd(1);
+        } else if (!strcmp(key, RVK_REFRESH)) {
+            reload();
         } else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
             if (program) {
