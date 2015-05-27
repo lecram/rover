@@ -1020,6 +1020,19 @@ main(int argc, char *argv[])
                 } else
                     message("File already exists.", RED);
             }
+        } else if (!strcmp(key, RVK_DELETE)) {
+            if (rover.nfiles) {
+                message("Delete selected entry? (Y to confirm)", YELLOW);
+                if (getch() == 'Y') {
+                    const char *name = ENAME(ESEL);
+                    int ret = ISDIR(name) ? deldir(name) : delfile(name);
+                    reload();
+                    if (ret)
+                        message("Could not delete entry.", RED);
+                } else
+                    clear_message();
+            } else
+                  message("No entry selected for deletion.", RED);
         } else if (!strcmp(key, RVK_TG_MARK)) {
             if (MARKED(ESEL))
                 del_mark(&rover.marks, ENAME(ESEL));
@@ -1044,7 +1057,7 @@ main(int argc, char *argv[])
                     MARKED(i) = 1;
                 }
             update_view();
-        } else if (!strcmp(key, RVK_DELETE)) {
+        } else if (!strcmp(key, RVK_MARK_DELETE)) {
             if (rover.marks.nentries) {
                 message("Delete marked entries? (Y to confirm)", YELLOW);
                 if (getch() == 'Y')
@@ -1053,12 +1066,12 @@ main(int argc, char *argv[])
                     clear_message();
             } else
                 message("No entries marked for deletion.", RED);
-        } else if (!strcmp(key, RVK_COPY)) {
+        } else if (!strcmp(key, RVK_MARK_COPY)) {
             if (rover.marks.nentries)
                 process_marked(adddir, cpyfile, NULL);
             else
                 message("No entries marked for copying.", RED);
-        } else if (!strcmp(key, RVK_MOVE)) {
+        } else if (!strcmp(key, RVK_MARK_MOVE)) {
             if (rover.marks.nentries)
                 process_marked(adddir, movfile, deldir);
             else

@@ -43,6 +43,7 @@ Quick Start
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
        r - rename selected file or directory
+       x - delete selected file or (empty) directory
        m - toggle mark on the selected entry
        M - toggle mark on all visible entries
        a - mark all visible entries

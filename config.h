@@ -22,12 +22,13 @@
 #define RVK_NEW_FILE    "n"
 #define RVK_NEW_DIR     "N"
 #define RVK_RENAME      "r"
+#define RVK_DELETE      "x"
 #define RVK_TG_MARK     "m"
 #define RVK_INVMARK     "M"
 #define RVK_MARKALL     "a"
-#define RVK_DELETE      "X"
-#define RVK_COPY        "C"
-#define RVK_MOVE        "V"
+#define RVK_MARK_DELETE "X"
+#define RVK_MARK_COPY   "C"
+#define RVK_MARK_MOVE   "V"
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
 #define RVC_CWD         GREEN
