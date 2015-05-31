@@ -75,6 +75,7 @@ static struct Rover {
     char cwd[10][PATH_MAX];
     Marks marks;
     Edit edit;
+    int edit_scroll;
 } rover;
 
 /* Macros for accessing global state. */
@@ -680,6 +681,7 @@ start_line_edit(const char *init_input)
     strncpy(rover.edit.buffer, init_input, INPUTSZ);
     rover.edit.left = strlen(init_input);
     rover.edit.right = INPUTSZ - 1;
+    rover.edit_scroll = 0;
 }
 
 /* Read input and change editing state accordingly. */
@@ -723,16 +725,23 @@ get_line_edit()
 static void
 update_input(char *prompt, Color color)
 {
-    int plen, ilen;
+    int plen, ilen, maxlen;
 
     plen = strlen(prompt);
     ilen = strlen(INPUT);
+    maxlen = STATUSPOS - plen - 2;
+    if (ilen - rover.edit_scroll < maxlen)
+        rover.edit_scroll = MAX(ilen - maxlen, 0);
+    else if (rover.edit.left > rover.edit_scroll + maxlen - 1)
+        rover.edit_scroll = rover.edit.left - maxlen;
+    else if (rover.edit.left < rover.edit_scroll)
+        rover.edit_scroll = MAX(rover.edit.left - maxlen, 0);
     color_set(RVC_PROMPT, NULL);
     mvaddstr(LINES - 1, 0, prompt);
     color_set(color, NULL);
-    mvaddstr(LINES - 1, plen, INPUT);
-    mvaddch(LINES - 1, plen + ilen, ' ');
-    move(LINES - 1, plen + rover.edit.left);
+    mvaddnstr(LINES - 1, plen, &INPUT[rover.edit_scroll], maxlen);
+    mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
+    move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
     color_set(DEFAULT, NULL);
 }
 
