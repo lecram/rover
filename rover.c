@@ -741,8 +741,12 @@ update_input(char *prompt, Color color)
     color_set(color, NULL);
     mvaddnstr(LINES - 1, plen, &INPUT[rover.edit_scroll], maxlen);
     mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
-    move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
     color_set(DEFAULT, NULL);
+    if (rover.edit_scroll)
+        mvaddch(LINES - 1, plen - 1, '<');
+    if (ilen > rover.edit_scroll + maxlen)
+        mvaddch(LINES - 1, plen + maxlen, '>');
+    move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
 }
 
 int
