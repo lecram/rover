@@ -254,6 +254,7 @@ spawn()
     pid_t pid;
     int status;
 
+    setenv("RVSEL", rover.nfiles ? ENAME(ESEL) : "", 1);
     pid = fork();
     if (pid > 0) {
         /* fork() succeeded. */

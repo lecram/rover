@@ -166,6 +166,12 @@ Name of pager program (e.g. \fIless\fP).
 .TP
 .B EDITOR
 Name of editor program (e.g. \fIvim\fP or \fIemacs\fP).
+.TP
+.B RVSEL
+Rover writes the name of the selected entry to this variable before running a
+subprocess. This allows one to use the selection as part of an arbitrary command
+by first invoking a shell from Rover (see the \fBCOMMANDS\fR section) and then
+typing something like \fBgrep abc "$RVSEL"\fR.
 .SH CONFIGURATION
 .PP
 If you want to change Rover key bindings or colors, you can edit the
