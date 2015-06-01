@@ -146,7 +146,7 @@ add_mark(Marks *marks, char *dirpath, char *entry)
         /* Append mark to directory. */
         if (marks->nentries == marks->bulk) {
             /* Expand bulk to accomodate new entry. */
-            int extra = marks->bulk >> 1;
+            int extra = marks->bulk / 2;
             marks->bulk += extra; /* bulk *= 1.5; */
             marks->entries = realloc(marks->entries,
                                      marks->bulk * sizeof *marks->entries);
@@ -374,13 +374,13 @@ update_view()
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
     if (rover.nfiles > HEIGHT) {
         int center, height;
-        center = (SCROLL + (HEIGHT >> 1)) * HEIGHT / rover.nfiles;
+        center = (SCROLL + (HEIGHT / 2)) * HEIGHT / rover.nfiles;
         height = (HEIGHT-1) * HEIGHT / rover.nfiles;
         if (!height) height = 1;
         wcolor_set(rover.window, RVC_BORDER, NULL);
         wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
         wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
-        mvwvline(rover.window, center-(height>>1)+1, COLS-1, RVS_SCROLLBAR, height);
+        mvwvline(rover.window, center-(height/2)+1, COLS-1, RVS_SCROLLBAR, height);
         wcolor_set(rover.window, DEFAULT, NULL);
     }
     STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
@@ -404,7 +404,7 @@ message(const char *msg, Color color)
     int len, pos;
 
     len = strlen(msg);
-    pos = (STATUSPOS - len) >> 1;
+    pos = (STATUSPOS - len) / 2;
     attr_on(A_BOLD, NULL);
     color_set(color, NULL);
     mvaddstr(LINES - 1, pos, msg);
@@ -527,7 +527,7 @@ try_to_sel(const char *target)
     while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
     if (rover.nfiles > HEIGHT) {
-        SCROLL = ESEL - (HEIGHT >> 1);
+        SCROLL = ESEL - (HEIGHT / 2);
         SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
     }
 }
