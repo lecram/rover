@@ -76,8 +76,8 @@ to link against `libncurses.so` and install to `/opt/bin/rover`:
  make LDLIBS=-lncurses PREFIX=/opt install
  ```
 
- Rover configuration (mostly key bindings and colors) can only be changed
-by editing the file `config.h` and rebuilding the binary (with `make`).
+ Rover runtime configuration (mostly key bindings and colors) can only be
+changed by editing the file `config.h` and rebuilding the binary.
 
  Note that the external programs executed by some Rover commands may be changed
 via the appropriate environment variables. For example, to specify an editor:
@@ -85,9 +85,11 @@ via the appropriate environment variables. For example, to specify an editor:
  $ EDITOR=vi rover
  ```
 
+ Please read rover(1) for more information.
 
-Copyright
-=========
 
- All of the Rover source code and documentation is released into the public
+Copying
+=======
+
+ All of the source code and documentation for Rover is released into the public
 domain and provided without warranty of any kind.
