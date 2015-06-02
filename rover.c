@@ -319,7 +319,7 @@ update_view()
     attr_off(A_BOLD, NULL);
     if (rover.marks.nentries) {
         numsize = snprintf(STATUS, STATUSSZ, "%d", rover.marks.nentries);
-        color_set(RVC_NMARKS, NULL);
+        color_set(RVC_MARKS, NULL);
         mvaddstr(0, COLS - 3 - numsize, STATUS);
         color_set(DEFAULT, NULL);
     } else
@@ -361,11 +361,12 @@ update_view()
         } else
             strcpy(ROW, ENAME(j));
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        if (marking && MARKED(j))
-            mvwaddch(rover.window, i + 1, 1, RVS_MARK);
-        else
-            mvwaddch(rover.window, i + 1, 1, ' ');
         mvwaddnstr(rover.window, i + 1, 2, ROW, COLS - 4);
+        if (marking && MARKED(j)) {
+            wcolor_set(rover.window, RVC_MARKS, NULL);
+            mvwaddch(rover.window, i + 1, 1, RVS_MARK);
+        } else
+            mvwaddch(rover.window, i + 1, 1, ' ');
         wcolor_set(rover.window, DEFAULT, NULL);
         if (j == ESEL)
             wattr_off(rover.window, A_REVERSE, NULL);

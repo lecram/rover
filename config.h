@@ -40,7 +40,7 @@
 #define RVC_HIDDEN      YELLOW
 #define RVC_PROMPT      DEFAULT
 #define RVC_TABNUM      DEFAULT
-#define RVC_NMARKS      YELLOW
+#define RVC_MARKS       YELLOW
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR   ACS_CKBOARD
