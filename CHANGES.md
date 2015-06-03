@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.2.0] - 2015-06-03
+
+### New Features
+
+- Better line editing (for search, rename, etc):
+  - Allow cursor movement, insertion and deletion.
+  - Horizontal scrolling for long lines in small terminals.
+- New command 'R' to refresh directory listing.
+- New command 'x' to delete selected file or (empty) directory.
+- Show file sizes in human readable format ("1.4 K" instead of "1394").
+- Set environment variable $RVSEL to selection before running a subprocess.
+
 ## [0.1.1] - 2015-04-17
 
 ### Bug Fixes
