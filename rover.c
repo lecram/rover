@@ -759,8 +759,9 @@ main(int argc, char *argv[])
     const char *key;
     DIR *d;
     EditStat edit_stat;
+    const char *save_cwd_file = NULL;
 
-    if (argc == 2) {
+    if (argc >= 2) {
         if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
             printf("rover %s\n", RV_VERSION);
             return 0;
@@ -776,6 +777,10 @@ main(int argc, char *argv[])
                 "Rover homepage: <https://github.com/lecram/rover>.\n"
             );
             return 0;
+        } else if (argc > 2 && !strcmp(argv[1], "--save-cwd")) {
+            --argc; ++argv;
+            save_cwd_file = argv[1];
+            --argc; ++argv;
         }
     }
     init_term();
@@ -1097,5 +1102,10 @@ main(int argc, char *argv[])
         free_rows(&rover.rows, rover.nfiles);
     free_marks(&rover.marks);
     delwin(rover.window);
+    if (save_cwd_file != NULL) {
+        FILE *fd = fopen(save_cwd_file, "w");
+        fputs(rover.cwd[rover.tab], fd);
+        fclose(fd);
+    }
     return 0;
 }
