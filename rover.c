@@ -371,7 +371,7 @@ update_view()
         if (j == ESEL)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
-    for (;i < HEIGHT; i++)
+    for (; i < HEIGHT; i++)
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
     if (rover.nfiles > HEIGHT) {
         int center, height;
