@@ -778,9 +778,8 @@ main(int argc, char *argv[])
             );
             return 0;
         } else if (argc > 2 && !strcmp(argv[1], "--save-cwd")) {
-            --argc; ++argv;
-            save_cwd_file = argv[1];
-            --argc; ++argv;
+            save_cwd_file = argv[2];
+            argc -= 2; argv += 2;
         }
     }
     init_term();
@@ -1104,7 +1103,7 @@ main(int argc, char *argv[])
     delwin(rover.window);
     if (save_cwd_file != NULL) {
         FILE *fd = fopen(save_cwd_file, "w");
-        fputs(rover.cwd[rover.tab], fd);
+        fputs(CWD, fd);
         fclose(fd);
     }
     return 0;
