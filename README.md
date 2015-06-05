@@ -32,6 +32,7 @@ Quick Start
        ? - show Rover manual
      j/k - move cursor down/up
      J/K - move cursor down/up 10 lines
+     g/G - move cursor to top/bottom of listing
        l - enter selected directory
        h - go to parent directory
        H - go to $HOME directory

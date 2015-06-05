@@ -8,6 +8,8 @@
 #define RVK_UP          "k"
 #define RVK_JUMP_DOWN   "J"
 #define RVK_JUMP_UP     "K"
+#define RVK_JUMP_TOP    "g"
+#define RVK_JUMP_BOTTOM "G"
 #define RVK_CD_DOWN     "l"
 #define RVK_CD_UP       "h"
 #define RVK_HOME        "H"
