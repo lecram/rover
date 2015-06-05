@@ -47,6 +47,7 @@ typedef struct Row {
     char *name;
     off_t size;
     mode_t mode;
+    int islink;
     int marked;
 } Row;
 
@@ -83,6 +84,7 @@ static struct Rover {
 #define ENAME(I)    rover.rows[I].name
 #define ESIZE(I)    rover.rows[I].size
 #define EMODE(I)    rover.rows[I].mode
+#define ISLINK(I)   rover.rows[I].islink
 #define MARKED(I)   rover.rows[I].marked
 #define SCROLL      rover.scroll[rover.tab]
 #define ESEL        rover.esel[rover.tab]
@@ -341,7 +343,9 @@ update_view()
         isdir = S_ISDIR(EMODE(j));
         if (j == ESEL)
             wattr_on(rover.window, A_REVERSE, NULL);
-        if (ishidden)
+        if (ISLINK(j))
+            wcolor_set(rover.window, RVC_LINK, NULL);
+        else if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
         else if (isdir)
             wcolor_set(rover.window, RVC_DIR, NULL);
@@ -456,6 +460,8 @@ ls(Row **rowsp, uint8_t flags)
             continue;
         if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
             continue;
+        lstat(ep->d_name, &statbuf);
+        rows[i].islink = S_ISLNK(statbuf.st_mode);
         stat(ep->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             if (flags & SHOW_DIRS) {

@@ -35,6 +35,7 @@
 #define RVC_STATUS      CYAN
 #define RVC_BORDER      BLUE
 #define RVC_SCROLLBAR   CYAN
+#define RVC_LINK        CYAN
 #define RVC_FILE        DEFAULT
 #define RVC_DIR         DEFAULT
 #define RVC_HIDDEN      YELLOW
