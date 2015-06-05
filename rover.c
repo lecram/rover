@@ -856,7 +856,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_JUMP_BOTTOM)) {
             if (!rover.nfiles) continue;
             ESEL = rover.nfiles - 1;
-            SCROLL = HEIGHT - rover.nfiles - 1;
+            SCROLL = MAX(rover.nfiles - 1 - HEIGHT, 0);
             update_view();
         } else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
