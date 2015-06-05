@@ -46,6 +46,7 @@ static char *ARGS[MAXARGS];
 typedef struct Row {
     char *name;
     off_t size;
+    mode_t mode;
     int marked;
 } Row;
 
@@ -81,6 +82,7 @@ static struct Rover {
 /* Macros for accessing global state. */
 #define ENAME(I)    rover.rows[I].name
 #define ESIZE(I)    rover.rows[I].size
+#define EMODE(I)    rover.rows[I].mode
 #define MARKED(I)   rover.rows[I].marked
 #define SCROLL      rover.scroll[rover.tab]
 #define ESEL        rover.esel[rover.tab]
@@ -336,7 +338,7 @@ update_view()
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = ENAME(j)[0] == '.';
-        isdir = ISDIR(ENAME(j));
+        isdir = S_ISDIR(EMODE(j));
         if (j == ESEL)
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ishidden)
@@ -427,8 +429,8 @@ rowcmp(const void *a, const void *b)
     int isdir1, isdir2, cmpdir;
     const Row *r1 = a;
     const Row *r2 = b;
-    isdir1 = ISDIR(r1->name);
-    isdir2 = ISDIR(r2->name);
+    isdir1 = S_ISDIR(r1->mode);
+    isdir2 = S_ISDIR(r2->mode);
     cmpdir = isdir2 - isdir1;
     return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
 }
@@ -460,12 +462,14 @@ ls(Row **rowsp, uint8_t flags)
                 rows[i].name = malloc(strlen(ep->d_name) + 2);
                 strcpy(rows[i].name, ep->d_name);
                 strcat(rows[i].name, "/");
+                rows[i].mode = statbuf.st_mode;
                 i++;
             }
         } else if (flags & SHOW_FILES) {
             rows[i].name = malloc(strlen(ep->d_name) + 1);
             strcpy(rows[i].name, ep->d_name);
             rows[i].size = statbuf.st_size;
+            rows[i].mode = statbuf.st_mode;
             i++;
         }
     }
@@ -523,7 +527,7 @@ try_to_sel(const char *target)
 {
     ESEL = 0;
     if (!ISDIR(target))
-        while ((ESEL+1) < rover.nfiles && ISDIR(ENAME(ESEL)))
+        while ((ESEL+1) < rover.nfiles && S_ISDIR(EMODE(ESEL)))
             ESEL++;
     while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
@@ -839,7 +843,7 @@ main(int argc, char *argv[])
             SCROLL = MAX(SCROLL - RV_JUMP, 0);
             update_view();
         } else if (!strcmp(key, RVK_CD_DOWN)) {
-            if (!rover.nfiles || !ISDIR(ENAME(ESEL))) continue;
+            if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
             strcat(CWD, ENAME(ESEL));
             cd(1);
         } else if (!strcmp(key, RVK_CD_UP)) {
@@ -871,7 +875,7 @@ main(int argc, char *argv[])
                 reload();
             }
         } else if (!strcmp(key, RVK_VIEW)) {
-            if (!rover.nfiles || ISDIR(ENAME(ESEL))) continue;
+            if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("PAGER");
             if (program) {
                 ARGS[0] = program;
@@ -880,7 +884,7 @@ main(int argc, char *argv[])
                 spawn();
             }
         } else if (!strcmp(key, RVK_EDIT)) {
-            if (!rover.nfiles || ISDIR(ENAME(ESEL))) continue;
+            if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("EDITOR");
             if (program) {
                 ARGS[0] = program;
@@ -1044,7 +1048,7 @@ main(int argc, char *argv[])
                 message("Delete selected entry? (Y to confirm)", YELLOW);
                 if (getch() == 'Y') {
                     const char *name = ENAME(ESEL);
-                    int ret = ISDIR(name) ? deldir(name) : delfile(name);
+                    int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
                     reload();
                     if (ret)
                         message("Could not delete entry.", RED);
