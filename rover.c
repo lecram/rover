@@ -109,7 +109,7 @@ static struct Rover {
 #define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = INPUTSZ-1; } while(0)
 
 typedef enum EditStat {CONTINUE, CONFIRM, CANCEL} EditStat;
-typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE} Color;
+typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK} Color;
 typedef int (*PROCESS)(const char *path);
 
 static void
@@ -312,6 +312,7 @@ init_term()
         init_pair(CYAN, COLOR_CYAN, bg);
         init_pair(MAGENTA, COLOR_MAGENTA, bg);
         init_pair(WHITE, COLOR_WHITE, bg);
+        init_pair(BLACK, COLOR_BLACK, bg);
     }
     atexit((void (*)(void)) endwin);
     enable_handlers();

@@ -32,7 +32,7 @@
 #define RVK_MARK_COPY   "C"
 #define RVK_MARK_MOVE   "V"
 
-/* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE. */
+/* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK. */
 #define RVC_CWD         GREEN
 #define RVC_STATUS      CYAN
 #define RVC_BORDER      BLUE
