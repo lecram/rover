@@ -249,8 +249,8 @@ sync_signals()
     }
 }
 
-/* This function should be used in place of getch().
- * It handles signals while waiting for user input. */
+/* This function must be used in place of getch().
+   It handles signals while waiting for user input. */
 static int
 rover_getch()
 {
