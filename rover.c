@@ -78,6 +78,7 @@ static struct Rover {
     Marks marks;
     Edit edit;
     int edit_scroll;
+    volatile sig_atomic_t pending_winch;
 } rover;
 
 /* Macros for accessing global state. */
@@ -203,29 +204,10 @@ free_marks(Marks *marks)
     free(marks->entries);
 }
 
-static void update_view();
-
-/* SIGSEGV handler: clean up curses before exiting. */
-static void
-handle_segv(int sig)
-{
-    (void) sig;
-    endwin();
-    fprintf(stderr, "Received SIGSEGV (segmentation fault).\n");
-    exit(1);
-}
-
-/* SIGWINCH handler: resize application according to new terminal settings. */
 static void
 handle_winch(int sig)
 {
-    (void) sig;
-    delwin(rover.window);
-    endwin();
-    refresh();
-    clear();
-    rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-    update_view();
+    rover.pending_winch = 1;
 }
 
 static void
@@ -234,8 +216,6 @@ enable_handlers()
     struct sigaction sa;
 
     memset(&sa, 0, sizeof (struct sigaction));
-    sa.sa_handler = handle_segv;
-    sigaction(SIGSEGV, &sa, NULL);
     sa.sa_handler = handle_winch;
     sigaction(SIGWINCH, &sa, NULL);
 }
@@ -247,8 +227,38 @@ disable_handlers()
 
     memset(&sa, 0, sizeof (struct sigaction));
     sa.sa_handler = SIG_DFL;
-    sigaction(SIGSEGV, &sa, NULL);
     sigaction(SIGWINCH, &sa, NULL);
+}
+
+static void update_view();
+
+/* Handle any signals received since last call. */
+static void
+sync_signals()
+{
+    if (rover.pending_winch) {
+        /* SIGWINCH received: resize application accordingly. */
+        delwin(rover.window);
+        endwin();
+        refresh();
+        clear();
+        rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+        SCROLL = MAX(ESEL - HEIGHT, 0);
+        update_view();
+        rover.pending_winch = 0;
+    }
+}
+
+/* This function should be used in place of getch().
+ * It handles signals while waiting for user input. */
+static int
+rover_getch()
+{
+    int ch;
+
+    while ((ch = getch()) == ERR)
+        sync_signals();
+    return ch;
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
@@ -280,6 +290,7 @@ init_term()
     setlocale(LC_ALL, "");
     initscr();
     cbreak(); /* Get one character at a time. */
+    timeout(100); /* For getch(). */
     noecho();
     nonl(); /* No NL->CR/NL on output. */
     intrflush(stdscr, FALSE);
@@ -656,8 +667,10 @@ static int cpyfile(const char *srcpath) {
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
     ret = dst = creat(dstpath, st.st_mode);
     if (ret < 0) return ret;
-    while ((size = read(src, buf, BUFSIZ)) > 0)
+    while ((size = read(src, buf, BUFSIZ)) > 0) {
         write(dst, buf, size);
+        sync_signals();
+    }
     close(src);
     close(dst);
     return 0;
@@ -700,7 +713,7 @@ start_line_edit(const char *init_input)
 static EditStat
 get_line_edit()
 {
-    int ch = getch();
+    int ch = rover_getch();
     if (ch == '\r' || ch == '\n' || ch == KEY_ENTER) {
         curs_set(FALSE);
         return CONFIRM;
@@ -817,7 +830,7 @@ main(int argc, char *argv[])
     init_marks(&rover.marks);
     cd(1);
     while (1) {
-        ch = getch();
+        ch = rover_getch();
         key = keyname(ch);
         clear_message();
         if (!strcmp(key, RVK_QUIT)) break;
@@ -1062,7 +1075,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_DELETE)) {
             if (rover.nfiles) {
                 message("Delete selected entry? (Y to confirm)", YELLOW);
-                if (getch() == 'Y') {
+                if (rover_getch() == 'Y') {
                     const char *name = ENAME(ESEL);
                     int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
                     reload();
@@ -1099,7 +1112,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_MARK_DELETE)) {
             if (rover.marks.nentries) {
                 message("Delete marked entries? (Y to confirm)", YELLOW);
-                if (getch() == 'Y')
+                if (rover_getch() == 'Y')
                     process_marked(NULL, delfile, deldir);
                 else
                     clear_message();
