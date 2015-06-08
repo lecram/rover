@@ -331,21 +331,17 @@ update_view()
     attr_on(A_BOLD, NULL);
     color_set(RVC_TABNUM, NULL);
     mvaddch(0, COLS - 2, rover.tab + '0');
-    color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
     if (rover.marks.nentries) {
         numsize = snprintf(STATUS, STATUSSZ, "%d", rover.marks.nentries);
         color_set(RVC_MARKS, NULL);
         mvaddstr(0, COLS - 3 - numsize, STATUS);
-        color_set(DEFAULT, NULL);
     } else
         numsize = -1;
     color_set(RVC_CWD, NULL);
     mvaddnstr(0, 0, CWD, COLS - 4 - numsize);
-    color_set(DEFAULT, NULL);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
-    wcolor_set(rover.window, DEFAULT, NULL);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
     SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
@@ -385,7 +381,6 @@ update_view()
             mvwaddch(rover.window, i + 1, 1, RVS_MARK);
         } else
             mvwaddch(rover.window, i + 1, 1, ' ');
-        wcolor_set(rover.window, DEFAULT, NULL);
         if (j == ESEL)
             wattr_off(rover.window, A_REVERSE, NULL);
     }
@@ -396,11 +391,8 @@ update_view()
         center = (SCROLL + (HEIGHT / 2)) * HEIGHT / rover.nfiles;
         height = (HEIGHT-1) * HEIGHT / rover.nfiles;
         if (!height) height = 1;
-        wcolor_set(rover.window, RVC_BORDER, NULL);
-        wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
         wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
         mvwvline(rover.window, center-(height/2)+1, COLS-1, RVS_SCROLLBAR, height);
-        wcolor_set(rover.window, DEFAULT, NULL);
     }
     STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
@@ -412,7 +404,6 @@ update_view()
     snprintf(STATUS+3, STATUSSZ-3, "%12s", ROW);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, STATUS);
-    color_set(DEFAULT, NULL);
     wrefresh(rover.window);
 }
 
