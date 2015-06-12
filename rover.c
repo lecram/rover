@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE_EXTENDED
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
@@ -6,6 +8,7 @@
 #include <stdio.h>
 #include <limits.h>     /* PATH_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
+#include <wchar.h>
 #include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
 #include <sys/stat.h>
@@ -326,6 +329,7 @@ update_view()
     int numsize;
     int ishidden, isdir;
     int marking;
+    wchar_t wbuf[PATH_MAX];
 
     mvhline(0, 0, ' ', COLS);
     attr_on(A_BOLD, NULL);
@@ -339,7 +343,8 @@ update_view()
     } else
         numsize = -1;
     color_set(RVC_CWD, NULL);
-    mvaddnstr(0, 0, CWD, COLS - 4 - numsize);
+    mbstowcs(wbuf, CWD, PATH_MAX);
+    mvaddnwstr(0, 0, wbuf, COLS - 4 - numsize);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     /* Selection might not be visible, due to cursor wrapping or window
@@ -362,20 +367,21 @@ update_view()
         if (!isdir) {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
+            int length = mbstowcs(NULL, ENAME(j), 0);
             for (suffix = suffixes; human_size >= 10240; suffix++)
                 human_size = (human_size + 512) / 1024;
             if (*suffix == 'B')
-                snprintf(ROW, ROWSZ, "%s%*d %c", ENAME(j),
-                         (int) (COLS - strlen(ENAME(j)) - 6),
+                swprintf(wbuf, PATH_MAX, L"%s%*d %c", ENAME(j),
+                         (int) (COLS - length - 6),
                          (int) human_size / 10, *suffix);
             else
-                snprintf(ROW, ROWSZ, "%s%*d.%d %c", ENAME(j),
-                         (int) (COLS - strlen(ENAME(j)) - 8),
+                swprintf(wbuf, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
+                         (int) (COLS - length - 8),
                          (int) human_size / 10, (int) human_size % 10, *suffix);
         } else
-            strcpy(ROW, ENAME(j));
+            mbstowcs(wbuf, ENAME(j), PATH_MAX);
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        mvwaddnstr(rover.window, i + 1, 2, ROW, COLS - 4);
+        mvwaddnwstr(rover.window, i + 1, 2, wbuf, COLS - 4);
         if (marking && MARKED(j)) {
             wcolor_set(rover.window, RVC_MARKS, NULL);
             mvwaddch(rover.window, i + 1, 1, RVS_MARK);
