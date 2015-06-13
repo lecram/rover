@@ -767,6 +767,7 @@ static void
 update_input(char *prompt, Color color)
 {
     int plen, ilen, maxlen;
+    wchar_t wbuf[COLS];
 
     plen = strlen(prompt);
     ilen = mbstowcs(NULL, INPUT, 0);
@@ -780,7 +781,8 @@ update_input(char *prompt, Color color)
     color_set(RVC_PROMPT, NULL);
     mvaddstr(LINES - 1, 0, prompt);
     color_set(color, NULL);
-    mvaddnstr(LINES - 1, plen, &INPUT[rover.edit_scroll], maxlen);
+    mbstowcs(wbuf, INPUT, COLS);
+    mvaddnwstr(LINES - 1, plen, &wbuf[rover.edit_scroll], maxlen);
     mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
     color_set(DEFAULT, NULL);
     if (rover.edit_scroll)
