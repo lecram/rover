@@ -726,7 +726,7 @@ get_line_edit()
 {
     wchar_t eraser, killer;
     int length;
-    wint_t wch = rover_get_wch();
+    wchar_t wch = (wchar_t) rover_get_wch();
 
     erasewchar(&eraser);
     killwchar(&killer);
