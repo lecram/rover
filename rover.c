@@ -267,14 +267,14 @@ rover_getch()
 
 /* This function must be used in place of get_wch().
    It handles signals while waiting for user input. */
-static wint_t
-rover_get_wch()
+static int
+rover_get_wch(wint_t *wch)
 {
-    wint_t wch;
+    wint_t ret;
 
-    while (get_wch(&wch) == ERR)
+    while ((ret = get_wch(wch)) == ERR)
         sync_signals();
-    return wch;
+    return ret;
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
@@ -724,35 +724,44 @@ start_line_edit(const char *init_input)
 static EditStat
 get_line_edit()
 {
-    wchar_t eraser, killer;
-    int length;
-    wchar_t wch = (wchar_t) rover_get_wch();
+    wchar_t eraser, killer, wch;
+    int ret, length;
 
+    ret = rover_get_wch((wint_t *) &wch);
     erasewchar(&eraser);
     killwchar(&killer);
-    if (wch == L'\r' || wch == L'\n' || wch == KEY_ENTER) {
-        curs_set(FALSE);
-        return CONFIRM;
-    } else if (wch == L'\t') {
-        curs_set(FALSE);
-        return CANCEL;
-    } else if (wch == KEY_LEFT) {
-        if (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
-    } else if (wch == KEY_RIGHT) {
-        if (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
-    } else if (wch == KEY_UP) {
-        while (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
-    } else if (wch == KEY_DOWN) {
-        while (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
-    } else if (wch == eraser || wch == KEY_BACKSPACE) {
-        if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
-    } else if (wch == KEY_DC) {
-        if (EDIT_CAN_RIGHT(rover.edit)) EDIT_DELETE(rover.edit);
-    } else if (wch == killer) {
-        EDIT_CLEAR(rover.edit);
-        clear_message();
-    } else if (iswprint(wch)) {
-        if (!EDIT_FULL(rover.edit)) EDIT_INSERT(rover.edit, wch);
+    if (ret == KEY_CODE_YES) {
+        if (wch == KEY_ENTER) {
+            curs_set(FALSE);
+            return CONFIRM;
+        } else if (wch == KEY_LEFT) {
+            if (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
+        } else if (wch == KEY_RIGHT) {
+            if (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
+        } else if (wch == KEY_UP) {
+            while (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
+        } else if (wch == KEY_DOWN) {
+            while (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
+        } else if (wch == KEY_BACKSPACE) {
+            if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
+        } else if (wch == KEY_DC) {
+            if (EDIT_CAN_RIGHT(rover.edit)) EDIT_DELETE(rover.edit);
+        }
+    } else {
+        if (wch == L'\r' || wch == L'\n') {
+            curs_set(FALSE);
+            return CONFIRM;
+        } else if (wch == L'\t') {
+            curs_set(FALSE);
+            return CANCEL;
+        } else if (wch == eraser) {
+            if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
+        } else if (wch == killer) {
+            EDIT_CLEAR(rover.edit);
+            clear_message();
+        } else if (iswprint(wch)) {
+            if (!EDIT_FULL(rover.edit)) EDIT_INSERT(rover.edit, wch);
+        }
     }
     /* Encode edit contents in INPUT. */
     rover.edit.buffer[rover.edit.left] = L'\0';
