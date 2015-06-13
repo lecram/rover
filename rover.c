@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <wchar.h>
+#include <wctype.h>
 #include <string.h>
 #include <sys/types.h>  /* pid_t, ... */
 #include <stdio.h>
 #include <limits.h>     /* PATH_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
-#include <wchar.h>
 #include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
 #include <sys/stat.h>
@@ -64,7 +65,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-    char buffer[INPUTSZ-1];
+    wchar_t buffer[INPUTSZ+1];
     int left, right;
 } Edit;
 
@@ -262,6 +263,18 @@ rover_getch()
     while ((ch = getch()) == ERR)
         sync_signals();
     return ch;
+}
+
+/* This function must be used in place of get_wch().
+   It handles signals while waiting for user input. */
+static wint_t
+rover_get_wch()
+{
+    wint_t wch;
+
+    while (get_wch(&wch) == ERR)
+        sync_signals();
+    return wch;
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
@@ -701,9 +714,9 @@ start_line_edit(const char *init_input)
 {
     curs_set(TRUE);
     strncpy(INPUT, init_input, INPUTSZ);
-    strncpy(rover.edit.buffer, init_input, INPUTSZ);
-    rover.edit.left = strlen(init_input);
+    rover.edit.left = mbstowcs(rover.edit.buffer, init_input, INPUTSZ);
     rover.edit.right = INPUTSZ - 1;
+    rover.edit.buffer[INPUTSZ] = L'\0';
     rover.edit_scroll = 0;
 }
 
@@ -711,36 +724,41 @@ start_line_edit(const char *init_input)
 static EditStat
 get_line_edit()
 {
-    int ch = rover_getch();
-    if (ch == '\r' || ch == '\n' || ch == KEY_ENTER) {
+    wchar_t eraser, killer;
+    int length;
+    wint_t wch = rover_get_wch();
+
+    erasewchar(&eraser);
+    killwchar(&killer);
+    if (wch == L'\r' || wch == L'\n' || wch == KEY_ENTER) {
         curs_set(FALSE);
         return CONFIRM;
-    } else if (ch == '\t') {
+    } else if (wch == L'\t') {
         curs_set(FALSE);
         return CANCEL;
-    } else if (EDIT_CAN_LEFT(rover.edit) && ch == KEY_LEFT) {
-        EDIT_LEFT(rover.edit);
-    } else if (EDIT_CAN_RIGHT(rover.edit) && ch == KEY_RIGHT) {
-        EDIT_RIGHT(rover.edit);
-    } else if (ch == KEY_UP) {
+    } else if (wch == KEY_LEFT) {
+        if (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
+    } else if (wch == KEY_RIGHT) {
+        if (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
+    } else if (wch == KEY_UP) {
         while (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
-    } else if (ch == KEY_DOWN) {
+    } else if (wch == KEY_DOWN) {
         while (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
-    } else if (ch == erasechar() || ch == KEY_BACKSPACE) {
+    } else if (wch == eraser || wch == KEY_BACKSPACE) {
         if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
-    } else if (ch == KEY_DC) {
+    } else if (wch == KEY_DC) {
         if (EDIT_CAN_RIGHT(rover.edit)) EDIT_DELETE(rover.edit);
-    } else if (ch == killchar()) {
+    } else if (wch == killer) {
         EDIT_CLEAR(rover.edit);
         clear_message();
-    } else if (!EDIT_FULL(rover.edit) && isprint(ch)) {
-        EDIT_INSERT(rover.edit, ch);
+    } else if (iswprint(wch)) {
+        if (!EDIT_FULL(rover.edit)) EDIT_INSERT(rover.edit, wch);
     }
-    /* Copy edit contents to INPUT and append null character. */
-    strncpy(INPUT, rover.edit.buffer, rover.edit.left);
-    strncpy(&INPUT[rover.edit.left], &rover.edit.buffer[rover.edit.right+1],
-            INPUTSZ-rover.edit.left-1);
-    INPUT[rover.edit.left+INPUTSZ-rover.edit.right-1] = '\0';
+    /* Encode edit contents in INPUT. */
+    rover.edit.buffer[rover.edit.left] = L'\0';
+    length = wcstombs(INPUT, rover.edit.buffer, INPUTSZ);
+    wcstombs(&INPUT[length], &rover.edit.buffer[rover.edit.right+1],
+             INPUTSZ-length);
     return CONTINUE;
 }
 
@@ -751,7 +769,7 @@ update_input(char *prompt, Color color)
     int plen, ilen, maxlen;
 
     plen = strlen(prompt);
-    ilen = strlen(INPUT);
+    ilen = mbstowcs(NULL, INPUT, 0);
     maxlen = STATUSPOS - plen - 2;
     if (ilen - rover.edit_scroll < maxlen)
         rover.edit_scroll = MAX(ilen - maxlen, 0);
