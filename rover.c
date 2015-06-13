@@ -1,6 +1,10 @@
+#define _XOPEN_SOURCE_EXTENDED
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <wchar.h>
+#include <wctype.h>
 #include <string.h>
 #include <sys/types.h>  /* pid_t, ... */
 #include <stdio.h>
@@ -61,7 +65,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-    char buffer[INPUTSZ-1];
+    wchar_t buffer[INPUTSZ+1];
     int left, right;
 } Edit;
 
@@ -261,6 +265,18 @@ rover_getch()
     return ch;
 }
 
+/* This function must be used in place of get_wch().
+   It handles signals while waiting for user input. */
+static wint_t
+rover_get_wch()
+{
+    wint_t wch;
+
+    while (get_wch(&wch) == ERR)
+        sync_signals();
+    return wch;
+}
+
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
 spawn()
@@ -326,6 +342,7 @@ update_view()
     int numsize;
     int ishidden, isdir;
     int marking;
+    wchar_t wbuf[PATH_MAX];
 
     mvhline(0, 0, ' ', COLS);
     attr_on(A_BOLD, NULL);
@@ -339,7 +356,8 @@ update_view()
     } else
         numsize = -1;
     color_set(RVC_CWD, NULL);
-    mvaddnstr(0, 0, CWD, COLS - 4 - numsize);
+    mbstowcs(wbuf, CWD, PATH_MAX);
+    mvaddnwstr(0, 0, wbuf, COLS - 4 - numsize);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     /* Selection might not be visible, due to cursor wrapping or window
@@ -362,20 +380,21 @@ update_view()
         if (!isdir) {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
+            int length = mbstowcs(NULL, ENAME(j), 0);
             for (suffix = suffixes; human_size >= 10240; suffix++)
                 human_size = (human_size + 512) / 1024;
             if (*suffix == 'B')
-                snprintf(ROW, ROWSZ, "%s%*d %c", ENAME(j),
-                         (int) (COLS - strlen(ENAME(j)) - 6),
+                swprintf(wbuf, PATH_MAX, L"%s%*d %c", ENAME(j),
+                         (int) (COLS - length - 6),
                          (int) human_size / 10, *suffix);
             else
-                snprintf(ROW, ROWSZ, "%s%*d.%d %c", ENAME(j),
-                         (int) (COLS - strlen(ENAME(j)) - 8),
+                swprintf(wbuf, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
+                         (int) (COLS - length - 8),
                          (int) human_size / 10, (int) human_size % 10, *suffix);
         } else
-            strcpy(ROW, ENAME(j));
+            mbstowcs(wbuf, ENAME(j), PATH_MAX);
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        mvwaddnstr(rover.window, i + 1, 2, ROW, COLS - 4);
+        mvwaddnwstr(rover.window, i + 1, 2, wbuf, COLS - 4);
         if (marking && MARKED(j)) {
             wcolor_set(rover.window, RVC_MARKS, NULL);
             mvwaddch(rover.window, i + 1, 1, RVS_MARK);
@@ -695,9 +714,9 @@ start_line_edit(const char *init_input)
 {
     curs_set(TRUE);
     strncpy(INPUT, init_input, INPUTSZ);
-    strncpy(rover.edit.buffer, init_input, INPUTSZ);
-    rover.edit.left = strlen(init_input);
+    rover.edit.left = mbstowcs(rover.edit.buffer, init_input, INPUTSZ);
     rover.edit.right = INPUTSZ - 1;
+    rover.edit.buffer[INPUTSZ] = L'\0';
     rover.edit_scroll = 0;
 }
 
@@ -705,36 +724,41 @@ start_line_edit(const char *init_input)
 static EditStat
 get_line_edit()
 {
-    int ch = rover_getch();
-    if (ch == '\r' || ch == '\n' || ch == KEY_ENTER) {
+    wchar_t eraser, killer;
+    int length;
+    wchar_t wch = (wchar_t) rover_get_wch();
+
+    erasewchar(&eraser);
+    killwchar(&killer);
+    if (wch == L'\r' || wch == L'\n' || wch == KEY_ENTER) {
         curs_set(FALSE);
         return CONFIRM;
-    } else if (ch == '\t') {
+    } else if (wch == L'\t') {
         curs_set(FALSE);
         return CANCEL;
-    } else if (EDIT_CAN_LEFT(rover.edit) && ch == KEY_LEFT) {
-        EDIT_LEFT(rover.edit);
-    } else if (EDIT_CAN_RIGHT(rover.edit) && ch == KEY_RIGHT) {
-        EDIT_RIGHT(rover.edit);
-    } else if (ch == KEY_UP) {
+    } else if (wch == KEY_LEFT) {
+        if (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
+    } else if (wch == KEY_RIGHT) {
+        if (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
+    } else if (wch == KEY_UP) {
         while (EDIT_CAN_LEFT(rover.edit)) EDIT_LEFT(rover.edit);
-    } else if (ch == KEY_DOWN) {
+    } else if (wch == KEY_DOWN) {
         while (EDIT_CAN_RIGHT(rover.edit)) EDIT_RIGHT(rover.edit);
-    } else if (ch == erasechar() || ch == KEY_BACKSPACE) {
+    } else if (wch == eraser || wch == KEY_BACKSPACE) {
         if (EDIT_CAN_LEFT(rover.edit)) EDIT_BACKSPACE(rover.edit);
-    } else if (ch == KEY_DC) {
+    } else if (wch == KEY_DC) {
         if (EDIT_CAN_RIGHT(rover.edit)) EDIT_DELETE(rover.edit);
-    } else if (ch == killchar()) {
+    } else if (wch == killer) {
         EDIT_CLEAR(rover.edit);
         clear_message();
-    } else if (!EDIT_FULL(rover.edit) && isprint(ch)) {
-        EDIT_INSERT(rover.edit, ch);
+    } else if (iswprint(wch)) {
+        if (!EDIT_FULL(rover.edit)) EDIT_INSERT(rover.edit, wch);
     }
-    /* Copy edit contents to INPUT and append null character. */
-    strncpy(INPUT, rover.edit.buffer, rover.edit.left);
-    strncpy(&INPUT[rover.edit.left], &rover.edit.buffer[rover.edit.right+1],
-            INPUTSZ-rover.edit.left-1);
-    INPUT[rover.edit.left+INPUTSZ-rover.edit.right-1] = '\0';
+    /* Encode edit contents in INPUT. */
+    rover.edit.buffer[rover.edit.left] = L'\0';
+    length = wcstombs(INPUT, rover.edit.buffer, INPUTSZ);
+    wcstombs(&INPUT[length], &rover.edit.buffer[rover.edit.right+1],
+             INPUTSZ-length);
     return CONTINUE;
 }
 
@@ -745,7 +769,7 @@ update_input(char *prompt, Color color)
     int plen, ilen, maxlen;
 
     plen = strlen(prompt);
-    ilen = strlen(INPUT);
+    ilen = mbstowcs(NULL, INPUT, 0);
     maxlen = STATUSPOS - plen - 2;
     if (ilen - rover.edit_scroll < maxlen)
         rover.edit_scroll = MAX(ilen - maxlen, 0);

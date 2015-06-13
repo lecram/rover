@@ -1,5 +1,5 @@
 CFLAGS=-D_FILE_OFFSET_BITS=64
-LDLIBS=-lcurses
+LDLIBS=-lncursesw
 PREFIX=/usr/local
 MANPREFIX=$(PREFIX)/man
 INSTALL=install -D
