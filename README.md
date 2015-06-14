@@ -74,7 +74,7 @@ build options, such as the name of the curses library, please edit `Makefile`
 before executing `make` or specify the options during invocation. For example,
 to link against `libncurses.so` and install to `/opt/bin/rover`:
  ```
- make LDLIBS=-lncurses PREFIX=/opt install
+ $ make LDLIBS=-lncurses PREFIX=/opt install
  ```
 
  Rover runtime configuration (mostly key bindings and colors) can only be
