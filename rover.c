@@ -870,11 +870,11 @@ main(int argc, char *argv[])
             spawn();
         } else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
-            ESEL = (ESEL + 1) % rover.nfiles;
+            ESEL = MIN(ESEL + 1, rover.nfiles - 1);
             update_view();
         } else if (!strcmp(key, RVK_UP)) {
             if (!rover.nfiles) continue;
-            ESEL = ESEL ? ESEL - 1 : rover.nfiles - 1;
+            ESEL = MAX(ESEL - 1, 0);
             update_view();
         } else if (!strcmp(key, RVK_JUMP_DOWN)) {
             if (!rover.nfiles) continue;
