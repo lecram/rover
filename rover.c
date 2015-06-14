@@ -408,11 +408,11 @@ update_view()
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
     if (rover.nfiles > HEIGHT) {
         int center, height;
-        center = (SCROLL + (HEIGHT / 2)) * HEIGHT / rover.nfiles;
+        center = (SCROLL + HEIGHT / 2) * HEIGHT / rover.nfiles;
         height = (HEIGHT-1) * HEIGHT / rover.nfiles;
         if (!height) height = 1;
         wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
-        mvwvline(rover.window, center-(height/2)+1, COLS-1, RVS_SCROLLBAR, height);
+        mvwvline(rover.window, center-height/2+1, COLS-1, RVS_SCROLLBAR, height);
     }
     STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
     STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
@@ -561,7 +561,7 @@ try_to_sel(const char *target)
     while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
     if (rover.nfiles > HEIGHT) {
-        SCROLL = ESEL - (HEIGHT / 2);
+        SCROLL = ESEL - HEIGHT / 2;
         SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
     }
 }
