@@ -272,7 +272,7 @@ rover_get_wch(wint_t *wch)
 {
     wint_t ret;
 
-    while ((ret = get_wch(wch)) == ERR)
+    while ((ret = get_wch(wch)) == (wint_t) ERR)
         sync_signals();
     return ret;
 }
