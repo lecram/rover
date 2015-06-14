@@ -1,4 +1,3 @@
-CFLAGS=-D_FILE_OFFSET_BITS=64
 LDLIBS=-lncursesw
 PREFIX=/usr/local
 MANPREFIX=$(PREFIX)/man

@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE_EXTENDED
+#define _FILE_OFFSET_BITS   64
 
 #include <stdlib.h>
 #include <stdint.h>
