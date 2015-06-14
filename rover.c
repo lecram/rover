@@ -23,12 +23,11 @@
 #include "config.h"
 
 /* String buffers. */
-#define ROWSZ 256
-static char ROW[ROWSZ];
-#define STATUSSZ 256
-static char STATUS[STATUSSZ];
-#define INPUTSZ 256
-static char INPUT[INPUTSZ];
+#define BUFLEN  256
+static char BUF1[BUFLEN];
+static char BUF2[BUFLEN];
+static char INPUT[BUFLEN];
+static wchar_t WBUF[BUFLEN];
 
 /* Argument buffers for execvp(). */
 #define MAXARGS 256
@@ -66,7 +65,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-    wchar_t buffer[INPUTSZ+1];
+    wchar_t buffer[BUFLEN+1];
     int left, right;
 } Edit;
 
@@ -105,13 +104,13 @@ static struct Rover {
 /* Line Editing Macros. */
 #define EDIT_FULL(E)       ((E).left == (E).right)
 #define EDIT_CAN_LEFT(E)   ((E).left)
-#define EDIT_CAN_RIGHT(E)  ((E).right < INPUTSZ-1)
+#define EDIT_CAN_RIGHT(E)  ((E).right < BUFLEN-1)
 #define EDIT_LEFT(E)       (E).buffer[(E).right--] = (E).buffer[--(E).left]
 #define EDIT_RIGHT(E)      (E).buffer[(E).left++] = (E).buffer[++(E).right]
 #define EDIT_INSERT(E, C)  (E).buffer[(E).left++] = (C)
 #define EDIT_BACKSPACE(E)  (E).left--
 #define EDIT_DELETE(E)     (E).right++
-#define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = INPUTSZ-1; } while(0)
+#define EDIT_CLEAR(E)      do { (E).left = 0; (E).right = BUFLEN-1; } while(0)
 
 typedef enum EditStat {CONTINUE, CONFIRM, CANCEL} EditStat;
 typedef enum Color {DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK} Color;
@@ -343,7 +342,6 @@ update_view()
     int numsize;
     int ishidden, isdir;
     int marking;
-    wchar_t wbuf[PATH_MAX];
 
     mvhline(0, 0, ' ', COLS);
     attr_on(A_BOLD, NULL);
@@ -351,14 +349,14 @@ update_view()
     mvaddch(0, COLS - 2, rover.tab + '0');
     attr_off(A_BOLD, NULL);
     if (rover.marks.nentries) {
-        numsize = snprintf(STATUS, STATUSSZ, "%d", rover.marks.nentries);
+        numsize = snprintf(BUF1, BUFLEN, "%d", rover.marks.nentries);
         color_set(RVC_MARKS, NULL);
-        mvaddstr(0, COLS - 3 - numsize, STATUS);
+        mvaddstr(0, COLS - 3 - numsize, BUF1);
     } else
         numsize = -1;
     color_set(RVC_CWD, NULL);
-    mbstowcs(wbuf, CWD, PATH_MAX);
-    mvaddnwstr(0, 0, wbuf, COLS - 4 - numsize);
+    mbstowcs(WBUF, CWD, PATH_MAX);
+    mvaddnwstr(0, 0, WBUF, COLS - 4 - numsize);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
     /* Selection might not be visible, due to cursor wrapping or window
@@ -385,17 +383,17 @@ update_view()
             for (suffix = suffixes; human_size >= 10240; suffix++)
                 human_size = (human_size + 512) / 1024;
             if (*suffix == 'B')
-                swprintf(wbuf, PATH_MAX, L"%s%*d %c", ENAME(j),
+                swprintf(WBUF, PATH_MAX, L"%s%*d %c", ENAME(j),
                          (int) (COLS - length - 6),
                          (int) human_size / 10, *suffix);
             else
-                swprintf(wbuf, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
+                swprintf(WBUF, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
                          (int) (COLS - length - 8),
                          (int) human_size / 10, (int) human_size % 10, *suffix);
         } else
-            mbstowcs(wbuf, ENAME(j), PATH_MAX);
+            mbstowcs(WBUF, ENAME(j), PATH_MAX);
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-        mvwaddnwstr(rover.window, i + 1, 2, wbuf, COLS - 4);
+        mvwaddnwstr(rover.window, i + 1, 2, WBUF, COLS - 4);
         if (marking && MARKED(j)) {
             wcolor_set(rover.window, RVC_MARKS, NULL);
             mvwaddch(rover.window, i + 1, 1, RVS_MARK);
@@ -414,16 +412,16 @@ update_view()
         wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
         mvwvline(rover.window, center-height/2+1, COLS-1, RVS_SCROLLBAR, height);
     }
-    STATUS[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
-    STATUS[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
-    STATUS[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
+    BUF1[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
+    BUF1[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
+    BUF1[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
     if (!rover.nfiles)
-        strcpy(ROW, "0/0");
+        strcpy(BUF2, "0/0");
     else
-        snprintf(ROW, ROWSZ, "%d/%d", ESEL + 1, rover.nfiles);
-    snprintf(STATUS+3, STATUSSZ-3, "%12s", ROW);
+        snprintf(BUF2, BUFLEN, "%d/%d", ESEL + 1, rover.nfiles);
+    snprintf(BUF1+3, BUFLEN-3, "%12s", BUF2);
     color_set(RVC_STATUS, NULL);
-    mvaddstr(LINES - 1, STATUSPOS, STATUS);
+    mvaddstr(LINES - 1, STATUSPOS, BUF1);
     wrefresh(rover.window);
 }
 
@@ -714,10 +712,10 @@ static void
 start_line_edit(const char *init_input)
 {
     curs_set(TRUE);
-    strncpy(INPUT, init_input, INPUTSZ);
-    rover.edit.left = mbstowcs(rover.edit.buffer, init_input, INPUTSZ);
-    rover.edit.right = INPUTSZ - 1;
-    rover.edit.buffer[INPUTSZ] = L'\0';
+    strncpy(INPUT, init_input, BUFLEN);
+    rover.edit.left = mbstowcs(rover.edit.buffer, init_input, BUFLEN);
+    rover.edit.right = BUFLEN - 1;
+    rover.edit.buffer[BUFLEN] = L'\0';
     rover.edit_scroll = 0;
 }
 
@@ -766,9 +764,9 @@ get_line_edit()
     }
     /* Encode edit contents in INPUT. */
     rover.edit.buffer[rover.edit.left] = L'\0';
-    length = wcstombs(INPUT, rover.edit.buffer, INPUTSZ);
+    length = wcstombs(INPUT, rover.edit.buffer, BUFLEN);
     wcstombs(&INPUT[length], &rover.edit.buffer[rover.edit.right+1],
-             INPUTSZ-length);
+             BUFLEN-length);
     return CONTINUE;
 }
 
@@ -777,7 +775,6 @@ static void
 update_input(char *prompt, Color color)
 {
     int plen, ilen, maxlen;
-    wchar_t wbuf[COLS];
 
     plen = strlen(prompt);
     ilen = mbstowcs(NULL, INPUT, 0);
@@ -791,8 +788,8 @@ update_input(char *prompt, Color color)
     color_set(RVC_PROMPT, NULL);
     mvaddstr(LINES - 1, 0, prompt);
     color_set(color, NULL);
-    mbstowcs(wbuf, INPUT, COLS);
-    mvaddnwstr(LINES - 1, plen, &wbuf[rover.edit_scroll], maxlen);
+    mbstowcs(WBUF, INPUT, COLS);
+    mvaddnwstr(LINES - 1, plen, &WBUF[rover.edit_scroll], maxlen);
     mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
     color_set(DEFAULT, NULL);
     if (rover.edit_scroll)
