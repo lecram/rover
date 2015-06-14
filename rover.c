@@ -247,7 +247,8 @@ sync_signals()
         refresh();
         clear();
         rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-        SCROLL = MAX(ESEL - HEIGHT, 0);
+        if (HEIGHT < rover.nfiles && SCROLL + HEIGHT > rover.nfiles)
+            SCROLL = ESEL - HEIGHT;
         update_view();
         rover.pending_winch = 0;
     }
