@@ -1051,6 +1051,7 @@ main(int argc, char *argv[])
                 if (ok) {
                     adddir(INPUT);
                     cd(1);
+                    strcat(INPUT, "/");
                     try_to_sel(INPUT);
                     update_view();
                 } else
