@@ -953,7 +953,7 @@ main(int argc, char *argv[])
             oldsel = ESEL;
             oldscroll = SCROLL;
             start_line_edit("");
-            update_input(prompt, DEFAULT);
+            update_input(prompt, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int sel;
                 Color color = RED;
@@ -1000,10 +1000,10 @@ main(int argc, char *argv[])
             int ok = 0;
             char *prompt = "new file: ";
             start_line_edit("");
-            update_input(prompt, DEFAULT);
+            update_input(prompt, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
-                ok = 1;
+                ok = length;
                 for (i = 0; i < rover.nfiles; i++) {
                     if (
                         !strncmp(ENAME(i), INPUT, length) &&
@@ -1017,7 +1017,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (edit_stat == CONFIRM && strlen(INPUT)) {
+            if (edit_stat == CONFIRM) {
                 if (ok) {
                     addfile(INPUT);
                     cd(1);
@@ -1030,10 +1030,10 @@ main(int argc, char *argv[])
             int ok = 0;
             char *prompt = "new directory: ";
             start_line_edit("");
-            update_input(prompt, DEFAULT);
+            update_input(prompt, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
-                ok = 1;
+                ok = length;
                 for (i = 0; i < rover.nfiles; i++) {
                     if (
                         !strncmp(ENAME(i), INPUT, length) &&
@@ -1047,7 +1047,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (edit_stat == CONFIRM && strlen(INPUT)) {
+            if (edit_stat == CONFIRM) {
                 if (ok) {
                     adddir(INPUT);
                     cd(1);
@@ -1069,7 +1069,7 @@ main(int argc, char *argv[])
             update_input(prompt, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
-                ok = 1;
+                ok = length;
                 for (i = 0; i < rover.nfiles; i++)
                     if (
                         !strncmp(ENAME(i), INPUT, length) &&
@@ -1082,7 +1082,7 @@ main(int argc, char *argv[])
                 update_input(prompt, ok ? GREEN : RED);
             }
             clear_message();
-            if (edit_stat == CONFIRM && strlen(INPUT)) {
+            if (edit_stat == CONFIRM) {
                 if (isdir)
                     strcat(INPUT, "/");
                 if (ok) {
