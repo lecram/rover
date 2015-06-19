@@ -816,12 +816,12 @@ main(int argc, char *argv[])
             return 0;
         } else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
             printf(
-                "Usage: rover [(-s|--save-cwd) FILE] [DIR [DIR [DIR [...]]]]\n"
+                "Usage: rover [-s|--save-cwd FILE] [DIR [DIR [DIR [...]]]]\n"
                 "       Browse current directory or the ones specified.\n"
                 "       If FILE is given, write last visited path to it.\n\n"
-                "  or:  rover (-h|--help)\n"
+                "  or:  rover -h|--help\n"
                 "       Print this help message and exit.\n\n"
-                "  or:  rover (-v|--version)\n"
+                "  or:  rover -v|--version\n"
                 "       Print program version and exit.\n\n"
                 "See rover(1) for more information.\n\n"
                 "Rover homepage: <https://github.com/lecram/rover>.\n"
