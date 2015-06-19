@@ -826,9 +826,14 @@ main(int argc, char *argv[])
                 "Rover homepage: <https://github.com/lecram/rover>.\n"
             );
             return 0;
-        } else if (argc > 2 && !strcmp(argv[1], "--save-cwd")) {
-            save_cwd_file = fopen(argv[2], "w");
-            argc -= 2; argv += 2;
+        } else if (!strcmp(argv[1], "-s") || !strcmp(argv[1], "--save-cwd")) {
+            if (argc > 2) {
+                save_cwd_file = fopen(argv[2], "w");
+                argc -= 2; argv += 2;
+            } else {
+                fprintf(stderr, "error: missing argument to %s\n", argv[1]);
+                return 1;
+            }
         }
     }
     init_term();
