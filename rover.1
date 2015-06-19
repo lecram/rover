@@ -3,13 +3,20 @@
 rover \- file browser for the terminal
 .SH SYNOPSIS
 .B rover
-[\fIDIRECTORY\fR [\fIDIRECTORY\fR [\fIDIRECTORY\fR [...]]]]
+[\fB\-s\fR|\fB\-\-save\-cwd\fR \fIFILE\fR]
+[\fIDIR\fR [\fIDIR\fR [\fIDIR\fR [...]]]]
 .br
 .B rover
-[\fIOPTION\fR]
+\fB\-h\fR|\fB\-\-help\fR
+.br
+.B rover
+\fB\-v\fR|\fB\-\-version\fR
 .SH DESCRIPTION
 Browse current working directory or the ones specified.
 .SH OPTIONS
+.TP
+\fB\-s\fR, \fB\-\-save\-cwd\fR
+write last visited path to \fIFILE\fR before exiting
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 print help message and exit
