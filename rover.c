@@ -773,7 +773,7 @@ get_line_edit()
 
 /* Update line input on the screen. */
 static void
-update_input(char *prompt, Color color)
+update_input(const char *prompt, Color color)
 {
     int plen, ilen, maxlen;
 
