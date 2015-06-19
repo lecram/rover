@@ -808,7 +808,7 @@ main(int argc, char *argv[])
     const char *key;
     DIR *d;
     EditStat edit_stat;
-    const char *save_cwd_file = NULL;
+    FILE *save_cwd_file = NULL;
 
     if (argc >= 2) {
         if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -827,7 +827,7 @@ main(int argc, char *argv[])
             );
             return 0;
         } else if (argc > 2 && !strcmp(argv[1], "--save-cwd")) {
-            save_cwd_file = argv[2];
+            save_cwd_file = fopen(argv[2], "w");
             argc -= 2; argv += 2;
         }
     }
@@ -1156,9 +1156,8 @@ main(int argc, char *argv[])
     free_marks(&rover.marks);
     delwin(rover.window);
     if (save_cwd_file != NULL) {
-        FILE *fd = fopen(save_cwd_file, "w");
-        fputs(CWD, fd);
-        fclose(fd);
+        fputs(CWD, save_cwd_file);
+        fclose(save_cwd_file);
     }
     return 0;
 }
