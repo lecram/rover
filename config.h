@@ -53,7 +53,7 @@
 #define RV_PROMPT(S)    S ": "
 #define RVP_SEARCH      RV_PROMPT("search")
 #define RVP_NEW_FILE    RV_PROMPT("new file")
-#define RVP_NEW_DIR     RV_PROMPT("new directory")
+#define RVP_NEW_DIR     RV_PROMPT("new dir")
 #define RVP_RENAME      RV_PROMPT("rename")
 
 #define RV_JUMP         10
