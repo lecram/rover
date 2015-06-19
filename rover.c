@@ -948,12 +948,11 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll, length;
-            char *prompt = "search: ";
             if (!rover.nfiles) continue;
             oldsel = ESEL;
             oldscroll = SCROLL;
             start_line_edit("");
-            update_input(prompt, RED);
+            update_input(RVP_SEARCH, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int sel;
                 Color color = RED;
@@ -979,7 +978,7 @@ main(int argc, char *argv[])
                     SCROLL = oldscroll;
                 }
                 update_view();
-                update_input(prompt, color);
+                update_input(RVP_SEARCH, color);
             }
             if (edit_stat == CANCEL) {
                 ESEL = oldsel;
@@ -998,9 +997,8 @@ main(int argc, char *argv[])
             reload();
         } else if (!strcmp(key, RVK_NEW_FILE)) {
             int ok = 0;
-            char *prompt = "new file: ";
             start_line_edit("");
-            update_input(prompt, RED);
+            update_input(RVP_NEW_FILE, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = length;
@@ -1014,7 +1012,7 @@ main(int argc, char *argv[])
                         break;
                     }
                 }
-                update_input(prompt, ok ? GREEN : RED);
+                update_input(RVP_NEW_FILE, ok ? GREEN : RED);
             }
             clear_message();
             if (edit_stat == CONFIRM) {
@@ -1028,9 +1026,8 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_NEW_DIR)) {
             int ok = 0;
-            char *prompt = "new directory: ";
             start_line_edit("");
-            update_input(prompt, RED);
+            update_input(RVP_NEW_DIR, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = length;
@@ -1044,7 +1041,7 @@ main(int argc, char *argv[])
                         break;
                     }
                 }
-                update_input(prompt, ok ? GREEN : RED);
+                update_input(RVP_NEW_DIR, ok ? GREEN : RED);
             }
             clear_message();
             if (edit_stat == CONFIRM) {
@@ -1059,7 +1056,6 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
-            char *prompt = "rename: ";
             char *last;
             int isdir;
             strcpy(INPUT, ENAME(ESEL));
@@ -1067,7 +1063,7 @@ main(int argc, char *argv[])
             if ((isdir = *last == '/'))
                 *last = '\0';
             start_line_edit(INPUT);
-            update_input(prompt, RED);
+            update_input(RVP_RENAME, RED);
             while ((edit_stat = get_line_edit()) == CONTINUE) {
                 int length = strlen(INPUT);
                 ok = length;
@@ -1080,7 +1076,7 @@ main(int argc, char *argv[])
                         ok = 0;
                         break;
                     }
-                update_input(prompt, ok ? GREEN : RED);
+                update_input(RVP_RENAME, ok ? GREEN : RED);
             }
             clear_message();
             if (edit_stat == CONFIRM) {

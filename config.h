@@ -49,4 +49,11 @@
 #define RVS_SCROLLBAR   ACS_CKBOARD
 #define RVS_MARK        ACS_DIAMOND
 
+/* Prompt strings for line input. */
+#define RV_PROMPT(S)    S ": "
+#define RVP_SEARCH      RV_PROMPT("search")
+#define RVP_NEW_FILE    RV_PROMPT("new file")
+#define RVP_NEW_DIR     RV_PROMPT("new directory")
+#define RVP_RENAME      RV_PROMPT("rename")
+
 #define RV_JUMP         10
