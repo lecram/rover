@@ -1,5 +1,20 @@
 # Change Log
 
+## [0.3.0] - 2015-06-21
+
+### New Features
+
+- Unicode support.
+- New commands 'g' & 'G' to jump to top & bottom of listing.
+- New option `--save-cwd` to save last visited path to a file before exiting.
+- New helper script `rover.sh` to use Rover as "interactive cd".
+
+### Bug Fixes
+
+- Handle symbolic links to directories as such, rather than regular files.
+- Add missing make target for uninstalling Rover.
+- Fix unsafe behavior on terminal resizing.
+
 ## [0.2.0] - 2015-06-03
 
 ### New Features
