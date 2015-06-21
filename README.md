@@ -57,28 +57,18 @@ overwriting existing files while copying/moving marked entries. Please be
 careful to not accidentally lose your data.
 
 
-Dependencies
+Requirements
 ============
 
- Rover is supposed to run on any Unix-like system with a curses implementation.
-To build Rover, you need a C compiler and a curses library with the corresponding
-header file. A makefile is provided, but since all the code is in a single C
-source file, it shouldn't be hard to build Rover without make(1).
+ * Unix-like system;
+ * curses library.
 
 
 Configuration
 =============
 
- By default, rover is installed to `/usr/local/bin/rover`. To change this and other
-build options, such as the name of the curses library, please edit `Makefile`
-before executing `make` or specify the options during invocation. For example,
-to link against `libncurses.so` and install to `/opt/bin/rover`:
- ```
- $ make LDLIBS=-lncurses PREFIX=/opt install
- ```
-
- Rover runtime configuration (mostly key bindings and colors) can only be
-changed by editing the file `config.h` and rebuilding the binary.
+ Rover configuration (mostly key bindings and colors) can only be changed by
+editing the file `config.h` and rebuilding the binary.
 
  Note that the external programs executed by some Rover commands may be changed
 via the appropriate environment variables. For example, to specify an editor:
