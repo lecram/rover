@@ -73,12 +73,12 @@ typedef struct Edit {
 static struct Rover {
     int tab;
     int nfiles;
-    int scroll[10];
-    int esel[10];
-    uint8_t flags[10];
+    int scroll[RV_NUMTABS];
+    int esel[RV_NUMTABS];
+    uint8_t flags[RV_NUMTABS];
     Row *rows;
     WINDOW *window;
-    char cwd[10][PATH_MAX];
+    char cwd[RV_NUMTABS][PATH_MAX];
     Marks marks;
     Edit edit;
     int edit_scroll;
@@ -839,12 +839,12 @@ main(int argc, char *argv[])
     }
     init_term();
     rover.nfiles = 0;
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < RV_NUMTABS; i++) {
         rover.esel[i] = rover.scroll[i] = 0;
         rover.flags[i] = SHOW_FILES | SHOW_DIRS;
     }
     strcpy(rover.cwd[0], getenv("HOME"));
-    for (i = 1; i < argc && i < 10; i++) {
+    for (i = 1; i < argc && i < RV_NUMTABS; i++) {
         if ((d = opendir(argv[i]))) {
             realpath(argv[i], rover.cwd[i]);
             closedir(d);
@@ -852,9 +852,9 @@ main(int argc, char *argv[])
             strcpy(rover.cwd[i], rover.cwd[0]);
     }
     getcwd(rover.cwd[i], PATH_MAX);
-    for (i++; i < 10; i++)
+    for (i++; i < RV_NUMTABS; i++)
         strcpy(rover.cwd[i], rover.cwd[i-1]);
-    for (i = 0; i < 10; i++)
+    for (i = 0; i < RV_NUMTABS; i++)
         if (rover.cwd[i][strlen(rover.cwd[i]) - 1] != '/')
             strcat(rover.cwd[i], "/");
     rover.tab = 1;
@@ -866,7 +866,7 @@ main(int argc, char *argv[])
         key = keyname(ch);
         clear_message();
         if (!strcmp(key, RVK_QUIT)) break;
-        else if (ch >= '0' && ch <= '9') {
+        else if (ch >= '0' && ch <= RVK_LASTTABKEY) {
             rover.tab = ch - '0';
             cd(0);
         } else if (!strcmp(key, RVK_HELP)) {
