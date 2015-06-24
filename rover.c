@@ -371,12 +371,12 @@ update_view()
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ISLINK(j))
             wcolor_set(rover.window, RVC_LINK, NULL);
-        else if (ishidden)
-            wcolor_set(rover.window, RVC_HIDDEN, NULL);
-        else if (isdir)
-            wcolor_set(rover.window, RVC_DIR, NULL);
-        else
-            wcolor_set(rover.window, RVC_FILE, NULL);
+	else if (isdir)
+	    wcolor_set(rover.window, RVC_DIR, NULL);
+	else if (ishidden && !isdir)
+	    wcolor_set(rover.window, RVC_HIDDEN, NULL);
+	else
+	    wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir) {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;

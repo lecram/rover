@@ -35,15 +35,15 @@
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK. */
 #define RVC_CWD         GREEN
 #define RVC_STATUS      CYAN
-#define RVC_BORDER      BLUE
+#define RVC_BORDER      WHITE
 #define RVC_SCROLLBAR   CYAN
 #define RVC_LINK        CYAN
-#define RVC_FILE        DEFAULT
-#define RVC_DIR         DEFAULT
+#define RVC_FILE        WHITE
+#define RVC_DIR         BLUE
 #define RVC_HIDDEN      YELLOW
-#define RVC_PROMPT      DEFAULT
+#define RVC_PROMPT      RED
 #define RVC_TABNUM      DEFAULT
-#define RVC_MARKS       YELLOW
+#define RVC_MARKS       RED
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR   ACS_CKBOARD
