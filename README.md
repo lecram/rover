@@ -20,7 +20,7 @@ Quick Start
  $ make
  $ sudo make install
  ```
- Note: Debian users (at least those running testing/sid) might need to relink libncursesw to `/usr/lib` as `libncursesw.so` and additionally source the libtinfo library by adding `-ltinfo` to `LDLIBS`.
+ **Important note**: Debian users (at least those running testing/sid) might need to relink libncursesw to `/usr/lib` as `libncursesw.so` and additionally source the libtinfo library by adding `-ltinfo` to `LDLIBS`.
 
  Running:
  ```

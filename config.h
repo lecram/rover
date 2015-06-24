@@ -60,5 +60,5 @@
 
 /* Define the number of tabs and the keys they will be assigned to.
    Tab numbering always starts with '0' */
-#define RV_NUMTABS	2
-#define RVK_LASTTABKEY	'1'
+#define RV_NUMTABS	3
+#define RVK_LASTTABKEY	'2'
