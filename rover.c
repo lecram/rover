@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/types.h>  /* pid_t, ... */
 #include <stdio.h>
+#include <regex.h>      /* get regular expression support */
 #include <limits.h>     /* PATH_MAX */
 #include <locale.h>     /* setlocale(), LC_ALL */
 #include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
@@ -19,6 +20,11 @@
 #include <signal.h>     /* struct sigaction, sigaction() */
 #include <errno.h>
 #include <curses.h>
+
+typedef struct Assoc {
+    char *regex; /* Regex to match on filename */
+    char *bin;   /* Program */
+} Assoc;
 
 #include "config.h"
 
@@ -36,6 +42,9 @@ static char *ARGS[MAXARGS];
 /* Listing view parameters. */
 #define HEIGHT      (LINES-4)
 #define STATUSPOS   (COLS-16)
+
+/* New definition for length of a string */
+#define LEN(x) (sizeof(x) / sizeof(*(x)))
 
 /* Listing view flags. */
 #define SHOW_FILES      0x01u
@@ -73,12 +82,12 @@ typedef struct Edit {
 static struct Rover {
     int tab;
     int nfiles;
-    int scroll[10];
-    int esel[10];
-    uint8_t flags[10];
+    int scroll[RV_NUMTABS];
+    int esel[RV_NUMTABS];
+    uint8_t flags[RV_NUMTABS];
     Row *rows;
     WINDOW *window;
-    char cwd[10][PATH_MAX];
+    char cwd[RV_NUMTABS][PATH_MAX];
     Marks marks;
     Edit edit;
     int edit_scroll;
@@ -193,6 +202,25 @@ del_mark(Marks *marks, char *entry)
         marks->nentries--;
     } else
         mark_none(marks);
+}
+
+char *
+openwith(char *file) {
+    regex_t regex;
+    char *bin = NULL;
+    int i;
+
+    for (i = 0; i < LEN(assocs); i++) {
+        if (regcomp(&regex, assocs[i].regex,
+                    REG_NOSUB | REG_EXTENDED | REG_ICASE) != 0)
+            continue;
+        if (regexec(&regex, file, 0, NULL, 0) == 0) {
+            bin = assocs[i].bin;
+            break;
+        }
+    }
+
+    return bin;
 }
 
 static void
@@ -371,12 +399,12 @@ update_view()
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ISLINK(j))
             wcolor_set(rover.window, RVC_LINK, NULL);
-        else if (ishidden)
-            wcolor_set(rover.window, RVC_HIDDEN, NULL);
-        else if (isdir)
-            wcolor_set(rover.window, RVC_DIR, NULL);
-        else
-            wcolor_set(rover.window, RVC_FILE, NULL);
+	else if (isdir)
+	    wcolor_set(rover.window, RVC_DIR, NULL);
+	else if (ishidden && !isdir)
+	    wcolor_set(rover.window, RVC_HIDDEN, NULL);
+	else
+	    wcolor_set(rover.window, RVC_FILE, NULL);
         if (!isdir) {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
@@ -839,12 +867,12 @@ main(int argc, char *argv[])
     }
     init_term();
     rover.nfiles = 0;
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < RV_NUMTABS; i++) {
         rover.esel[i] = rover.scroll[i] = 0;
         rover.flags[i] = SHOW_FILES | SHOW_DIRS;
     }
     strcpy(rover.cwd[0], getenv("HOME"));
-    for (i = 1; i < argc && i < 10; i++) {
+    for (i = 1; i < argc && i < RV_NUMTABS; i++) {
         if ((d = opendir(argv[i]))) {
             realpath(argv[i], rover.cwd[i]);
             closedir(d);
@@ -852,9 +880,9 @@ main(int argc, char *argv[])
             strcpy(rover.cwd[i], rover.cwd[0]);
     }
     getcwd(rover.cwd[i], PATH_MAX);
-    for (i++; i < 10; i++)
+    for (i++; i < RV_NUMTABS; i++)
         strcpy(rover.cwd[i], rover.cwd[i-1]);
-    for (i = 0; i < 10; i++)
+    for (i = 0; i < RV_NUMTABS; i++)
         if (rover.cwd[i][strlen(rover.cwd[i]) - 1] != '/')
             strcat(rover.cwd[i], "/");
     rover.tab = 1;
@@ -866,8 +894,8 @@ main(int argc, char *argv[])
         key = keyname(ch);
         clear_message();
         if (!strcmp(key, RVK_QUIT)) break;
-        else if (ch >= '0' && ch <= '9') {
-            rover.tab = ch - '0';
+        else if (ch >= '1' && ch <= RVK_LASTTABKEY) {
+            rover.tab = ch - '1';
             cd(0);
         } else if (!strcmp(key, RVK_HELP)) {
             ARGS[0] = "man";
@@ -945,6 +973,16 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("EDITOR");
+            if (program) {
+                ARGS[0] = program;
+                ARGS[1] = ENAME(ESEL);
+                ARGS[2] = NULL;
+                spawn();
+                cd(0);
+            }
+        } else if (!strcmp(key, RVK_SPAWN)) {
+            if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
+            program = openwith(ENAME(ESEL));
             if (program) {
                 ARGS[0] = program;
                 ARGS[1] = ENAME(ESEL);

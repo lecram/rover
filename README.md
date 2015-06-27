@@ -20,6 +20,7 @@ Quick Start
  $ make
  $ sudo make install
  ```
+ **Important note**: Debian users (at least those running testing/sid) might need to relink libncursesw to `/usr/lib` as `libncursesw.so` and additionally source the libtinfo library by adding `-ltinfo` to `LDLIBS`.
 
  Running:
  ```
@@ -40,6 +41,7 @@ Quick Start
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
+       o - open the selected file with an associated application
        / - start incremental search (RETURN to finish)
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
@@ -75,9 +77,10 @@ via the appropriate environment variables. For example, to specify an editor:
  ```
  $ EDITOR=vi rover
  ```
+ You can also assign different applications to different file extentions in 
+`config.h`. To open a certain file with the application assigned to it press "o".
 
  Please read rover(1) for more information.
-
 
 Copying
 =======

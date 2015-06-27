@@ -1,4 +1,4 @@
-LDLIBS=-lncursesw
+LDLIBS=-lncursesw -ltinfo
 PREFIX=/usr/local
 MANPREFIX=$(PREFIX)/man
 INSTALL=install -D

@@ -17,6 +17,7 @@
 #define RVK_SHELL       "^M"
 #define RVK_VIEW        " "
 #define RVK_EDIT        "e"
+#define RVK_SPAWN       "o"
 #define RVK_SEARCH      "/"
 #define RVK_TG_FILES    "f"
 #define RVK_TG_DIRS     "d"
@@ -35,15 +36,15 @@
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK. */
 #define RVC_CWD         GREEN
 #define RVC_STATUS      CYAN
-#define RVC_BORDER      BLUE
+#define RVC_BORDER      WHITE
 #define RVC_SCROLLBAR   CYAN
 #define RVC_LINK        CYAN
-#define RVC_FILE        DEFAULT
-#define RVC_DIR         DEFAULT
+#define RVC_FILE        WHITE
+#define RVC_DIR         BLUE
 #define RVC_HIDDEN      YELLOW
-#define RVC_PROMPT      DEFAULT
+#define RVC_PROMPT      RED
 #define RVC_TABNUM      DEFAULT
-#define RVC_MARKS       YELLOW
+#define RVC_MARKS       RED
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR   ACS_CKBOARD
@@ -57,3 +58,18 @@
 #define RVP_RENAME      RV_PROMPT("rename")
 
 #define RV_JUMP         10
+
+/* Define the number of tabs and the keys they will be assigned to.
+   Tab numbering always starts with '1' */
+#define RV_NUMTABS	2
+#define RVK_LASTTABKEY	'2'
+
+/* Assign different file extentions to different programs */
+static Assoc assocs[] = {
+    { "\\.(pdf|djvu|ps|eps|ps.gz)$", "zathura" },
+    { "\\.(wav|mp3|flac|ogg|m4a|wma|ape|ac3)$", "vlc" },
+    { "\\.(avi|mp4|wmv|3pg|ogv|mkv|mpg|vob|flv|m2v|mov|webm|ts|m4v)$", "mpv" },
+    { "\\.(bmp|jpg|jpeg|png|tga|gif|xpm)$", "sxiv" },
+    { "\\.torrent$", "rtorrent" },
+    { "\\.(odt|doc|docx|xls|xlsx|odp|ppt|pptx)$", "libreoffice" },
+};
