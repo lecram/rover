@@ -23,7 +23,7 @@
 #include "config.h"
 
 /* String buffers. */
-#define BUFLEN  256
+#define BUFLEN  PATH_MAX
 static char BUF1[BUFLEN];
 static char BUF2[BUFLEN];
 static char INPUT[BUFLEN];
