@@ -70,20 +70,25 @@ typedef struct Edit {
     int left, right;
 } Edit;
 
-/* Global state. Some basic info is allocated for ten tabs. */
+/* Each tab only stores the following information. */
+typedef struct Tab {
+    int scroll;
+    int esel;
+    uint8_t flags;
+    char cwd[PATH_MAX];
+} Tab;
+
+/* Global state. */
 static struct Rover {
     int tab;
     int nfiles;
-    int scroll[10];
-    int esel[10];
-    uint8_t flags[10];
     Row *rows;
     WINDOW *window;
-    char cwd[10][PATH_MAX];
     Marks marks;
     Edit edit;
     int edit_scroll;
     volatile sig_atomic_t pending_winch;
+    Tab tabs[10];
 } rover;
 
 /* Macros for accessing global state. */
@@ -92,10 +97,10 @@ static struct Rover {
 #define EMODE(I)    rover.rows[I].mode
 #define ISLINK(I)   rover.rows[I].islink
 #define MARKED(I)   rover.rows[I].marked
-#define SCROLL      rover.scroll[rover.tab]
-#define ESEL        rover.esel[rover.tab]
-#define FLAGS       rover.flags[rover.tab]
-#define CWD         rover.cwd[rover.tab]
+#define SCROLL      rover.tabs[rover.tab].scroll
+#define ESEL        rover.tabs[rover.tab].esel
+#define FLAGS       rover.tabs[rover.tab].flags
+#define CWD         rover.tabs[rover.tab].cwd
 
 /* Helpers. */
 #define MIN(A, B)   ((A) < (B) ? (A) : (B))
@@ -841,23 +846,23 @@ main(int argc, char *argv[])
     init_term();
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
-        rover.esel[i] = rover.scroll[i] = 0;
-        rover.flags[i] = SHOW_FILES | SHOW_DIRS;
+        rover.tabs[i].esel = rover.tabs[i].scroll = 0;
+        rover.tabs[i].flags = SHOW_FILES | SHOW_DIRS;
     }
-    strcpy(rover.cwd[0], getenv("HOME"));
+    strcpy(rover.tabs[0].cwd, getenv("HOME"));
     for (i = 1; i < argc && i < 10; i++) {
         if ((d = opendir(argv[i]))) {
-            realpath(argv[i], rover.cwd[i]);
+            realpath(argv[i], rover.tabs[i].cwd);
             closedir(d);
         } else
-            strcpy(rover.cwd[i], rover.cwd[0]);
+            strcpy(rover.tabs[i].cwd, rover.tabs[0].cwd);
     }
-    getcwd(rover.cwd[i], PATH_MAX);
+    getcwd(rover.tabs[i].cwd, PATH_MAX);
     for (i++; i < 10; i++)
-        strcpy(rover.cwd[i], rover.cwd[i-1]);
+        strcpy(rover.tabs[i].cwd, rover.tabs[i-1].cwd);
     for (i = 0; i < 10; i++)
-        if (rover.cwd[i][strlen(rover.cwd[i]) - 1] != '/')
-            strcat(rover.cwd[i], "/");
+        if (rover.tabs[i].cwd[strlen(rover.tabs[i].cwd) - 1] != '/')
+            strcat(rover.tabs[i].cwd, "/");
     rover.tab = 1;
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     init_marks(&rover.marks);
