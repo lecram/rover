@@ -909,6 +909,10 @@ main(int argc, char *argv[])
             update_view();
         } else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
+            if (chdir(ENAME(ESEL)) == -1) {
+                message("Access denied.", RED);
+                continue;
+            }
             strcat(CWD, ENAME(ESEL));
             cd(1);
         } else if (!strcmp(key, RVK_CD_UP)) {
