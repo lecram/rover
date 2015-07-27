@@ -36,14 +36,14 @@ Quick Start
        l - enter selected directory
        h - go to parent directory
        H - go to $HOME directory
-       R - refresh directory listing
+       r - refresh directory listing
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
        / - start incremental search (RETURN to finish)
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
-       r - rename selected file or directory
+       R - rename selected file or directory
        D - delete selected file or (empty) directory
        m - toggle mark on the selected entry
        M - toggle mark on all visible entries
