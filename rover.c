@@ -1124,7 +1124,7 @@ main(int argc, char *argv[])
                     int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
                     reload();
                     if (ret)
-                        message(RED, "Could not delete entry.");
+                        message(RED, "Could not delete \"%s\".", ENAME(ESEL));
                 } else
                     clear_message();
             } else
