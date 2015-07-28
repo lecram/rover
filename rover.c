@@ -916,7 +916,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
             if (chdir(ENAME(ESEL)) == -1) {
-                message(RED, "Access denied.");
+                message(RED, "Cannot access \"%s\".", ENAME(ESEL));
                 continue;
             }
             strcat(CWD, ENAME(ESEL));
@@ -1044,7 +1044,7 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message(RED, "File already exists.");
+                    message(RED, "\"%s\" already exists.", INPUT);
             }
         } else if (!strcmp(key, RVK_NEW_DIR)) {
             int ok = 0;
@@ -1074,7 +1074,7 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message(RED, "File already exists.");
+                    message(RED, "\"%s\" already exists.", INPUT);
             }
         } else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
@@ -1113,11 +1113,11 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message(RED, "File already exists.");
+                    message(RED, "\"%s\" already exists.", INPUT);
             }
         } else if (!strcmp(key, RVK_DELETE)) {
             if (rover.nfiles) {
-                message(YELLOW, "Delete selected entry? (Y to confirm)");
+                message(YELLOW, "Delete \"%s\"? (Y to confirm)", ENAME(ESEL));
                 if (rover_getch() == 'Y') {
                     const char *name = ENAME(ESEL);
                     int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
@@ -1154,7 +1154,7 @@ main(int argc, char *argv[])
             update_view();
         } else if (!strcmp(key, RVK_MARK_DELETE)) {
             if (rover.marks.nentries) {
-                message(YELLOW, "Delete marked entries? (Y to confirm)");
+                message(YELLOW, "Delete all marked entries? (Y to confirm)");
                 if (rover_getch() == 'Y')
                     process_marked(NULL, delfile, deldir, "Deleting", "Deleted");
                 else
