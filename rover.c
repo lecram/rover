@@ -441,7 +441,7 @@ message(Color color, char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    vsprintf(BUF1, fmt, args);
+    vsnprintf(BUF1, BUFLEN, fmt, args);
     va_end(args);
     len = strlen(BUF1);
     pos = (STATUSPOS - len) / 2;
