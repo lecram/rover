@@ -635,13 +635,14 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
    All marked entries that are directories will be recursively processed.
    See process_dir() for details on the parameters. */
 static void
-process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
+process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
+               const char *msg_doing, const char *msg_done)
 {
     int i, ret;
     char path[PATH_MAX];
 
     clear_message();
-    message(CYAN, "Processing...");
+    message(CYAN, "%s...", msg_doing);
     refresh();
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
@@ -658,9 +659,9 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
         }
     reload();
     if (!rover.marks.nentries)
-        message(GREEN, "Done.");
+        message(GREEN, "%s all marked entries.", msg_done);
     else
-        message(RED, "Some errors occured.");
+        message(RED, "Some errors occured while %s.", msg_doing);
 }
 
 /* Wrappers for file operations. */
@@ -1155,19 +1156,19 @@ main(int argc, char *argv[])
             if (rover.marks.nentries) {
                 message(YELLOW, "Delete marked entries? (Y to confirm)");
                 if (rover_getch() == 'Y')
-                    process_marked(NULL, delfile, deldir);
+                    process_marked(NULL, delfile, deldir, "Deleting", "Deleted");
                 else
                     clear_message();
             } else
                 message(RED, "No entries marked for deletion.");
         } else if (!strcmp(key, RVK_MARK_COPY)) {
             if (rover.marks.nentries)
-                process_marked(adddir, cpyfile, NULL);
+                process_marked(adddir, cpyfile, NULL, "Copying", "Copied");
             else
                 message(RED, "No entries marked for copying.");
         } else if (!strcmp(key, RVK_MARK_MOVE)) {
             if (rover.marks.nentries)
-                process_marked(adddir, movfile, deldir);
+                process_marked(adddir, movfile, deldir, "Moving", "Moved");
             else
                 message(RED, "No entries marked for moving.");
         }
