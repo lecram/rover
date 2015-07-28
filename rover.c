@@ -19,6 +19,7 @@
 #include <sys/wait.h>   /* waitpid() */
 #include <signal.h>     /* struct sigaction, sigaction() */
 #include <errno.h>
+#include <stdarg.h>
 #include <curses.h>
 
 #include "config.h"
@@ -434,15 +435,19 @@ update_view()
 
 /* Show a message on the status bar. */
 static void
-message(const char *msg, Color color)
+message(Color color, char *fmt, ...)
 {
     int len, pos;
+    va_list args;
 
-    len = strlen(msg);
+    va_start(args, fmt);
+    vsprintf(BUF1, fmt, args);
+    va_end(args);
+    len = strlen(BUF1);
     pos = (STATUSPOS - len) / 2;
     attr_on(A_BOLD, NULL);
     color_set(color, NULL);
-    mvaddstr(LINES - 1, pos, msg);
+    mvaddstr(LINES - 1, pos, BUF1);
     color_set(DEFAULT, NULL);
     attr_off(A_BOLD, NULL);
 }
@@ -531,7 +536,7 @@ cd(int reset)
 {
     int i, j;
 
-    message("Loading...", CYAN);
+    message(CYAN, "Loading...");
     refresh();
     if (reset) ESEL = SCROLL = 0;
     chdir(CWD);
@@ -636,7 +641,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
     char path[PATH_MAX];
 
     clear_message();
-    message("Processing...", CYAN);
+    message(CYAN, "Processing...");
     refresh();
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
@@ -653,9 +658,9 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos)
         }
     reload();
     if (!rover.marks.nentries)
-        message("Done.", GREEN);
+        message(GREEN, "Done.");
     else
-        message("Some errors occured.", RED);
+        message(RED, "Some errors occured.");
 }
 
 /* Wrappers for file operations. */
@@ -910,7 +915,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_CD_DOWN)) {
             if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
             if (chdir(ENAME(ESEL)) == -1) {
-                message("Access denied.", RED);
+                message(RED, "Access denied.");
                 continue;
             }
             strcat(CWD, ENAME(ESEL));
@@ -1038,7 +1043,7 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message("File already exists.", RED);
+                    message(RED, "File already exists.");
             }
         } else if (!strcmp(key, RVK_NEW_DIR)) {
             int ok = 0;
@@ -1068,7 +1073,7 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message("File already exists.", RED);
+                    message(RED, "File already exists.");
             }
         } else if (!strcmp(key, RVK_RENAME)) {
             int ok = 0;
@@ -1107,21 +1112,21 @@ main(int argc, char *argv[])
                     try_to_sel(INPUT);
                     update_view();
                 } else
-                    message("File already exists.", RED);
+                    message(RED, "File already exists.");
             }
         } else if (!strcmp(key, RVK_DELETE)) {
             if (rover.nfiles) {
-                message("Delete selected entry? (Y to confirm)", YELLOW);
+                message(YELLOW, "Delete selected entry? (Y to confirm)");
                 if (rover_getch() == 'Y') {
                     const char *name = ENAME(ESEL);
                     int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
                     reload();
                     if (ret)
-                        message("Could not delete entry.", RED);
+                        message(RED, "Could not delete entry.");
                 } else
                     clear_message();
             } else
-                  message("No entry selected for deletion.", RED);
+                  message(RED, "No entry selected for deletion.");
         } else if (!strcmp(key, RVK_TG_MARK)) {
             if (MARKED(ESEL))
                 del_mark(&rover.marks, ENAME(ESEL));
@@ -1148,23 +1153,23 @@ main(int argc, char *argv[])
             update_view();
         } else if (!strcmp(key, RVK_MARK_DELETE)) {
             if (rover.marks.nentries) {
-                message("Delete marked entries? (Y to confirm)", YELLOW);
+                message(YELLOW, "Delete marked entries? (Y to confirm)");
                 if (rover_getch() == 'Y')
                     process_marked(NULL, delfile, deldir);
                 else
                     clear_message();
             } else
-                message("No entries marked for deletion.", RED);
+                message(RED, "No entries marked for deletion.");
         } else if (!strcmp(key, RVK_MARK_COPY)) {
             if (rover.marks.nentries)
                 process_marked(adddir, cpyfile, NULL);
             else
-                message("No entries marked for copying.", RED);
+                message(RED, "No entries marked for copying.");
         } else if (!strcmp(key, RVK_MARK_MOVE)) {
             if (rover.marks.nentries)
                 process_marked(adddir, movfile, deldir);
             else
-                message("No entries marked for moving.", RED);
+                message(RED, "No entries marked for moving.");
         }
     }
     if (rover.nfiles)
