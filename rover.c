@@ -367,6 +367,7 @@ update_view()
     mvaddnwstr(0, 0, WBUF, COLS - 4 - numsize);
     wcolor_set(rover.window, RVC_BORDER, NULL);
     wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+    ESEL = MIN(ESEL, rover.nfiles - 1);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
     SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
