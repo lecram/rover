@@ -57,3 +57,6 @@
 #define RVP_RENAME      RV_PROMPT("rename")
 
 #define RV_JUMP         10
+
+/* Optional macro to be executed when a batch operation finishes. */
+#define RV_ALERT()      beep()

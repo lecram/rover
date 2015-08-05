@@ -663,6 +663,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
         message(GREEN, "%s all marked entries.", msg_done);
     else
         message(RED, "Some errors occured while %s.", msg_doing);
+    RV_ALERT();
 }
 
 /* Wrappers for file operations. */
