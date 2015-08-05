@@ -56,6 +56,7 @@
 #define RVP_NEW_DIR     RV_PROMPT("new dir")
 #define RVP_RENAME      RV_PROMPT("rename")
 
+/* Number of entries to jump on RVK_JUMP_DOWN and RVK_JUMP_UP. */
 #define RV_JUMP         10
 
 /* Optional macro to be executed when a batch operation finishes. */
