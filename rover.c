@@ -79,6 +79,12 @@ typedef struct Tab {
     char cwd[PATH_MAX];
 } Tab;
 
+typedef struct Prog {
+    off_t partial;
+    off_t total;
+    const char *msg;
+} Prog;
+
 /* Global state. */
 static struct Rover {
     int tab;
@@ -89,6 +95,7 @@ static struct Rover {
     Edit edit;
     int edit_scroll;
     volatile sig_atomic_t pending_winch;
+    Prog prog;
     Tab tabs[10];
 } rover;
 
@@ -590,6 +597,57 @@ reload()
         cd(1);
 }
 
+static off_t
+count_dir(const char *path)
+{
+    DIR *dp;
+    struct dirent *ep;
+    struct stat statbuf;
+    char subpath[PATH_MAX];
+    off_t total;
+
+    if(!(dp = opendir(path))) return 0;
+    total = 0;
+    while ((ep = readdir(dp))) {
+        if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+            continue;
+        snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
+        lstat(subpath, &statbuf);
+        if (S_ISDIR(statbuf.st_mode)) {
+            strcat(subpath, "/");
+            total += count_dir(subpath);
+        } else
+            total += statbuf.st_size;
+    }
+    closedir(dp);
+    return total;
+}
+
+static off_t
+count_marked()
+{
+    int i;
+    char *entry;
+    off_t total;
+    struct stat statbuf;
+
+    total = 0;
+    chdir(rover.marks.dirpath);
+    for (i = 0; i < rover.marks.bulk; i++) {
+        entry = rover.marks.entries[i];
+        if (entry) {
+            if (ISDIR(entry)) {
+                total += count_dir(entry);
+            } else {
+                lstat(entry, &statbuf);
+                total += statbuf.st_size;
+            }
+        }
+    }
+    chdir(CWD);
+    return total;
+}
+
 /* Recursively process a source directory using CWD as destination root.
    For each node (i.e. directory), do the following:
     1. call pre(destination);
@@ -645,6 +703,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
     clear_message();
     message(CYAN, "%s...", msg_doing);
     refresh();
+    rover.prog = (Prog) {count_marked(), 0, msg_doing};
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             ret = 0;
@@ -666,8 +725,27 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
     RV_ALERT();
 }
 
+static void
+update_progress(off_t delta)
+{
+    int percent;
+
+    rover.prog.partial += delta;
+    percent = (int) (rover.prog.partial * 100 / rover.prog.total);
+    message(CYAN, "%s...%d%%", rover.prog.msg, percent);
+    refresh();
+}
+
 /* Wrappers for file operations. */
-static PROCESS delfile = unlink;
+static int delfile(const char *path) {
+    int ret;
+    struct stat st;
+
+    ret = lstat(path, &st);
+    if (ret < 0) return ret;
+    update_progress(st.st_size);
+    return unlink(path);
+}
 static PROCESS deldir = rmdir;
 static int addfile(const char *path) {
     /* Using creat(2) because mknod(2) doesn't seem to be portable. */
@@ -694,6 +772,7 @@ static int cpyfile(const char *srcpath) {
     if (ret < 0) return ret;
     while ((size = read(src, buf, BUFSIZ)) > 0) {
         write(dst, buf, size);
+        update_progress(size);
         sync_signals();
     }
     close(src);
@@ -710,15 +789,20 @@ static int adddir(const char *path) {
 }
 static int movfile(const char *srcpath) {
     int ret;
+    struct stat st;
     char dstpath[PATH_MAX];
 
     strcpy(dstpath, CWD);
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
     ret = rename(srcpath, dstpath);
-    if (ret < 0 && errno == EXDEV) {
+    if (ret == 0) {
+        ret = lstat(srcpath, &st);
+        if (ret < 0) return ret;
+        update_progress(st.st_size);
+    } else if (errno == EXDEV) {
         ret = cpyfile(srcpath);
         if (ret < 0) return ret;
-        ret = delfile(srcpath);
+        ret = unlink(srcpath);
     }
     return ret;
 }
