@@ -703,7 +703,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
     clear_message();
     message(CYAN, "%s...", msg_doing);
     refresh();
-    rover.prog = (Prog) {count_marked(), 0, msg_doing};
+    rover.prog = (Prog) {0, count_marked(), msg_doing};
     for (i = 0; i < rover.marks.bulk; i++)
         if (rover.marks.entries[i]) {
             ret = 0;
@@ -717,6 +717,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
                 ret = proc(path);
             if (!ret) del_mark(&rover.marks, rover.marks.entries[i]);
         }
+    rover.prog.total = 0;
     reload();
     if (!rover.marks.nentries)
         message(GREEN, "%s all marked entries.", msg_done);
@@ -730,6 +731,7 @@ update_progress(off_t delta)
 {
     int percent;
 
+    if (!rover.prog.total) return;
     rover.prog.partial += delta;
     percent = (int) (rover.prog.partial * 100 / rover.prog.total);
     message(CYAN, "%s...%d%%", rover.prog.msg, percent);
