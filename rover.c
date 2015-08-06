@@ -698,25 +698,28 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
                const char *msg_doing, const char *msg_done)
 {
     int i, ret;
+    char *entry;
     char path[PATH_MAX];
 
     clear_message();
     message(CYAN, "%s...", msg_doing);
     refresh();
     rover.prog = (Prog) {0, count_marked(), msg_doing};
-    for (i = 0; i < rover.marks.bulk; i++)
-        if (rover.marks.entries[i]) {
+    for (i = 0; i < rover.marks.bulk; i++) {
+        entry = rover.marks.entries[i];
+        if (entry) {
             ret = 0;
-            snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, rover.marks.entries[i]);
-            if (ISDIR(rover.marks.entries[i])) {
+            snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, entry);
+            if (ISDIR(entry)) {
                 if (!strncmp(path, CWD, strlen(path)))
                     ret = -1;
                 else
                     ret = process_dir(pre, proc, pos, path);
             } else
                 ret = proc(path);
-            if (!ret) del_mark(&rover.marks, rover.marks.entries[i]);
+            if (!ret) del_mark(&rover.marks, entry);
         }
+    }
     rover.prog.total = 0;
     reload();
     if (!rover.marks.nentries)
