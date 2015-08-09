@@ -377,7 +377,10 @@ update_view()
     ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
-    SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
+    if (rover.nfiles > HEIGHT)
+        SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
+    else
+        SCROLL = 0;
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = ENAME(j)[0] == '.';
