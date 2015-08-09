@@ -717,7 +717,10 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
                     ret = process_dir(pre, proc, pos, path);
             } else
                 ret = proc(path);
-            if (!ret) del_mark(&rover.marks, entry);
+            if (!ret) {
+                del_mark(&rover.marks, entry);
+                reload();
+            }
         }
     }
     rover.prog.total = 0;
