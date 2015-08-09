@@ -38,9 +38,13 @@
 #define RVC_BORDER      BLUE
 #define RVC_SCROLLBAR   CYAN
 #define RVC_LINK        CYAN
-#define RVC_FILE        DEFAULT
-#define RVC_DIR         DEFAULT
 #define RVC_HIDDEN      YELLOW
+#define RVC_REG         DEFAULT
+#define RVC_DIR         DEFAULT
+#define RVC_CHR         MAGENTA
+#define RVC_BLK         MAGENTA
+#define RVC_FIFO        BLUE
+#define RVC_SOCK        MAGENTA
 #define RVC_PROMPT      DEFAULT
 #define RVC_TABNUM      DEFAULT
 #define RVC_MARKS       YELLOW

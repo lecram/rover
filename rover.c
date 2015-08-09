@@ -355,7 +355,7 @@ update_view()
 {
     int i, j;
     int numsize;
-    int ishidden, isdir;
+    int ishidden;
     int marking;
 
     mvhline(0, 0, ' ', COLS);
@@ -385,18 +385,25 @@ update_view()
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
         ishidden = ENAME(j)[0] == '.';
-        isdir = S_ISDIR(EMODE(j));
         if (j == ESEL)
             wattr_on(rover.window, A_REVERSE, NULL);
         if (ISLINK(j))
             wcolor_set(rover.window, RVC_LINK, NULL);
         else if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
-        else if (isdir)
+        else if (S_ISREG(EMODE(j)))
+            wcolor_set(rover.window, RVC_REG, NULL);
+        else if (S_ISDIR(EMODE(j)))
             wcolor_set(rover.window, RVC_DIR, NULL);
-        else
-            wcolor_set(rover.window, RVC_FILE, NULL);
-        if (!isdir) {
+        else if (S_ISCHR(EMODE(j)))
+            wcolor_set(rover.window, RVC_CHR, NULL);
+        else if (S_ISBLK(EMODE(j)))
+            wcolor_set(rover.window, RVC_BLK, NULL);
+        else if (S_ISFIFO(EMODE(j)))
+            wcolor_set(rover.window, RVC_FIFO, NULL);
+        else if (S_ISSOCK(EMODE(j)))
+            wcolor_set(rover.window, RVC_SOCK, NULL);
+        if (!S_ISDIR(EMODE(j))) {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
             int length = mbstowcs(NULL, ENAME(j), 0);
