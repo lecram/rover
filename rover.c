@@ -377,9 +377,10 @@ update_view()
     ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
     /* Selection might not be visible, due to cursor wrapping or window
        shrinking. In that case, the scroll must be moved to make it visible. */
-    if (rover.nfiles > HEIGHT)
+    if (rover.nfiles > HEIGHT) {
         SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
-    else
+        SCROLL = MIN(SCROLL, rover.nfiles - HEIGHT);
+    } else
         SCROLL = 0;
     marking = !strcmp(CWD, rover.marks.dirpath);
     for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
@@ -581,10 +582,6 @@ try_to_sel(const char *target)
             ESEL++;
     while ((ESEL+1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
         ESEL++;
-    if (rover.nfiles > HEIGHT) {
-        SCROLL = ESEL - HEIGHT / 2;
-        SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
-    }
 }
 
 /* Reload CWD, but try to keep selection. */
@@ -593,7 +590,7 @@ reload()
 {
     if (rover.nfiles) {
         strcpy(INPUT, ENAME(ESEL));
-        cd(1);
+        cd(0);
         try_to_sel(INPUT);
         update_view();
     } else
@@ -1027,6 +1024,8 @@ main(int argc, char *argv[])
             dirname[strlen(dirname)] = '/';
             try_to_sel(dirname);
             dirname[0] = '\0';
+            if (rover.nfiles > HEIGHT)
+                SCROLL = ESEL - HEIGHT / 2;
             update_view();
         } else if (!strcmp(key, RVK_HOME)) {
             strcpy(CWD, getenv("HOME"));
