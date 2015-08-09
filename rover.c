@@ -379,7 +379,7 @@ update_view()
        shrinking. In that case, the scroll must be moved to make it visible. */
     if (rover.nfiles > HEIGHT) {
         SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
-        SCROLL = MIN(SCROLL, rover.nfiles - HEIGHT);
+        SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
     } else
         SCROLL = 0;
     marking = !strcmp(CWD, rover.marks.dirpath);
