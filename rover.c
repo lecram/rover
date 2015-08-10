@@ -811,7 +811,7 @@ static int movfile(const char *srcpath) {
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
     ret = rename(srcpath, dstpath);
     if (ret == 0) {
-        ret = lstat(srcpath, &st);
+        ret = lstat(dstpath, &st);
         if (ret < 0) return ret;
         update_progress(st.st_size);
     } else if (errno == EXDEV) {
