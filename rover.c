@@ -391,9 +391,12 @@ update_view()
             wcolor_set(rover.window, RVC_LINK, NULL);
         else if (ishidden)
             wcolor_set(rover.window, RVC_HIDDEN, NULL);
-        else if (S_ISREG(EMODE(j)))
-            wcolor_set(rover.window, RVC_REG, NULL);
-        else if (S_ISDIR(EMODE(j)))
+        else if (S_ISREG(EMODE(j))) {
+            if (EMODE(j) & (S_IXUSR | S_IXGRP | S_IXOTH))
+                wcolor_set(rover.window, RVC_EXEC, NULL);
+            else
+                wcolor_set(rover.window, RVC_REG, NULL);
+        } else if (S_ISDIR(EMODE(j)))
             wcolor_set(rover.window, RVC_DIR, NULL);
         else if (S_ISCHR(EMODE(j)))
             wcolor_set(rover.window, RVC_CHR, NULL);

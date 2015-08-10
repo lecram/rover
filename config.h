@@ -39,6 +39,7 @@
 #define RVC_SCROLLBAR   CYAN
 #define RVC_LINK        CYAN
 #define RVC_HIDDEN      YELLOW
+#define RVC_EXEC        GREEN
 #define RVC_REG         DEFAULT
 #define RVC_DIR         DEFAULT
 #define RVC_CHR         MAGENTA
