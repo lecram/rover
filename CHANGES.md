@@ -1,5 +1,33 @@
 # Change Log
 
+## [0.4.0] - 2015-08-21
+
+### Important changes in default configuration
+
+- The key for "delete selected file or (empty) directory" is now 'D'.
+  - The old key ('x') was too similar to "delete all marked entries" ('X').
+- The keys for "refresh listing" & "rename" were swapped to 'r' & 'R', resp.
+  - This is more consistent, keeping file operations on uppercase keys.
+
+### New Features
+
+- Considerably improved status messages.
+  - "Moving..." (or similar) instead of "Processing...".
+  - ""foo.txt" already exists" (or similar) instead if "File already exists.".
+- Show progress during batch processing (e.g. "Moving...63%").
+- Update directory listing as it is affected by batch operations.
+- Add optional alert to inform that a batch operation has finished.
+- Support color customization of other kinds of files.
+  - Each file type described in stat(2) can now have its own color.
+  - Executable files can also have their own color.
+
+### Bug Fixes
+
+- Check if directory is accessible before changing the current path.
+- Fix crash on long path names.
+- Show long status messages partially, instead of nothing at all.
+- Fix some scrollbar-related issues.
+
 ## [0.3.0] - 2015-06-21
 
 ### New Features
