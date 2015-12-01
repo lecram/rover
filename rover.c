@@ -927,10 +927,12 @@ main(int argc, char *argv[])
 {
     int i, ch;
     char *program;
+    char *entry;
     const char *key;
     DIR *d;
     EditStat edit_stat;
     FILE *save_cwd_file = NULL;
+    FILE *save_marks_file = NULL;
 
     if (argc >= 2) {
         if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -938,7 +940,10 @@ main(int argc, char *argv[])
             return 0;
         } else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
             printf(
-                "Usage: rover [-s|--save-cwd FILE] [DIR [DIR [DIR [...]]]]\n"
+                "Usage: rover"
+                " [-d|--save-cwd FILE]"
+                " [-m|--save-marks FILE]"
+                " [DIR [DIR [DIR [...]]]]\n"
                 "       Browse current directory or the ones specified.\n"
                 "       If FILE is given, write last visited path to it.\n\n"
                 "  or:  rover -h|--help\n"
@@ -949,9 +954,17 @@ main(int argc, char *argv[])
                 "Rover homepage: <https://github.com/lecram/rover>.\n"
             );
             return 0;
-        } else if (!strcmp(argv[1], "-s") || !strcmp(argv[1], "--save-cwd")) {
+        } else if (!strcmp(argv[1], "-d") || !strcmp(argv[1], "--save-cwd")) {
             if (argc > 2) {
                 save_cwd_file = fopen(argv[2], "w");
+                argc -= 2; argv += 2;
+            } else {
+                fprintf(stderr, "error: missing argument to %s\n", argv[1]);
+                return 1;
+            }
+        } else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--save-marks")) {
+            if (argc > 2) {
+                save_marks_file = fopen(argv[2], "a");
                 argc -= 2; argv += 2;
             } else {
                 fprintf(stderr, "error: missing argument to %s\n", argv[1]);
@@ -1287,11 +1300,19 @@ main(int argc, char *argv[])
     }
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
-    free_marks(&rover.marks);
     delwin(rover.window);
     if (save_cwd_file != NULL) {
         fputs(CWD, save_cwd_file);
         fclose(save_cwd_file);
     }
+    if (save_marks_file != NULL) {
+        for (i = 0; i < rover.marks.bulk; i++) {
+            entry = rover.marks.entries[i];
+            if (entry)
+                fprintf(save_marks_file, "%s%s\n", rover.marks.dirpath, entry);
+        }
+        fclose(save_marks_file);
+    }
+    free_marks(&rover.marks);
     return 0;
 }
