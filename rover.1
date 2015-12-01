@@ -31,9 +31,9 @@ print program version and exit
 .SH CONCEPTS
 .SS TABS
 .PP
-Rover is operated via a tabbed interface. At any given moment, one (and only
-one) tab is visible on the screen. There are always ten tabs in total, numbered
-from 0 to 9. The number of the tab currently visible is shown on the top right
+Rover is operated via a tabbed interface. There are always ten tabs in total,
+numbered from 0 to 9. At any given moment, one (and only one) tab is visible on
+the screen. The number of the tab currently visible is shown on the top right
 corner of the screen. To view a different tab, one just needs to press its
 corresponding number. Each tab has a \fBcurrent working directory\fR (\fBCWD\fR)
 associated to it, also shown on the top of the screen. The \fBCWD\fR of the
@@ -42,15 +42,15 @@ visible tab is changed as the user navigates through the file system.
 It's also possible to set the \fBCWD\fR of tabs at Rover start-up by passing the
 desired paths as command-line arguments. The tab number 0 always starts at
 \fB$HOME\fR. If more than nine directories are specified, only the first nine
-are used for tabs 1\-9 and the rest is ignored. Tabs for which an invalid path
-were assigned will also start at \fB$HOME\fR. Remaining tabs not specified on
+are used for tabs 1\-9 and the rest are ignored. Tabs for which an invalid path
+was assigned will also start at \fB$HOME\fR. Remaining tabs not specified on
 the command line start at the current working directory of the parent process.
 .SS ENTRIES
 .PP
 An \fBentry\fR is anything that may be found inside a directory in some file
 system. It may be a file, a directory, a link, a socket, a FIFO, etc. In its
-most basic usage, Rover will gather the list of entries inside the \fBCWD\fR
-and present them on the screen, one per line.
+most basic usage, Rover will gather a list of entries inside the \fBCWD\fR
+and present it on the screen.
 .PP
 There is always one (and only one) highlighted entry visible. This is both the
 \fBcursor\fR location and the current \fBselection\fR. The highlighting moves as
@@ -68,7 +68,7 @@ once. For such purpose, Rover allows an arbitrary number of entries to be
 marked, with the limitation that they must be all in the same directory.
 .PP
 Unlike simple selection, the effect of marks is not constrained by visibility.
-This is so one can mark a number of entries in some directory, navigate to other
+This is so one can mark a number of entries in some directory, navigate to another
 directory, and then finally issue a copy or move command. Moreover, marks are
 shared over all tabs. This allows one to mark some entries in one tab that is
 pointed to the "source" directory of the operation and then issue the command on
@@ -192,13 +192,13 @@ typing something like \fBgrep abc "$RVSEL"\fR.
 If you want to change Rover key bindings or colors, you can edit the
 \fIconfig.h\fP file in the source distribution and recompile the program. Rover
 will not use or create any external file during its execution, except when asked
-to do so by user commands.
+to do so by user commands or command-line options.
 .SH NOTES
 .PP
 \fBImportant\fR: Currently, Rover never asks for confirmation before overwriting
 existing files while copying/moving marked entries. Please be careful to not
 accidentally lose your data.
 .SH LINKS
-Rover homepage: <https://github.com/lecram/rover>.
+Rover homepage: <http://lecram.github.io/p/rover/>.
 .SH SEE ALSO
-\fBmc(1)\fR, \fBvifm(1)\fR, \fBranger(1)\fR
+\fBnoice(1)\fR, \fBmc(1)\fR, \fBvifm(1)\fR, \fBranger(1)\fR
