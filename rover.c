@@ -1009,11 +1009,11 @@ main(int argc, char *argv[])
             ARGS[1] = "rover";
             ARGS[2] = NULL;
             spawn();
-        } else if (!strcmp(key, RVK_DOWN)) {
+        } else if (!strcmp(key, RVK_DOWN) || !strcmp(key, "KEY_DOWN")) {
             if (!rover.nfiles) continue;
             ESEL = MIN(ESEL + 1, rover.nfiles - 1);
             update_view();
-        } else if (!strcmp(key, RVK_UP)) {
+        } else if (!strcmp(key, RVK_UP) || !strcmp(key, "KEY_UP")) {
             if (!rover.nfiles) continue;
             ESEL = MAX(ESEL - 1, 0);
             update_view();
@@ -1036,7 +1036,7 @@ main(int argc, char *argv[])
             if (!rover.nfiles) continue;
             ESEL = rover.nfiles - 1;
             update_view();
-        } else if (!strcmp(key, RVK_CD_DOWN)) {
+        } else if (!strcmp(key, RVK_CD_DOWN) || !strcmp(key, "KEY_RIGHT")) {
             if (!rover.nfiles || !S_ISDIR(EMODE(ESEL))) continue;
             if (chdir(ENAME(ESEL)) == -1) {
                 message(RED, "Cannot access \"%s\".", ENAME(ESEL));
@@ -1044,7 +1044,7 @@ main(int argc, char *argv[])
             }
             strcat(CWD, ENAME(ESEL));
             cd(1);
-        } else if (!strcmp(key, RVK_CD_UP)) {
+        } else if (!strcmp(key, RVK_CD_UP) || !strcmp(key, "KEY_LEFT")) {
             char *dirname, first;
             if (!strcmp(CWD, "/")) continue;
             CWD[strlen(CWD) - 1] = '\0';
