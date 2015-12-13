@@ -786,22 +786,30 @@ static int cpyfile(const char *srcpath) {
     char buf[BUFSIZ];
     char dstpath[PATH_MAX];
 
-    ret = src = open(srcpath, O_RDONLY);
-    if (ret < 0) return ret;
-    ret = fstat(src, &st);
-    if (ret < 0) return ret;
     strcpy(dstpath, CWD);
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
-    ret = dst = creat(dstpath, st.st_mode);
+    ret = lstat(srcpath, &st);
     if (ret < 0) return ret;
-    while ((size = read(src, buf, BUFSIZ)) > 0) {
-        write(dst, buf, size);
-        update_progress(size);
-        sync_signals();
+    if (S_ISLNK(st.st_mode)) {
+        ret = readlink(srcpath, BUF1, BUFLEN);
+        if (ret < 0) return ret;
+        BUF1[ret] = '\0';
+        ret = symlink(BUF1, dstpath);
+    } else {
+        ret = src = open(srcpath, O_RDONLY);
+        if (ret < 0) return ret;
+        ret = dst = creat(dstpath, st.st_mode);
+        if (ret < 0) return ret;
+        while ((size = read(src, buf, BUFSIZ)) > 0) {
+            write(dst, buf, size);
+            update_progress(size);
+            sync_signals();
+        }
+        close(src);
+        close(dst);
+        ret = 0;
     }
-    close(src);
-    close(dst);
-    return 0;
+    return ret;
 }
 static int adddir(const char *path) {
     int ret;
