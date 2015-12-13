@@ -1164,10 +1164,12 @@ main(int argc, char *argv[])
             clear_message();
             if (edit_stat == CONFIRM) {
                 if (ok) {
-                    addfile(INPUT);
-                    cd(1);
-                    try_to_sel(INPUT);
-                    update_view();
+                    if (addfile(INPUT) == 0) {
+                        cd(1);
+                        try_to_sel(INPUT);
+                        update_view();
+                    } else
+                        message(RED, "Could not create \"%s\".", INPUT);
                 } else
                     message(RED, "\"%s\" already exists.", INPUT);
             }
@@ -1193,11 +1195,13 @@ main(int argc, char *argv[])
             clear_message();
             if (edit_stat == CONFIRM) {
                 if (ok) {
-                    adddir(INPUT);
-                    cd(1);
-                    strcat(INPUT, "/");
-                    try_to_sel(INPUT);
-                    update_view();
+                    if (adddir(INPUT) == 0) {
+                        cd(1);
+                        strcat(INPUT, "/");
+                        try_to_sel(INPUT);
+                        update_view();
+                    } else
+                        message(RED, "Could not create \"%s/\".", INPUT);
                 } else
                     message(RED, "\"%s\" already exists.", INPUT);
             }
