@@ -1242,7 +1242,7 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_DELETE)) {
             if (rover.nfiles) {
-                message(YELLOW, "Delete \"%s\"? (Y to confirm)", ENAME(ESEL));
+                message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
                 if (rover_getch() == 'Y') {
                     const char *name = ENAME(ESEL);
                     int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
@@ -1279,7 +1279,7 @@ main(int argc, char *argv[])
             update_view();
         } else if (!strcmp(key, RVK_MARK_DELETE)) {
             if (rover.marks.nentries) {
-                message(YELLOW, "Delete all marked entries? (Y to confirm)");
+                message(YELLOW, "Delete all marked entries? (Y/n)");
                 if (rover_getch() == 'Y')
                     process_marked(NULL, delfile, deldir, "Deleting", "Deleted");
                 else
