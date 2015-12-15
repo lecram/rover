@@ -1261,7 +1261,7 @@ main(int argc, char *argv[])
                 message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
                 if (rover_getch() == 'Y') {
                     const char *name = ENAME(ESEL);
-                    int ret = S_ISDIR(EMODE(ESEL)) ? deldir(name) : delfile(name);
+                    int ret = ISDIR(ENAME(ESEL)) ? deldir(name) : delfile(name);
                     reload();
                     if (ret)
                         message(RED, "Could not delete \"%s\".", ENAME(ESEL));
