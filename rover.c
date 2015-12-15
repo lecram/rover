@@ -412,7 +412,11 @@ update_view()
             wcolor_set(rover.window, RVC_FIFO, NULL);
         else if (S_ISSOCK(EMODE(j)))
             wcolor_set(rover.window, RVC_SOCK, NULL);
-        if (!S_ISDIR(EMODE(j))) {
+        if (S_ISDIR(EMODE(j))) {
+            mbstowcs(WBUF, ENAME(j), PATH_MAX);
+            if (ISLINK(j))
+                wcscat(WBUF, L"/");
+        } else {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
             int length = mbstowcs(NULL, ENAME(j), 0);
@@ -426,8 +430,7 @@ update_view()
                 swprintf(WBUF, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
                          (int) (COLS - length - 8),
                          (int) human_size / 10, (int) human_size % 10, *suffix);
-        } else
-            mbstowcs(WBUF, ENAME(j), PATH_MAX);
+        }
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
         mvwaddnwstr(rover.window, i + 1, 2, WBUF, COLS - 4);
         if (marking && MARKED(j)) {
@@ -528,7 +531,8 @@ ls(Row **rowsp, uint8_t flags)
             if (flags & SHOW_DIRS) {
                 rows[i].name = malloc(strlen(ep->d_name) + 2);
                 strcpy(rows[i].name, ep->d_name);
-                strcat(rows[i].name, "/");
+                if (!rows[i].islink)
+                    strcat(rows[i].name, "/");
                 rows[i].mode = statbuf.st_mode;
                 i++;
             }
@@ -694,7 +698,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
         if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
             continue;
         snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
-        stat(subpath, &statbuf);
+        lstat(subpath, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             strcat(subpath, "/");
             ret |= process_dir(pre, proc, pos, subpath);
