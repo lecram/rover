@@ -67,5 +67,13 @@
 /* Optional macro to be executed when a batch operation finishes. */
 #define RV_ALERT()      beep()
 
-/* Shell used to launch external programs. */
+/* Shell used to launch external  programs.
+   Defining   this  macro   will  force   Rover  to   launch  external
+   programs with  `sh -c  "$EXTERNAL_PROGRAM [arg]"`. This  gives more
+   flexibility,  allowing command-line  arguments  to  be embedded  in
+   environment variables  (e.g. PAGER="less  -N"). On the  other hand,
+   this requires the presence of a  shell and will spawn an additional
+   process each time an external  program is invoked. Leave this macro
+   undefined if you prefer external  programs to be launched with just
+   `$EXTERNAL_PROGRAM [arg]`. */
 #define RV_SHELL        "/bin/sh"

@@ -1074,28 +1074,40 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
             if (program) {
+#ifdef RV_SHELL
                 spawn((char *[]) {RV_SHELL, "-c", program, NULL});
+#else
+                spawn((char *[]) {program, NULL});
+#endif
                 reload();
             }
         } else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("PAGER");
             if (program) {
+#ifdef RV_SHELL
                 strncpy(BUF1, program, BUFLEN - 1);
                 strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
                 strncat(BUF1, ENAME(ESEL),
                     BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
                 spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
+#else
+                spawn((char *[]) {program, ENAME(ESEL), NULL});
+#endif
             }
         } else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("EDITOR");
             if (program) {
+#ifdef RV_SHELL
                 strncpy(BUF1, program, BUFLEN - 1);
                 strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
                 strncat(BUF1, ENAME(ESEL),
                     BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
                 spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
+#else
+                spawn((char *[]) {program, ENAME(ESEL), NULL});
+#endif
                 cd(0);
             }
         } else if (!strcmp(key, RVK_SEARCH)) {
