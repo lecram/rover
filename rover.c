@@ -37,10 +37,6 @@ static char BUF2[BUFLEN];
 static char INPUT[BUFLEN];
 static wchar_t WBUF[BUFLEN];
 
-/* Argument buffers for execvp(). */
-#define MAXARGS 256
-static char *ARGS[MAXARGS];
-
 /* Listing view parameters. */
 #define HEIGHT      (LINES-4)
 #define STATUSPOS   (COLS-16)
@@ -300,7 +296,7 @@ rover_get_wch(wint_t *wch)
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
-spawn()
+spawn(char **args)
 {
     pid_t pid;
     int status;
@@ -316,7 +312,7 @@ spawn()
         kill(getpid(), SIGWINCH);
     } else if (pid == 0) {
         /* Child process. */
-        execvp(ARGS[0], ARGS);
+        execvp(args[0], args);
     }
 }
 
@@ -1017,10 +1013,7 @@ main(int argc, char *argv[])
             rover.tab = ch - '0';
             cd(0);
         } else if (!strcmp(key, RVK_HELP)) {
-            ARGS[0] = "man";
-            ARGS[1] = "rover";
-            ARGS[2] = NULL;
-            spawn();
+            spawn((char *[]) {"man", "rover", NULL});
         } else if (!strcmp(key, RVK_DOWN)) {
             if (!rover.nfiles) continue;
             ESEL = MIN(ESEL + 1, rover.nfiles - 1);
@@ -1081,28 +1074,28 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_SHELL)) {
             program = getenv("SHELL");
             if (program) {
-                ARGS[0] = program;
-                ARGS[1] = NULL;
-                spawn();
+                spawn((char *[]) {RV_SHELL, "-c", program, NULL});
                 reload();
             }
         } else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("PAGER");
             if (program) {
-                ARGS[0] = program;
-                ARGS[1] = ENAME(ESEL);
-                ARGS[2] = NULL;
-                spawn();
+                strncpy(BUF1, program, BUFLEN - 1);
+                strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
+                strncat(BUF1, ENAME(ESEL),
+                    BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
+                spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
             }
         } else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             program = getenv("EDITOR");
             if (program) {
-                ARGS[0] = program;
-                ARGS[1] = ENAME(ESEL);
-                ARGS[2] = NULL;
-                spawn();
+                strncpy(BUF1, program, BUFLEN - 1);
+                strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
+                strncat(BUF1, ENAME(ESEL),
+                    BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
+                spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
                 cd(0);
             }
         } else if (!strcmp(key, RVK_SEARCH)) {

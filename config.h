@@ -66,3 +66,6 @@
 
 /* Optional macro to be executed when a batch operation finishes. */
 #define RV_ALERT()      beep()
+
+/* Shell used to launch external programs. */
+#define RV_SHELL        "/bin/sh"
