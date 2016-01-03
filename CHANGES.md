@@ -1,5 +1,20 @@
 # Change Log
 
+## [0.4.1] - 2016-01-03
+
+### New Features
+
+- Add `--save-marks` option to save pathname of marked entries upon exit.
+- Add option to use a shell to launch external programs more flexibly.
+  - e.g. `PAGER="less 2> /dev/null -N" rover`
+
+### Bug Fixes
+
+- Fix file operations on symbolic links.
+  - Don't dereference symlinks when copying.
+  - Don't dereference symlinks to directories during batch operations.
+- Fix build error on platforms that disable SIGWINCH in the name of POSIX.
+
 ## [0.4.0] - 2015-08-21
 
 ### Important changes in default configuration
