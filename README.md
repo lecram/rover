@@ -40,6 +40,7 @@ Quick Start
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
+       o - open $ROVER_OPEN with the selected file
        / - start incremental search (RETURN to finish)
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory

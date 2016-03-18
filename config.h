@@ -17,6 +17,7 @@
 #define RVK_SHELL       "^M"
 #define RVK_VIEW        " "
 #define RVK_EDIT        "e"
+#define RVK_OPEN        "o"
 #define RVK_SEARCH      "/"
 #define RVK_TG_FILES    "f"
 #define RVK_TG_DIRS     "d"

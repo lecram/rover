@@ -108,6 +108,9 @@ Open \fB$PAGER\fR with the selected file.
 .B e
 Open \fB$EDITOR\fR with the selected file.
 .TP
+.B o
+Open \fB$ROVER_OPEN\fR with the selected file.
+.TP
 .B /
 Start incremental search.
 .TP
@@ -187,6 +190,10 @@ Rover writes the name of the selected entry to this variable before running a
 subprocess. This allows one to use the selection as part of an arbitrary command
 by first invoking a shell from Rover (see the \fBCOMMANDS\fR section) and then
 typing something like \fBgrep abc "$RVSEL"\fR.
+.TP
+.B ROVER_OPEN
+This variable can be set to a command accepting a single argument: a filename.
+The command is supposed to open the given file with an appropriate program.
 .SH CONFIGURATION
 .PP
 If you want to change Rover key bindings or colors, you can edit the

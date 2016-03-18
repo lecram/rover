@@ -1103,6 +1103,10 @@ main(int argc, char *argv[])
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             if (open_with_env("EDITOR", ENAME(ESEL)))
                 cd(0);
+        } else if (!strcmp(key, RVK_OPEN)) {
+            if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
+            if (open_with_env("ROVER_OPEN", ENAME(ESEL)))
+                cd(0);
         } else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll, length;
             if (!rover.nfiles) continue;
