@@ -316,6 +316,24 @@ spawn(char **args)
     }
 }
 
+static int
+open_with_env(const char *env, char *path)
+{
+    char *program = getenv(env);
+    if (program) {
+#ifdef RV_SHELL
+        strncpy(BUF1, program, BUFLEN - 1);
+        strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
+        strncat(BUF1, path, BUFLEN - strlen(program) - strlen(path) - 2);
+        spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
+#else
+        spawn((char *[]) {program, path, NULL});
+#endif
+        return 1;
+    }
+    return 0;
+}
+
 /* Curses setup. */
 static void
 init_term()
@@ -1079,33 +1097,12 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
-            program = getenv("PAGER");
-            if (program) {
-#ifdef RV_SHELL
-                strncpy(BUF1, program, BUFLEN - 1);
-                strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
-                strncat(BUF1, ENAME(ESEL),
-                    BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
-                spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
-#else
-                spawn((char *[]) {program, ENAME(ESEL), NULL});
-#endif
-            }
+            if (open_with_env("PAGER", ENAME(ESEL)))
+                cd(0);
         } else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
-            program = getenv("EDITOR");
-            if (program) {
-#ifdef RV_SHELL
-                strncpy(BUF1, program, BUFLEN - 1);
-                strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
-                strncat(BUF1, ENAME(ESEL),
-                    BUFLEN - strlen(program) - strlen(ENAME(ESEL)) - 2);
-                spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
-#else
-                spawn((char *[]) {program, ENAME(ESEL), NULL});
-#endif
+            if (open_with_env("EDITOR", ENAME(ESEL)))
                 cd(0);
-            }
         } else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll, length;
             if (!rover.nfiles) continue;
