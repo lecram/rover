@@ -7,7 +7,7 @@ UNINSTALL=rm
 all: rover
 
 rover: rover.c config.h
-	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
 
 install: rover
 	$(INSTALL) rover $(DESTDIR)$(PREFIX)/bin/rover
