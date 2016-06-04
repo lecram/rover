@@ -810,7 +810,7 @@ static int cpyfile(const char *srcpath) {
     ret = lstat(srcpath, &st);
     if (ret < 0) return ret;
     if (S_ISLNK(st.st_mode)) {
-        ret = readlink(srcpath, BUF1, BUFLEN);
+        ret = readlink(srcpath, BUF1, BUFLEN-1);
         if (ret < 0) return ret;
         BUF1[ret] = '\0';
         ret = symlink(BUF1, dstpath);
