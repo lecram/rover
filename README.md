@@ -36,6 +36,7 @@ Quick Start
        l - enter selected directory
        h - go to parent directory
        H - go to $HOME directory
+       t - go to link target
        r - refresh directory listing
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
