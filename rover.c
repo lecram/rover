@@ -1090,6 +1090,22 @@ main(int argc, char *argv[])
             ssize_t len = readlink(ENAME(ESEL), BUF1, BUFLEN-1);
             if (len == -1) continue;
             BUF1[len] = '\0';
+            if (access(BUF1, F_OK) == -1) {
+                char *msg;
+                switch (errno) {
+                case EACCES:
+                    msg = "Cannot access \"%s\".";
+                    break;
+                case ENOENT:
+                    msg = "\"%s\" does not exist.";
+                    break;
+                default:
+                    msg = "Cannot navigate to \"%s\".";
+                }
+                strcpy(BUF2, BUF1); /* message() uses BUF1. */
+                message(RED, msg, BUF2);
+                continue;
+            }
             realpath(BUF1, CWD);
             len = strlen(CWD);
             if (CWD[len - 1] == '/')
