@@ -1,5 +1,20 @@
 # Change Log
 
+## [0.4.2] - 2016-06-04
+
+**Note**:  The  helper script  `rover.sh`  has  been removed  in  this
+release. Its  contents were included  in the new `FAQ.md`  file, along
+with an explanation.
+
+### New Features
+
+- Add 'o' to open file with `$ROVER_OPEN`.
+- Add 't' to navigate to link target.
+
+### Bug Fixes
+
+- Honor `LDFLAGS` in Makefile.
+
 ## [0.4.1] - 2016-01-03
 
 ### New Features
