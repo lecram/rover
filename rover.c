@@ -14,6 +14,7 @@
 #include <locale.h>     /* setlocale(), LC_ALL */
 #include <unistd.h>     /* chdir(), getcwd(), read(), close(), ... */
 #include <dirent.h>     /* DIR, struct dirent, opendir(), ... */
+#include <libgen.h>
 #include <sys/stat.h>
 #include <fcntl.h>      /* open() */
 #include <sys/wait.h>   /* waitpid() */
@@ -1083,6 +1084,26 @@ main(int argc, char *argv[])
             if (CWD[strlen(CWD) - 1] != '/')
                 strcat(CWD, "/");
             cd(1);
+        } else if (!strcmp(key, RVK_TARGET)) {
+            char *bname, first;
+            int is_dir = S_ISDIR(EMODE(ESEL));
+            ssize_t len = readlink(ENAME(ESEL), BUF1, BUFLEN-1);
+            if (len == -1) continue;
+            BUF1[len] = '\0';
+            realpath(BUF1, CWD);
+            len = strlen(CWD);
+            if (CWD[len - 1] == '/')
+                CWD[len - 1] = '\0';
+            bname = strrchr(CWD, '/') + 1;
+            first = *bname;
+            *bname = '\0';
+            cd(1);
+            *bname = first;
+            if (is_dir)
+                strcat(CWD, "/");
+            try_to_sel(bname);
+            *bname = '\0';
+            update_view();
         } else if (!strcmp(key, RVK_REFRESH)) {
             reload();
         } else if (!strcmp(key, RVK_SHELL)) {
