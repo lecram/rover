@@ -324,8 +324,9 @@ open_with_env(const char *env, char *path)
     if (program) {
 #ifdef RV_SHELL
         strncpy(BUF1, program, BUFLEN - 1);
-        strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
-        strncat(BUF1, path, BUFLEN - strlen(program) - strlen(path) - 2);
+        strncat(BUF1, " '", BUFLEN - strlen(program) - 1);
+        strncat(BUF1, path, BUFLEN - strlen(program) - 3);
+        strncat(BUF1, "'", BUFLEN - strlen(program) - strlen(path) - 3);
         spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
 #else
         spawn((char *[]) {program, path, NULL});
