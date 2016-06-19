@@ -317,6 +317,31 @@ spawn(char **args)
     }
 }
 
+static void
+shell_escaped_cat(char *buf, char *str, size_t n)
+{
+    char *p = buf + strlen(buf);
+    *p++ = '\'';
+    for (n--; n; n--, str++) {
+        switch (*str) {
+        case '\'':
+            if (n < 4)
+                goto done;
+            strcpy(p, "'\\''");
+            n -= 4;
+            p += 4;
+            break;
+        case '\0':
+            goto done;
+        default:
+            *p = *str;
+            p++;
+        }
+    }
+done:
+    strncat(p, "'", n);
+}
+
 static int
 open_with_env(const char *env, char *path)
 {
@@ -324,9 +349,8 @@ open_with_env(const char *env, char *path)
     if (program) {
 #ifdef RV_SHELL
         strncpy(BUF1, program, BUFLEN - 1);
-        strncat(BUF1, " '", BUFLEN - strlen(program) - 1);
-        strncat(BUF1, path, BUFLEN - strlen(program) - 3);
-        strncat(BUF1, "'", BUFLEN - strlen(program) - strlen(path) - 3);
+        strncat(BUF1, " ", BUFLEN - strlen(program) - 1);
+        shell_escaped_cat(BUF1, path, BUFLEN - strlen(program) - 2);
         spawn((char *[]) {RV_SHELL, "-c", BUF1, NULL});
 #else
         spawn((char *[]) {program, path, NULL});
