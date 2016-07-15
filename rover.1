@@ -56,7 +56,7 @@ There is always one (and only one) highlighted entry visible. This is both the
 \fBcursor\fR location and the current \fBselection\fR. The highlighting moves as
 the user navigates the entry list with cursor commands. Simple operations, like
 entering a subdirectory or renaming a file, are done by first selecting the
-relevant entry and them issuing the appropriate command (see the \fBCOMMANDS\fR
+relevant entry and then issuing the appropriate command (see the \fBCOMMANDS\fR
 section). For commands that operate on more than one entry at once (batch
 commands), selection is not sufficient, since it's not possible to select more
 than one entry. Batch commands are performed on marked entries.
@@ -97,7 +97,7 @@ Go to parent directory.
 Go to \fB$HOME\fR directory.
 .TP
 .B t
-Go to link target.
+Go to the target of the selected link.
 .TP
 .B r
 Refresh directory listing.
