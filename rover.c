@@ -624,7 +624,7 @@ cd(int reset)
 {
     int i, j;
 
-    message(CYAN, "Loading...");
+    message(CYAN, "Loading \"%s\"...", CWD);
     refresh();
     if (reset) ESEL = SCROLL = 0;
     chdir(CWD);
