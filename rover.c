@@ -97,6 +97,7 @@ static struct Rover {
     Marks marks;
     Edit edit;
     int edit_scroll;
+    volatile sig_atomic_t pending_usr1;
     volatile sig_atomic_t pending_winch;
     Prog prog;
     Tab tabs[10];
@@ -226,6 +227,12 @@ free_marks(Marks *marks)
 }
 
 static void
+handle_usr1(int sig)
+{
+    rover.pending_usr1 = 1;
+}
+
+static void
 handle_winch(int sig)
 {
     rover.pending_winch = 1;
@@ -237,6 +244,8 @@ enable_handlers()
     struct sigaction sa;
 
     memset(&sa, 0, sizeof (struct sigaction));
+    sa.sa_handler = handle_usr1;
+    sigaction(SIGUSR1, &sa, NULL);
     sa.sa_handler = handle_winch;
     sigaction(SIGWINCH, &sa, NULL);
 }
@@ -248,15 +257,22 @@ disable_handlers()
 
     memset(&sa, 0, sizeof (struct sigaction));
     sa.sa_handler = SIG_DFL;
+    sigaction(SIGUSR1, &sa, NULL);
     sigaction(SIGWINCH, &sa, NULL);
 }
 
+static void reload();
 static void update_view();
 
 /* Handle any signals received since last call. */
 static void
 sync_signals()
 {
+    if (rover.pending_usr1) {
+        /* SIGUSR1 received: refresh directory listing. */
+        reload();
+        rover.pending_usr1 = 0;
+    }
     if (rover.pending_winch) {
         /* SIGWINCH received: resize application accordingly. */
         delwin(rover.window);
