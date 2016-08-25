@@ -66,6 +66,10 @@
 /* Number of entries to jump on RVK_JUMP_DOWN and RVK_JUMP_UP. */
 #define RV_JUMP         10
 
+/* Default listing view flags.
+   May include SHOW_FILES, SHOW_DIRS and SHOW_HIDDEN. */
+#define RV_FLAGS        SHOW_FILES | SHOW_DIRS
+
 /* Optional macro to be executed when a batch operation finishes. */
 #define RV_ALERT()      beep()
 

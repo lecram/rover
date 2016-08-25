@@ -1024,7 +1024,7 @@ main(int argc, char *argv[])
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
         rover.tabs[i].esel = rover.tabs[i].scroll = 0;
-        rover.tabs[i].flags = SHOW_FILES | SHOW_DIRS;
+        rover.tabs[i].flags = RV_FLAGS;
     }
     strcpy(rover.tabs[0].cwd, getenv("HOME"));
     for (i = 1; i < argc && i < 10; i++) {
