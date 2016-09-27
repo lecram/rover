@@ -16,6 +16,9 @@ Note that it needs to be sourced directly from the shell.
 
 # Usage:
 #     . ./cdrover.sh [/path/to/rover]
+# it has to be sourced instead of being run
+# otherwise when it comes back from the sub shell, 
+# cd command does not make any difference in the original shell
 
 tempfile="$(mktemp 2> /dev/null || printf "/tmp/rover-cwd.%s" $$)"
 if [ $# -gt 0 ]; then
@@ -33,6 +36,18 @@ fi
 rm -f -- "$tempfile"
 return $returnvalue
 ```
+A better solution would be putting the following function in your `.bashrc`:
+
+```
+l () {
+  tempfile=$(mktemp 2> /dev/null)
+  rover --save-cwd "$tempfile" "$PWD" /some /other /directories
+  cd "$(cat $tempfile)"
+  rm -f $tempfile
+}
+```
+
+So that you can type `l` to launch rover to navigate to the desired path and `q` to quit rover but stay in the desired path.
 
 ## How to open files with appropriate applications?
 
