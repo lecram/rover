@@ -15,10 +15,10 @@
 #define RVK_HOME        "H"
 #define RVK_TARGET      "t"
 #define RVK_REFRESH     "r"
-#define RVK_SHELL       "^M"
+#define RVK_SHELL       "o"
 #define RVK_VIEW        " "
 #define RVK_EDIT        "e"
-#define RVK_OPEN        "o"
+#define RVK_OPEN        "^M"
 #define RVK_SEARCH      "/"
 #define RVK_TG_FILES    "f"
 #define RVK_TG_DIRS     "d"
@@ -38,12 +38,12 @@
 #define RVC_CWD         GREEN
 #define RVC_STATUS      CYAN
 #define RVC_BORDER      BLUE
-#define RVC_SCROLLBAR   CYAN
+#define RVC_SCROLLBAR   MAGENTA
 #define RVC_LINK        CYAN
 #define RVC_HIDDEN      YELLOW
 #define RVC_EXEC        GREEN
 #define RVC_REG         DEFAULT
-#define RVC_DIR         DEFAULT
+#define RVC_DIR         BLUE
 #define RVC_CHR         MAGENTA
 #define RVC_BLK         MAGENTA
 #define RVC_FIFO        BLUE
@@ -53,7 +53,7 @@
 #define RVC_MARKS       YELLOW
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
-#define RVS_SCROLLBAR   ACS_CKBOARD
+#define RVS_SCROLLBAR   ACS_VLINE
 #define RVS_MARK        ACS_DIAMOND
 
 /* Prompt strings for line input. */
