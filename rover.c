@@ -1164,6 +1164,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_REFRESH)) {
             reload();
         } else if (!strcmp(key, RVK_SHELL)) {
+          if (getenv("STY")==NULL) {
             program = getenv("SHELL");
             if (program) {
 #ifdef RV_SHELL
@@ -1173,6 +1174,10 @@ main(int argc, char *argv[])
 #endif
                 reload();
             }
+          } else { // in GNU screen
+            spawn((char *[]) {"screen", "-X", "chdir", CWD, NULL});
+            spawn((char *[]) {"screen", "1", NULL});
+          }
         } else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
             if (open_with_env("PAGER", ENAME(ESEL)))
