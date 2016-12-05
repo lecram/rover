@@ -41,7 +41,7 @@ Quick Start
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
-       o - open $ROVER_OPEN with the selected file
+       o - open $OPEN with the selected file
        / - start incremental search (RETURN to finish)
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
@@ -76,6 +76,12 @@ editing the file `config.h` and rebuilding the binary.
 via the appropriate environment variables. For example, to specify an editor:
  ```
  $ EDITOR=vi rover
+ ```
+
+ Rover will first check for variables prefixed  with ROVER_. This can be used to
+change Rover behavior without interfering with the global environment:
+ ```
+ $ ROVER_EDITOR=vi rover
  ```
 
  Please read rover(1) for more information.

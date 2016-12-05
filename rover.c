@@ -38,6 +38,12 @@ static char BUF2[BUFLEN];
 static char INPUT[BUFLEN];
 static wchar_t WBUF[BUFLEN];
 
+/* Paths to external programs. */
+static char *user_shell;
+static char *user_pager;
+static char *user_editor;
+static char *user_open;
+
 /* Listing view parameters. */
 #define HEIGHT      (LINES-4)
 #define STATUSPOS   (COLS-16)
@@ -311,6 +317,20 @@ rover_get_wch(wint_t *wch)
     return ret;
 }
 
+/* Get user programs from the environment. */
+
+#define ROVER_ENV(dst, src) if ((dst = getenv("ROVER_" #src)) == NULL) \
+                                dst = getenv(#src);
+
+static void
+get_user_programs()
+{
+    ROVER_ENV(user_shell, SHELL)
+    ROVER_ENV(user_pager, PAGER)
+    ROVER_ENV(user_editor, EDITOR)
+    ROVER_ENV(user_open, OPEN)
+}
+
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void
 spawn(char **args)
@@ -359,9 +379,8 @@ done:
 }
 
 static int
-open_with_env(const char *env, char *path)
+open_with_env(char *program, char *path)
 {
-    char *program = getenv(env);
     if (program) {
 #ifdef RV_SHELL
         strncpy(BUF1, program, BUFLEN - 1);
@@ -1036,6 +1055,7 @@ main(int argc, char *argv[])
             }
         }
     }
+    get_user_programs();
     init_term();
     rover.nfiles = 0;
     for (i = 0; i < 10; i++) {
@@ -1164,7 +1184,7 @@ main(int argc, char *argv[])
         } else if (!strcmp(key, RVK_REFRESH)) {
             reload();
         } else if (!strcmp(key, RVK_SHELL)) {
-            program = getenv("SHELL");
+            program = user_shell;
             if (program) {
 #ifdef RV_SHELL
                 spawn((char *[]) {RV_SHELL, "-c", program, NULL});
@@ -1175,15 +1195,15 @@ main(int argc, char *argv[])
             }
         } else if (!strcmp(key, RVK_VIEW)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
-            if (open_with_env("PAGER", ENAME(ESEL)))
+            if (open_with_env(user_pager, ENAME(ESEL)))
                 cd(0);
         } else if (!strcmp(key, RVK_EDIT)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
-            if (open_with_env("EDITOR", ENAME(ESEL)))
+            if (open_with_env(user_editor, ENAME(ESEL)))
                 cd(0);
         } else if (!strcmp(key, RVK_OPEN)) {
             if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
-            if (open_with_env("ROVER_OPEN", ENAME(ESEL)))
+            if (open_with_env(user_open, ENAME(ESEL)))
                 cd(0);
         } else if (!strcmp(key, RVK_SEARCH)) {
             int oldsel, oldscroll, length;
