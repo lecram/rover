@@ -46,6 +46,7 @@ Quick Start
    f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
        R - rename selected file or directory
+       E - toggle execute permission of the selected file
        D - delete selected file or (empty) directory
        m - toggle mark on the selected entry
        M - toggle mark on all visible entries

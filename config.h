@@ -26,6 +26,7 @@
 #define RVK_NEW_FILE    "n"
 #define RVK_NEW_DIR     "N"
 #define RVK_RENAME      "R"
+#define RVK_TG_EXEC     "E"
 #define RVK_DELETE      "D"
 #define RVK_TG_MARK     "m"
 #define RVK_INVMARK     "M"

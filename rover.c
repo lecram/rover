@@ -1356,6 +1356,18 @@ main(int argc, char *argv[])
                 } else
                     message(RED, "\"%s\" already exists.", INPUT);
             }
+        } else if (!strcmp(key, RVK_TG_EXEC)) {
+            if (!rover.nfiles || S_ISDIR(EMODE(ESEL))) continue;
+            if (S_IXUSR & EMODE(ESEL))
+                EMODE(ESEL) &= ~(S_IXUSR | S_IXGRP | S_IXOTH);
+            else
+                EMODE(ESEL) |=   S_IXUSR | S_IXGRP | S_IXOTH ;
+            if (chmod(ENAME(ESEL), EMODE(ESEL))) {
+                message(RED, "Failed to change mode of \"%s\".", ENAME(ESEL));
+            } else {
+                message(GREEN, "Changed mode of \"%s\".", ENAME(ESEL));
+                update_view();
+            }
         } else if (!strcmp(key, RVK_DELETE)) {
             if (rover.nfiles) {
                 message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
