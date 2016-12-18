@@ -1017,10 +1017,12 @@ main(int argc, char *argv[])
     char *program;
     char *entry;
     const char *key;
+    const char *clip_path;
     DIR *d;
     EditStat edit_stat;
     FILE *save_cwd_file = NULL;
     FILE *save_marks_file = NULL;
+    FILE *clip_file;
 
     if (argc >= 2) {
         if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -1185,9 +1187,26 @@ main(int argc, char *argv[])
             *bname = '\0';
             update_view();
         } else if (!strcmp(key, RVK_COPY_PATH)) {
+            clip_path = getenv("CLIP");
+            if (!clip_path) goto copy_path_fail;
+            clip_file = fopen(clip_path, "w");
+            if (!clip_file) goto copy_path_fail;
+            fprintf(clip_file, "%s%s\n", CWD, ENAME(ESEL));
+            fclose(clip_file);
+            goto copy_path_done;
+copy_path_fail:
             strcpy(CLIPBOARD, CWD);
             strcat(CLIPBOARD, ENAME(ESEL));
+copy_path_done:
+            ;
         } else if (!strcmp(key, RVK_PASTE_PATH)) {
+            clip_path = getenv("CLIP");
+            if (!clip_path) goto paste_path_fail;
+            clip_file = fopen(clip_path, "r");
+            if (!clip_file) goto paste_path_fail;
+            fscanf(clip_file, "%s\n", CLIPBOARD);
+            fclose(clip_file);
+paste_path_fail:
             strcpy(BUF1, CLIPBOARD);
             strcpy(CWD, dirname(BUF1));
             strcat(CWD, "/");
