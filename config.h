@@ -14,6 +14,8 @@
 #define RVK_CD_UP       "h"
 #define RVK_HOME        "H"
 #define RVK_TARGET      "t"
+#define RVK_COPY_PATH   "y"
+#define RVK_PASTE_PATH  "p"
 #define RVK_REFRESH     "r"
 #define RVK_SHELL       "^M"
 #define RVK_VIEW        " "

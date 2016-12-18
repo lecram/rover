@@ -36,6 +36,7 @@
 static char BUF1[BUFLEN];
 static char BUF2[BUFLEN];
 static char INPUT[BUFLEN];
+static char CLIPBOARD[BUFLEN];
 static wchar_t WBUF[BUFLEN];
 
 /* Paths to external programs. */
@@ -1080,6 +1081,8 @@ main(int argc, char *argv[])
     rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
     init_marks(&rover.marks);
     cd(1);
+    strcpy(CLIPBOARD, CWD);
+    strcat(CLIPBOARD, ENAME(ESEL));
     while (1) {
         ch = rover_getch();
         key = keyname(ch);
@@ -1180,6 +1183,17 @@ main(int argc, char *argv[])
                 strcat(CWD, "/");
             try_to_sel(bname);
             *bname = '\0';
+            update_view();
+        } else if (!strcmp(key, RVK_COPY_PATH)) {
+            strcpy(CLIPBOARD, CWD);
+            strcat(CLIPBOARD, ENAME(ESEL));
+        } else if (!strcmp(key, RVK_PASTE_PATH)) {
+            strcpy(BUF1, CLIPBOARD);
+            strcpy(CWD, dirname(BUF1));
+            strcat(CWD, "/");
+            cd(1);
+            strcpy(BUF1, CLIPBOARD);
+            try_to_sel(basename(BUF1));
             update_view();
         } else if (!strcmp(key, RVK_REFRESH)) {
             reload();
