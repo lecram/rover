@@ -99,6 +99,12 @@ Go to \fB$HOME\fR directory.
 .B t
 Go to the target of the selected link.
 .TP
+.B y
+Copy location to clipboard.
+.TP
+.B p
+Go to location in clipboard.
+.TP
 .B r
 Refresh directory listing.
 .TP
@@ -190,6 +196,11 @@ Name of pager program (e.g. \fIless\fP).
 .TP
 .B EDITOR
 Name of editor program (e.g. \fIvim\fP or \fIemacs\fP).
+.TP
+.B CLIP
+Path of clipboard file (e.g. \fI/tmp/clipboard\fP).
+The user must have read and write permissions on this path.
+If this variable is not defined, Rover will use an internal, in-memory, clipboard.
 .TP
 .B RVSEL
 Rover writes the name of the selected entry to this variable before running a
