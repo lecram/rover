@@ -26,7 +26,7 @@ Quick Start
  $ rover [DIR1 [DIR2 [DIR3 [...]]]]
  ```
 
- Using:
+ Basic Usage:
  ```
        q - quit Rover
        ? - show Rover manual
@@ -36,28 +36,17 @@ Quick Start
        l - enter selected directory
        h - go to parent directory
        H - go to $HOME directory
-       t - go to the target of the selected link
-       r - refresh directory listing
+     0-9 - change tab
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
        e - open $EDITOR with the selected file
-       o - open $OPEN with the selected file
        / - start incremental search (RETURN to finish)
-   f/d/s - toggle file/directory/hidden listing
      n/N - create new file/directory
        R - rename selected file or directory
-       E - toggle execute permission of the selected file
        D - delete selected file or (empty) directory
-       m - toggle mark on the selected entry
-       M - toggle mark on all visible entries
-       a - mark all visible entries
-   X/C/V - delete/copy/move all marked entries
-     0-9 - change tab
  ```
 
-**Important Note**: Currently, Rover never asks for confirmation before
-overwriting existing files while copying/moving marked entries. Please be
-careful to not accidentally lose your data.
+ Please read rover(1) for more information.
 
 
 Requirements
