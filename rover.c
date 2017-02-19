@@ -1209,10 +1209,11 @@ copy_path_done:
 paste_path_fail:
             strcpy(BUF1, CLIPBOARD);
             strcpy(CWD, dirname(BUF1));
-            strcat(CWD, "/");
+            if (strcmp(CWD, "/"))
+                strcat(CWD, "/");
             cd(1);
             strcpy(BUF1, CLIPBOARD);
-            try_to_sel(basename(BUF1));
+            try_to_sel(strstr(CLIPBOARD, basename(BUF1)));
             update_view();
         } else if (!strcmp(key, RVK_REFRESH)) {
             reload();
