@@ -646,8 +646,11 @@ cd(int reset)
 
     message(CYAN, "Loading \"%s\"...", CWD);
     refresh();
+    if (chdir(CWD) == -1) {
+        getcwd(CWD, PATH_MAX-1);
+        goto done;
+    }
     if (reset) ESEL = SCROLL = 0;
-    chdir(CWD);
     if (rover.nfiles)
         free_rows(&rover.rows, rover.nfiles);
     rover.nfiles = ls(&rover.rows, FLAGS);
@@ -664,6 +667,7 @@ cd(int reset)
     } else
         for (i = 0; i < rover.nfiles; i++)
             MARKED(i) = 0;
+done:
     clear_message();
     update_view();
 }
