@@ -648,6 +648,8 @@ cd(int reset)
     refresh();
     if (chdir(CWD) == -1) {
         getcwd(CWD, PATH_MAX-1);
+        if (CWD[strlen(CWD)-1] != '/')
+            strcat(CWD, "/");
         goto done;
     }
     if (reset) ESEL = SCROLL = 0;
