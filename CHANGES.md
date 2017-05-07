@@ -1,5 +1,21 @@
 # Change Log
 
+## [1.0.0] - 2017-05-07
+
+### New Features
+
+- Add 'y' & 'p' to copy & paste location.
+  - Use `$CLIP` file as clipboard, when defined.
+- Add 'E' command to toggle execute permission of file.
+- Allow user to set Rover-specific programs, e.g. `$ROVER_SHELL`.
+- Refresh directory listing on `SIGUSR1` signal.
+- Show directory path while loading.
+
+### Bug Fixes
+
+- Fix bug that prevented opening file with space in its name.
+- Fix file mode of installed manpage.
+
 ## [0.4.2] - 2016-06-04
 
 **Note**:  The  helper script  `rover.sh`  has  been removed  in  this
