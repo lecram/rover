@@ -10,11 +10,10 @@ rover: rover.c config.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
 
 install: rover
-	rm -f $(BINDIR)/rover
 	mkdir -p $(BINDIR)
-	cp rover $(BINDIR)/rover
+	install -m755 rover $(BINDIR)/rover
 	mkdir -p $(MANDIR)
-	cp rover.1 $(MANDIR)/rover.1
+	install -m644 rover.1 $(MANDIR)/rover.1
 
 uninstall: $(DESTDIR)$(PREFIX)/bin/rover
 	rm $(BINDIR)/rover
