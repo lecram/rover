@@ -16,9 +16,9 @@ install: rover
 	mkdir -p $(MANDIR)
 	cp rover.1 $(MANDIR)/rover.1
 
-uninstall: $(DESTDIR)$(PREFIX)/bin/rover
-	rm $(BINDIR)/rover
-	rm $(MANDIR)/rover.1
+uninstall:
+	rm -f $(BINDIR)/rover
+	rm -f $(MANDIR)/rover.1
 
 clean:
-	$(RM) rover
+	rm -f rover
