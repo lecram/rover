@@ -1455,14 +1455,20 @@ paste_path_fail:
             } else
                 message(RED, "No entries marked for deletion.");
         } else if (!strcmp(key, RVK_MARK_COPY)) {
-            if (rover.marks.nentries)
-                process_marked(adddir, cpyfile, NULL, "Copying", "Copied");
-            else
+            if (rover.marks.nentries) {
+                if (strcmp(CWD, rover.marks.dirpath))
+                    process_marked(adddir, cpyfile, NULL, "Copying", "Copied");
+                else
+                    message(RED, "Cannot copy to the same path.");
+            } else
                 message(RED, "No entries marked for copying.");
         } else if (!strcmp(key, RVK_MARK_MOVE)) {
-            if (rover.marks.nentries)
-                process_marked(adddir, movfile, deldir, "Moving", "Moved");
-            else
+            if (rover.marks.nentries) {
+                if (strcmp(CWD, rover.marks.dirpath))
+                    process_marked(adddir, movfile, deldir, "Moving", "Moved");
+                else
+                    message(RED, "Cannot move to the same path.");
+            } else
                 message(RED, "No entries marked for moving.");
         }
     }
