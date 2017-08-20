@@ -874,6 +874,9 @@ static int cpyfile(const char *srcpath) {
 
     strcpy(dstpath, CWD);
     strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
+    ret = strcmp(srcpath, dstpath);
+    if (!ret) return ret;
+
     ret = lstat(srcpath, &st);
     if (ret < 0) return ret;
     if (S_ISLNK(st.st_mode)) {
