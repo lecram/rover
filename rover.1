@@ -115,7 +115,7 @@ Open \fB$SHELL\fR on the current directory.
 Open \fB$PAGER\fR with the selected file.
 .TP
 .B e
-Open \fB$EDITOR\fR with the selected file.
+Open \fB$VISUAL\fR or \fB$EDITOR\fR with the selected file.
 .TP
 .B o
 Open \fB$OPEN\fR with the selected file.
@@ -194,8 +194,11 @@ Name of shell program (e.g. \fI/bin/sh\fP).
 .B PAGER
 Name of pager program (e.g. \fIless\fP).
 .TP
+.B VISUAL
+Name of visual editor program (e.g. \fIvim\fP or \fIemacs\fP).
+.TP
 .B EDITOR
-Name of editor program (e.g. \fIvim\fP or \fIemacs\fP).
+Name of line editor program (e.g. \fIed\fP or \fIex\fP).
 .TP
 .B CLIP
 Path of clipboard file (e.g. \fI/tmp/clipboard\fP).
@@ -212,9 +215,9 @@ typing something like \fBgrep abc "$RVSEL"\fR.
 This variable can be set to a command accepting a single argument: a filename.
 The command is supposed to open the given file with an appropriate program.
 .TP
-.B ROVER_SHELL, ROVER_PAGER, ROVER_EDITOR, ROVER_OPEN
+.B ROVER_SHELL, ROVER_PAGER, ROVER_VISUAL, ROVER_EDITOR, ROVER_OPEN
 If any of these variables are set, they override \fBSHELL\fR, \fBPAGER\fR,
-\fBEDITOR\fR and \fBOPEN\fR, respectivelly.
+\fBVISUAL\fR, \fBEDITOR\fR and \fBOPEN\fR, respectively.
 .SH CONFIGURATION
 .PP
 If you want to change Rover key bindings or colors, you can edit the

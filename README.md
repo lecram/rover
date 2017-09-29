@@ -39,7 +39,7 @@ Quick Start
      0-9 - change tab
   RETURN - open $SHELL on the current directory
    SPACE - open $PAGER with the selected file
-       e - open $EDITOR with the selected file
+       e - open $VISUAL or $EDITOR with the selected file
        / - start incremental search (RETURN to finish)
      n/N - create new file/directory
        R - rename selected file or directory
@@ -65,13 +65,13 @@ editing the file `config.h` and rebuilding the binary.
  Note that the external programs executed by some Rover commands may be changed
 via the appropriate environment variables. For example, to specify an editor:
  ```
- $ EDITOR=vi rover
+ $ VISUAL=vi rover
  ```
 
  Rover will first check for variables prefixed  with ROVER_. This can be used to
 change Rover behavior without interfering with the global environment:
  ```
- $ ROVER_EDITOR=vi rover
+ $ ROVER_VISUAL=vi rover
  ```
 
  Please read rover(1) for more information.

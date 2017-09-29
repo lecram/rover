@@ -328,7 +328,9 @@ get_user_programs()
 {
     ROVER_ENV(user_shell, SHELL)
     ROVER_ENV(user_pager, PAGER)
-    ROVER_ENV(user_editor, EDITOR)
+    ROVER_ENV(user_editor, VISUAL)
+    if (!user_editor)
+        ROVER_ENV(user_editor, EDITOR)
     ROVER_ENV(user_open, OPEN)
 }
 
