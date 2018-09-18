@@ -497,16 +497,17 @@ update_view()
         } else {
             char *suffix, *suffixes = "BKMGTPEZY";
             off_t human_size = ESIZE(j) * 10;
-            int length = mbstowcs(NULL, ENAME(j), 0);
+            int length = mbstowcs(WBUF, ENAME(j), PATH_MAX);
+            int namecols = wcswidth(WBUF, length);
             for (suffix = suffixes; human_size >= 10240; suffix++)
                 human_size = (human_size + 512) / 1024;
             if (*suffix == 'B')
-                swprintf(WBUF, PATH_MAX, L"%s%*d %c", ENAME(j),
-                         (int) (COLS - length - 6),
+                swprintf(WBUF + length, PATH_MAX - length, L"%*d %c",
+                         (int) (COLS - namecols - 6),
                          (int) human_size / 10, *suffix);
             else
-                swprintf(WBUF, PATH_MAX, L"%s%*d.%d %c", ENAME(j),
-                         (int) (COLS - length - 8),
+                swprintf(WBUF + length, PATH_MAX - length, L"%*d.%d %c",
+                         (int) (COLS - namecols - 8),
                          (int) human_size / 10, (int) human_size % 10, *suffix);
         }
         mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
