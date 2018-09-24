@@ -594,6 +594,10 @@ ls(Row **rowsp, uint8_t flags)
     if(!(dp = opendir("."))) return -1;
     n = -2; /* We don't want the entries "." and "..". */
     while (readdir(dp)) n++;
+    if (n == 0) {
+        closedir(dp);
+        return 0;
+    }
     rewinddir(dp);
     rows = malloc(n * sizeof *rows);
     i = 0;
@@ -1092,7 +1096,8 @@ main(int argc, char *argv[])
     init_marks(&rover.marks);
     cd(1);
     strcpy(CLIPBOARD, CWD);
-    strcat(CLIPBOARD, ENAME(ESEL));
+    if (rover.nfiles > 0)
+        strcat(CLIPBOARD, ENAME(ESEL));
     while (1) {
         ch = rover_getch();
         key = keyname(ch);
