@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.0.1] - 2020-06-04
+
+### Bug Fixes
+
+- Forbid copy/move to the same path.
+- Correctly handle CJK/double width characters.
+- Fix memory errors when browsing empty directories.
+- Prefer $VISUAL to $EDITOR.
+- Add `-f` flag to `rm` in Makefile.
+- Fix the date in manpage.
+
 ## [1.0.0] - 2017-05-07
 
 ### New Features
