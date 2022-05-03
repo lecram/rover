@@ -1,7 +1,9 @@
 LDLIBS := -lncursesw
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
-MANDIR ?= $(PREFIX)/man
+DATAROOTDIR ?= $(PREFIX)/share
+DATADIR ?= $(DATAROOTDIR)
+MANDIR ?= $(DATADIR)/man
 
 all: rover
 
