@@ -1,14 +1,18 @@
-LDLIBS := -lncursesw
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 DATAROOTDIR ?= $(PREFIX)/share
 DATADIR ?= $(DATAROOTDIR)
 MANDIR ?= $(DATADIR)/man
 
+PKG_CONFIG ?= pkg-config
+
+CFLAGS_NCURSESW := `$(PKG_CONFIG) --cflags ncursesw`
+LIBS_NCURSESW := `$(PKG_CONFIG) --libs ncursesw`
+
 all: rover
 
 rover: rover.c config.h
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(CFLAGS_NCURSESW) -o $@ $< $(LDFLAGS) $(LIBS_NCURSESW)
 
 install: rover
 	rm -f $(DESTDIR)$(BINDIR)/rover
