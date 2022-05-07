@@ -1,8 +1,9 @@
-LDLIBS=-lncursesw
-PREFIX=/usr/local
-MANPREFIX=$(PREFIX)/man
-BINDIR=$(DESTDIR)$(PREFIX)/bin
-MANDIR=$(DESTDIR)$(MANPREFIX)/man1
+LDLIBS := -lncursesw
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+DATAROOTDIR ?= $(PREFIX)/share
+DATADIR ?= $(DATAROOTDIR)
+MANDIR ?= $(DATADIR)/man
 
 all: rover
 
@@ -10,15 +11,15 @@ rover: rover.c config.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
 
 install: rover
-	rm -f $(BINDIR)/rover
-	mkdir -p $(BINDIR)
-	cp rover $(BINDIR)/rover
-	mkdir -p $(MANDIR)
-	cp rover.1 $(MANDIR)/rover.1
+	rm -f $(DESTDIR)$(BINDIR)/rover
+	mkdir -p $(DESTDIR)$(BINDIR)
+	cp rover $(DESTDIR)$(BINDIR)/rover
+	mkdir -p $(DESTDIR)$(MANDIR)/man1
+	cp rover.1 $(DESTDIR)$(MANDIR)/man1/rover.1
 
 uninstall:
-	rm -f $(BINDIR)/rover
-	rm -f $(MANDIR)/rover.1
+	rm -f $(DESTDIR)$(BINDIR)/rover
+	rm -f $(DESTDIR)$(MANDIR)/man1/rover.1
 
 clean:
 	rm -f rover
