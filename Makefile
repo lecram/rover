@@ -4,6 +4,8 @@ DATAROOTDIR ?= $(PREFIX)/share
 DATADIR ?= $(DATAROOTDIR)
 MANDIR ?= $(DATADIR)/man
 
+CFLAGS ?= -O2
+
 PKG_CONFIG ?= pkg-config
 
 CFLAGS_NCURSESW := `$(PKG_CONFIG) --cflags ncursesw`
