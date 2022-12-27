@@ -18,12 +18,7 @@ AlignConsecutiveAssignments:
   AcrossEmptyLines: false
   AcrossComments: false
   AcrossEmptyLinesAndComments: false
-AlignConsecutiveDeclarations:
-  Enabled: true
-  Consecutive: true
-  AcrossEmptyLines: false
-  AcrossComments: false
-  AcrossEmptyLinesAndComments: false
+AlignConsecutiveDeclarations: false
 AlignConsecutiveMacros:
   Enabled: true
   Consecutive: true

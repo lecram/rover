@@ -35,10 +35,10 @@
 
 /* String buffers. */
 #define BUFLEN PATH_MAX
-static char    BUF1[BUFLEN];
-static char    BUF2[BUFLEN];
-static char    INPUT[BUFLEN];
-static char    CLIPBOARD[BUFLEN];
+static char BUF1[BUFLEN];
+static char BUF2[BUFLEN];
+static char INPUT[BUFLEN];
+static char CLIPBOARD[BUFLEN];
 static wchar_t WBUF[BUFLEN];
 
 /* Paths to external programs. */
@@ -62,54 +62,54 @@ static char *user_open;
 
 /* Information associated to each entry in listing. */
 typedef struct Row {
-	char  *name;
-	off_t  size;
+	char *name;
+	off_t size;
 	mode_t mode;
-	int    islink;
-	int    marked;
+	int islink;
+	int marked;
 } Row;
 
 /* Dynamic array of marked entries. */
 typedef struct Marks {
-	char   dirpath[PATH_MAX];
-	int    bulk;
-	int    nentries;
+	char dirpath[PATH_MAX];
+	int bulk;
+	int nentries;
 	char **entries;
 } Marks;
 
 /* Line editing state. */
 typedef struct Edit {
 	wchar_t buffer[BUFLEN + 1];
-	int     left, right;
+	int left, right;
 } Edit;
 
 /* Each tab only stores the following information. */
 typedef struct Tab {
-	int     scroll;
-	int     esel;
+	int scroll;
+	int esel;
 	uint8_t flags;
-	char    cwd[PATH_MAX];
+	char cwd[PATH_MAX];
 } Tab;
 
 typedef struct Prog {
-	off_t       partial;
-	off_t       total;
+	off_t partial;
+	off_t total;
 	const char *msg;
 } Prog;
 
 /* Global state. */
 static struct Rover {
-	int                   tab;
-	int                   nfiles;
-	Row                  *rows;
-	WINDOW               *window;
-	Marks                 marks;
-	Edit                  edit;
-	int                   edit_scroll;
+	int tab;
+	int nfiles;
+	Row *rows;
+	WINDOW *window;
+	Marks marks;
+	Edit edit;
+	int edit_scroll;
 	volatile sig_atomic_t pending_usr1;
 	volatile sig_atomic_t pending_winch;
-	Prog                  prog;
-	Tab                   tabs[10];
+	Prog prog;
+	Tab tabs[10];
 } rover;
 
 /* Macros for accessing global state. */
@@ -356,7 +356,7 @@ static void
 spawn(char **args)
 {
 	pid_t pid;
-	int   status;
+	int status;
 
 	setenv("RVSEL", rover.nfiles ? ENAME(ESEL) : "", 1);
 	pid = fork();
@@ -514,8 +514,8 @@ update_view()
 		} else {
 			char *suffix, *suffixes = "BKMGTPEZY";
 			off_t human_size = ESIZE(j) * 10;
-			int   length     = mbstowcs(WBUF, ENAME(j), PATH_MAX);
-			int   namecols   = wcswidth(WBUF, length);
+			int length       = mbstowcs(WBUF, ENAME(j), PATH_MAX);
+			int namecols     = wcswidth(WBUF, length);
 			for (suffix = suffixes; human_size >= 10240; suffix++)
 				human_size = (human_size + 512) / 1024;
 			if (*suffix == 'B')
@@ -566,7 +566,7 @@ update_view()
 static void
 message(Color color, char *fmt, ...)
 {
-	int     len, pos;
+	int len, pos;
 	va_list args;
 
 	va_start(args, fmt);
@@ -592,7 +592,7 @@ clear_message()
 static int
 rowcmp(const void *a, const void *b)
 {
-	int        isdir1, isdir2, cmpdir;
+	int isdir1, isdir2, cmpdir;
 	const Row *r1 = a;
 	const Row *r2 = b;
 	isdir1        = S_ISDIR(r1->mode);
@@ -605,11 +605,11 @@ rowcmp(const void *a, const void *b)
 static int
 ls(Row **rowsp, uint8_t flags)
 {
-	DIR           *dp;
+	DIR *dp;
 	struct dirent *ep;
-	struct stat    statbuf;
-	Row           *rows;
-	int            i, n;
+	struct stat statbuf;
+	Row *rows;
+	int i, n;
 
 	if (!(dp = opendir(".")))
 		return -1;
@@ -730,11 +730,11 @@ reload()
 static off_t
 count_dir(const char *path)
 {
-	DIR           *dp;
+	DIR *dp;
 	struct dirent *ep;
-	struct stat    statbuf;
-	char           subpath[PATH_MAX];
-	off_t          total;
+	struct stat statbuf;
+	char subpath[PATH_MAX];
+	off_t total;
 
 	if (!(dp = opendir(path)))
 		return 0;
@@ -757,9 +757,9 @@ count_dir(const char *path)
 static off_t
 count_marked()
 {
-	int         i;
-	char       *entry;
-	off_t       total;
+	int i;
+	char *entry;
+	off_t total;
 	struct stat statbuf;
 
 	total = 0;
@@ -791,11 +791,11 @@ count_marked()
 static int
 process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
-	int            ret;
-	DIR           *dp;
+	int ret;
+	DIR *dp;
 	struct dirent *ep;
-	struct stat    statbuf;
-	char           subpath[PATH_MAX];
+	struct stat statbuf;
+	char subpath[PATH_MAX];
 
 	ret = 0;
 	if (pre) {
@@ -830,9 +830,9 @@ static void
 process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
                const char *msg_doing, const char *msg_done)
 {
-	int   i, ret;
+	int i, ret;
 	char *entry;
-	char  path[PATH_MAX];
+	char path[PATH_MAX];
 
 	clear_message();
 	message(CYAN, "%s...", msg_doing);
@@ -881,7 +881,7 @@ update_progress(off_t delta)
 /* Wrappers for file operations. */
 static int delfile(const char *path)
 {
-	int         ret;
+	int ret;
 	struct stat st;
 
 	ret = lstat(path, &st);
@@ -891,7 +891,7 @@ static int delfile(const char *path)
 	return unlink(path);
 }
 static PROCESS deldir = rmdir;
-static int     addfile(const char *path)
+static int addfile(const char *path)
 {
 	/* Using creat(2) because mknod(2) doesn't seem to be portable. */
 	int ret;
@@ -903,11 +903,11 @@ static int     addfile(const char *path)
 }
 static int cpyfile(const char *srcpath)
 {
-	int         src, dst, ret;
-	size_t      size;
+	int src, dst, ret;
+	size_t size;
 	struct stat st;
-	char        buf[BUFSIZ];
-	char        dstpath[PATH_MAX];
+	char buf[BUFSIZ];
+	char dstpath[PATH_MAX];
 
 	strcpy(dstpath, CWD);
 	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
@@ -940,7 +940,7 @@ static int cpyfile(const char *srcpath)
 }
 static int adddir(const char *path)
 {
-	int         ret;
+	int ret;
 	struct stat st;
 
 	ret = stat(CWD, &st);
@@ -950,9 +950,9 @@ static int adddir(const char *path)
 }
 static int movfile(const char *srcpath)
 {
-	int         ret;
+	int ret;
 	struct stat st;
-	char        dstpath[PATH_MAX];
+	char dstpath[PATH_MAX];
 
 	strcpy(dstpath, CWD);
 	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
@@ -987,7 +987,7 @@ static EditStat
 get_line_edit()
 {
 	wchar_t eraser, killer, wch;
-	int     ret, length;
+	int ret, length;
 
 	ret = rover_get_wch((wint_t *)&wch);
 	erasewchar(&eraser);
@@ -1072,16 +1072,16 @@ update_input(const char *prompt, Color color)
 
 int main(int argc, char *argv[])
 {
-	int         i, ch;
-	char       *program;
-	char       *entry;
+	int i, ch;
+	char *program;
+	char *entry;
 	const char *key;
 	const char *clip_path;
-	DIR        *d;
-	EditStat    edit_stat;
-	FILE       *save_cwd_file   = NULL;
-	FILE       *save_marks_file = NULL;
-	FILE       *clip_file;
+	DIR *d;
+	EditStat edit_stat;
+	FILE *save_cwd_file   = NULL;
+	FILE *save_marks_file = NULL;
+	FILE *clip_file;
 
 	if (argc >= 2) {
 		if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -1221,9 +1221,9 @@ int main(int argc, char *argv[])
 				strcat(CWD, "/");
 			cd(1);
 		} else if (!strcmp(key, RVK_TARGET)) {
-			char   *bname, first;
-			int     is_dir = S_ISDIR(EMODE(ESEL));
-			ssize_t len    = readlink(ENAME(ESEL), BUF1, BUFLEN - 1);
+			char *bname, first;
+			int is_dir  = S_ISDIR(EMODE(ESEL));
+			ssize_t len = readlink(ENAME(ESEL), BUF1, BUFLEN - 1);
 			if (len == -1)
 				continue;
 			BUF1[len] = '\0';
@@ -1325,7 +1325,7 @@ paste_path_fail:
 			start_line_edit("");
 			update_input(RVP_SEARCH, RED);
 			while ((edit_stat = get_line_edit()) == CONTINUE) {
-				int   sel;
+				int sel;
 				Color color = RED;
 				length      = strlen(INPUT);
 				if (length) {
@@ -1428,9 +1428,9 @@ paste_path_fail:
 					message(RED, "\"%s\" already exists.", INPUT);
 			}
 		} else if (!strcmp(key, RVK_RENAME)) {
-			int   ok = 0;
+			int ok = 0;
 			char *last;
-			int   isdir;
+			int isdir;
 			strcpy(INPUT, ENAME(ESEL));
 			last = INPUT + strlen(INPUT) - 1;
 			if ((isdir = *last == '/'))
@@ -1483,7 +1483,7 @@ paste_path_fail:
 				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
 				if (rover_getch() == 'Y') {
 					const char *name = ENAME(ESEL);
-					int         ret  = ISDIR(ENAME(ESEL)) ? deldir(name) : delfile(name);
+					int ret          = ISDIR(ENAME(ESEL)) ? deldir(name) : delfile(name);
 					reload();
 					if (ret)
 						message(RED, "Could not delete \"%s\".", ENAME(ESEL));
