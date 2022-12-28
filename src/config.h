@@ -1,3 +1,33 @@
+#ifndef _CONFIG_H
+#define _CONFIG_H
+
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#endif
+#define _XOPEN_SOURCE_EXTENDED
+#define _FILE_OFFSET_BITS 64
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <ctype.h>
+#include <wchar.h>
+#include <wctype.h>
+#include <string.h>
+#include <sys/types.h> /* pid_t, ... */
+#include <stdio.h>
+#include <limits.h> /* PATH_MAX */
+#include <locale.h> /* setlocale(), LC_ALL */
+#include <unistd.h> /* chdir(), getcwd(), read(), close(), ... */
+#include <dirent.h> /* DIR, struct dirent, opendir(), ... */
+#include <libgen.h>
+#include <sys/stat.h>
+#include <fcntl.h> /* open() */
+#include <sys/wait.h> /* waitpid() */
+#include <signal.h> /* struct sigaction, sigaction() */
+#include <errno.h>
+#include <stdarg.h>
+#include <curses.h>
+
 #define RV_VERSION "1.0.1"
 
 /* CTRL+X: "^X"
@@ -86,3 +116,137 @@
    undefined if you prefer external  programs to be launched with just
    `$EXTERNAL_PROGRAM [arg]`. */
 #define RV_SHELL "/bin/sh"
+
+/*  This signal is not defined by POSIX, but should be
+   present on all systems that have resizable terminals. */
+#ifndef SIGWINCH
+#define SIGWINCH 28
+#endif
+
+/* String buffers. */
+#define BUFLEN PATH_MAX
+static char BUF1[BUFLEN];
+static char BUF2[BUFLEN];
+static char INPUT[BUFLEN];
+static char CLIPBOARD[BUFLEN];
+static wchar_t WBUF[BUFLEN];
+
+/* Paths to external programs. */
+static char *user_shell;
+static char *user_pager;
+static char *user_editor;
+static char *user_open;
+
+/* Listing view parameters. */
+#define HEIGHT    (LINES - 4)
+#define STATUSPOS (COLS - 16)
+
+/* Listing view flags. */
+#define SHOW_FILES  0x01u
+#define SHOW_DIRS   0x02u
+#define SHOW_HIDDEN 0x04u
+
+/* Marks parameters. */
+#define BULK_INIT   5
+#define BULK_THRESH 256
+
+/* Information associated to each entry in listing. */
+typedef struct Row {
+	char *name;
+	off_t size;
+	mode_t mode;
+	int islink;
+	int marked;
+} Row;
+
+/* Dynamic array of marked entries. */
+typedef struct Marks {
+	char dirpath[PATH_MAX];
+	int bulk;
+	int nentries;
+	char **entries;
+} Marks;
+
+/* Line editing state. */
+typedef struct Edit {
+	wchar_t buffer[BUFLEN + 1];
+	int left, right;
+} Edit;
+
+/* Each tab only stores the following information. */
+typedef struct Tab {
+	int scroll;
+	int esel;
+	uint8_t flags;
+	char cwd[PATH_MAX];
+} Tab;
+
+typedef struct Prog {
+	off_t partial;
+	off_t total;
+	const char *msg;
+} Prog;
+
+/* Global state. */
+static struct Rover {
+	int tab;
+	int nfiles;
+	Row *rows;
+	WINDOW *window;
+	Marks marks;
+	Edit edit;
+	int edit_scroll;
+	volatile sig_atomic_t pending_usr1;
+	volatile sig_atomic_t pending_winch;
+	Prog prog;
+	Tab tabs[10];
+} rover;
+
+/* Macros for accessing global state. */
+#define ENAME(I)  rover.rows[I].name
+#define ESIZE(I)  rover.rows[I].size
+#define EMODE(I)  rover.rows[I].mode
+#define ISLINK(I) rover.rows[I].islink
+#define MARKED(I) rover.rows[I].marked
+#define SCROLL    rover.tabs[rover.tab].scroll
+#define ESEL      rover.tabs[rover.tab].esel
+#define FLAGS     rover.tabs[rover.tab].flags
+#define CWD       rover.tabs[rover.tab].cwd
+
+/* Helpers. */
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#define ISDIR(E)  (strchr((E), '/') != NULL)
+
+/* Line Editing Macros. */
+#define EDIT_FULL(E)      ((E).left == (E).right)
+#define EDIT_CAN_LEFT(E)  ((E).left)
+#define EDIT_CAN_RIGHT(E) ((E).right < BUFLEN - 1)
+#define EDIT_LEFT(E)      (E).buffer[(E).right--] = (E).buffer[--(E).left]
+#define EDIT_RIGHT(E)     (E).buffer[(E).left++] = (E).buffer[++(E).right]
+#define EDIT_INSERT(E, C) (E).buffer[(E).left++] = (C)
+#define EDIT_BACKSPACE(E) (E).left--
+#define EDIT_DELETE(E)    (E).right++
+#define EDIT_CLEAR(E)           \
+	do {                        \
+		(E).left  = 0;          \
+		(E).right = BUFLEN - 1; \
+	} while (0)
+
+typedef enum EditStat { CONTINUE,
+	                    CONFIRM,
+	                    CANCEL } EditStat;
+typedef enum Color { DEFAULT,
+	                 RED,
+	                 GREEN,
+	                 YELLOW,
+	                 BLUE,
+	                 CYAN,
+	                 MAGENTA,
+	                 WHITE,
+	                 BLACK } Color;
+typedef int (*PROCESS)(const char *path);
+
+
+
+#endif // _CONFIG_H

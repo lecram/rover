@@ -1,164 +1,7 @@
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 700
-#endif
-#define _XOPEN_SOURCE_EXTENDED
-#define _FILE_OFFSET_BITS 64
-
-#include <stdlib.h>
-#include <stdint.h>
-#include <ctype.h>
-#include <wchar.h>
-#include <wctype.h>
-#include <string.h>
-#include <sys/types.h> /* pid_t, ... */
-#include <stdio.h>
-#include <limits.h> /* PATH_MAX */
-#include <locale.h> /* setlocale(), LC_ALL */
-#include <unistd.h> /* chdir(), getcwd(), read(), close(), ... */
-#include <dirent.h> /* DIR, struct dirent, opendir(), ... */
-#include <libgen.h>
-#include <sys/stat.h>
-#include <fcntl.h> /* open() */
-#include <sys/wait.h> /* waitpid() */
-#include <signal.h> /* struct sigaction, sigaction() */
-#include <errno.h>
-#include <stdarg.h>
-#include <curses.h>
 
 #include "config.h"
 
-/*  This signal is not defined by POSIX, but should be
-   present on all systems that have resizable terminals. */
-#ifndef SIGWINCH
-#define SIGWINCH 28
-#endif
-
-/* String buffers. */
-#define BUFLEN PATH_MAX
-static char BUF1[BUFLEN];
-static char BUF2[BUFLEN];
-static char INPUT[BUFLEN];
-static char CLIPBOARD[BUFLEN];
-static wchar_t WBUF[BUFLEN];
-
-/* Paths to external programs. */
-static char *user_shell;
-static char *user_pager;
-static char *user_editor;
-static char *user_open;
-
-/* Listing view parameters. */
-#define HEIGHT    (LINES - 4)
-#define STATUSPOS (COLS - 16)
-
-/* Listing view flags. */
-#define SHOW_FILES  0x01u
-#define SHOW_DIRS   0x02u
-#define SHOW_HIDDEN 0x04u
-
-/* Marks parameters. */
-#define BULK_INIT   5
-#define BULK_THRESH 256
-
-/* Information associated to each entry in listing. */
-typedef struct Row {
-	char *name;
-	off_t size;
-	mode_t mode;
-	int islink;
-	int marked;
-} Row;
-
-/* Dynamic array of marked entries. */
-typedef struct Marks {
-	char dirpath[PATH_MAX];
-	int bulk;
-	int nentries;
-	char **entries;
-} Marks;
-
-/* Line editing state. */
-typedef struct Edit {
-	wchar_t buffer[BUFLEN + 1];
-	int left, right;
-} Edit;
-
-/* Each tab only stores the following information. */
-typedef struct Tab {
-	int scroll;
-	int esel;
-	uint8_t flags;
-	char cwd[PATH_MAX];
-} Tab;
-
-typedef struct Prog {
-	off_t partial;
-	off_t total;
-	const char *msg;
-} Prog;
-
-/* Global state. */
-static struct Rover {
-	int tab;
-	int nfiles;
-	Row *rows;
-	WINDOW *window;
-	Marks marks;
-	Edit edit;
-	int edit_scroll;
-	volatile sig_atomic_t pending_usr1;
-	volatile sig_atomic_t pending_winch;
-	Prog prog;
-	Tab tabs[10];
-} rover;
-
-/* Macros for accessing global state. */
-#define ENAME(I)  rover.rows[I].name
-#define ESIZE(I)  rover.rows[I].size
-#define EMODE(I)  rover.rows[I].mode
-#define ISLINK(I) rover.rows[I].islink
-#define MARKED(I) rover.rows[I].marked
-#define SCROLL    rover.tabs[rover.tab].scroll
-#define ESEL      rover.tabs[rover.tab].esel
-#define FLAGS     rover.tabs[rover.tab].flags
-#define CWD       rover.tabs[rover.tab].cwd
-
-/* Helpers. */
-#define MIN(A, B) ((A) < (B) ? (A) : (B))
-#define MAX(A, B) ((A) > (B) ? (A) : (B))
-#define ISDIR(E)  (strchr((E), '/') != NULL)
-
-/* Line Editing Macros. */
-#define EDIT_FULL(E)      ((E).left == (E).right)
-#define EDIT_CAN_LEFT(E)  ((E).left)
-#define EDIT_CAN_RIGHT(E) ((E).right < BUFLEN - 1)
-#define EDIT_LEFT(E)      (E).buffer[(E).right--] = (E).buffer[--(E).left]
-#define EDIT_RIGHT(E)     (E).buffer[(E).left++] = (E).buffer[++(E).right]
-#define EDIT_INSERT(E, C) (E).buffer[(E).left++] = (C)
-#define EDIT_BACKSPACE(E) (E).left--
-#define EDIT_DELETE(E)    (E).right++
-#define EDIT_CLEAR(E)           \
-	do {                        \
-		(E).left  = 0;          \
-		(E).right = BUFLEN - 1; \
-	} while (0)
-
-typedef enum EditStat { CONTINUE,
-	                    CONFIRM,
-	                    CANCEL } EditStat;
-typedef enum Color { DEFAULT,
-	                 RED,
-	                 GREEN,
-	                 YELLOW,
-	                 BLUE,
-	                 CYAN,
-	                 MAGENTA,
-	                 WHITE,
-	                 BLACK } Color;
-typedef int (*PROCESS)(const char *path);
-
-static void
-init_marks(Marks *marks)
+void init_marks(Marks *marks)
 {
 	strcpy(marks->dirpath, "");
 	marks->bulk     = BULK_INIT;
@@ -167,8 +10,7 @@ init_marks(Marks *marks)
 }
 
 /* Unmark all entries. */
-static void
-mark_none(Marks *marks)
+void mark_none(Marks *marks)
 {
 	int i;
 
@@ -187,8 +29,7 @@ mark_none(Marks *marks)
 	}
 }
 
-static void
-add_mark(Marks *marks, char *dirpath, char *entry)
+void add_mark(Marks *marks, char *dirpath, char *entry)
 {
 	int i;
 
@@ -220,8 +61,7 @@ add_mark(Marks *marks, char *dirpath, char *entry)
 	marks->nentries++;
 }
 
-static void
-del_mark(Marks *marks, char *entry)
+void del_mark(Marks *marks, char *entry)
 {
 	int i;
 
@@ -236,8 +76,7 @@ del_mark(Marks *marks, char *entry)
 		mark_none(marks);
 }
 
-static void
-free_marks(Marks *marks)
+void free_marks(Marks *marks)
 {
 	int i;
 
@@ -249,20 +88,17 @@ free_marks(Marks *marks)
 	free(marks->entries);
 }
 
-static void
-handle_usr1(int sig)
+void handle_usr1(int sig)
 {
 	rover.pending_usr1 = 1;
 }
 
-static void
-handle_winch(int sig)
+void handle_winch(int sig)
 {
 	rover.pending_winch = 1;
 }
 
-static void
-enable_handlers()
+void enable_handlers()
 {
 	struct sigaction sa;
 
@@ -273,8 +109,7 @@ enable_handlers()
 	sigaction(SIGWINCH, &sa, NULL);
 }
 
-static void
-disable_handlers()
+void disable_handlers()
 {
 	struct sigaction sa;
 
@@ -284,12 +119,11 @@ disable_handlers()
 	sigaction(SIGWINCH, &sa, NULL);
 }
 
-static void reload();
-static void update_view();
+void reload();
+void update_view();
 
 /* Handle any signals received since last call. */
-static void
-sync_signals()
+void sync_signals()
 {
 	if (rover.pending_usr1) {
 		/* SIGUSR1 received: refresh directory listing. */
@@ -312,8 +146,7 @@ sync_signals()
 
 /* This function must be used in place of getch().
    It handles signals while waiting for user input. */
-static int
-rover_getch()
+int rover_getch()
 {
 	int ch;
 
@@ -324,8 +157,7 @@ rover_getch()
 
 /* This function must be used in place of get_wch().
    It handles signals while waiting for user input. */
-static int
-rover_get_wch(wint_t *wch)
+int rover_get_wch(wint_t *wch)
 {
 	wint_t ret;
 
@@ -340,8 +172,7 @@ rover_get_wch(wint_t *wch)
 	if ((dst = getenv("ROVER_" #src)) == NULL) \
 		dst = getenv(#src);
 
-static void
-get_user_programs()
+void get_user_programs()
 {
 	ROVER_ENV(user_shell, SHELL)
 	ROVER_ENV(user_pager, PAGER)
@@ -352,8 +183,7 @@ get_user_programs()
 }
 
 /* Do a fork-exec to external program (e.g. $EDITOR). */
-static void
-spawn(char **args)
+void spawn(char **args)
 {
 	pid_t pid;
 	int status;
@@ -373,8 +203,7 @@ spawn(char **args)
 	}
 }
 
-static void
-shell_escaped_cat(char *buf, char *str, size_t n)
+void shell_escaped_cat(char *buf, char *str, size_t n)
 {
 	char *p = buf + strlen(buf);
 	*p++    = '\'';
@@ -398,8 +227,7 @@ done:
 	strncat(p, "'", n);
 }
 
-static int
-open_with_env(char *program, char *path)
+int open_with_env(char *program, char *path)
 {
 	if (program) {
 #ifdef RV_SHELL
@@ -416,8 +244,7 @@ open_with_env(char *program, char *path)
 }
 
 /* Curses setup. */
-static void
-init_term()
+void init_term()
 {
 	setlocale(LC_ALL, "");
 	initscr();
@@ -451,8 +278,7 @@ init_term()
 }
 
 /* Update the listing view. */
-static void
-update_view()
+void update_view()
 {
 	int i, j;
 	int numsize;
@@ -555,16 +381,14 @@ update_view()
 		strcpy(BUF2, "0/0");
 	else
 		snprintf(BUF2, BUFLEN, "%d/%d", ESEL + 1, rover.nfiles);
-	//snprintf(BUF1+3, BUFLEN-3, "%12s", BUF2);
-	snprintf((BUF1), BUFLEN, "%12s", BUF2);
+	snprintf(BUF1 + 3, BUFLEN, "%12s", BUF2);
 	color_set(RVC_STATUS, NULL);
 	mvaddstr(LINES - 1, STATUSPOS, BUF1);
 	wrefresh(rover.window);
 }
 
 /* Show a message on the status bar. */
-static void
-message(Color color, char *fmt, ...)
+void message(Color color, char *fmt, ...)
 {
 	int len, pos;
 	va_list args;
@@ -582,15 +406,13 @@ message(Color color, char *fmt, ...)
 }
 
 /* Clear message area, leaving only status info. */
-static void
-clear_message()
+void clear_message()
 {
 	mvhline(LINES - 1, 0, ' ', STATUSPOS);
 }
 
 /* Comparison used to sort listing entries. */
-static int
-rowcmp(const void *a, const void *b)
+int rowcmp(const void *a, const void *b)
 {
 	int isdir1, isdir2, cmpdir;
 	const Row *r1 = a;
@@ -602,8 +424,7 @@ rowcmp(const void *a, const void *b)
 }
 
 /* Get all entries in current working directory. */
-static int
-ls(Row **rowsp, uint8_t flags)
+int ls(Row **rowsp, uint8_t flags)
 {
 	DIR *dp;
 	struct dirent *ep;
@@ -655,8 +476,7 @@ ls(Row **rowsp, uint8_t flags)
 	return n;
 }
 
-static void
-free_rows(Row **rowsp, int nfiles)
+void free_rows(Row **rowsp, int nfiles)
 {
 	int i;
 
@@ -667,8 +487,7 @@ free_rows(Row **rowsp, int nfiles)
 }
 
 /* Change working directory to the path in CWD. */
-static void
-cd(int reset)
+void cd(int reset)
 {
 	int i, j;
 
@@ -703,8 +522,7 @@ done:
 }
 
 /* Select a target entry, if it is present. */
-static void
-try_to_sel(const char *target)
+void try_to_sel(const char *target)
 {
 	ESEL = 0;
 	if (!ISDIR(target))
@@ -715,8 +533,7 @@ try_to_sel(const char *target)
 }
 
 /* Reload CWD, but try to keep selection. */
-static void
-reload()
+void reload()
 {
 	if (rover.nfiles) {
 		strcpy(INPUT, ENAME(ESEL));
@@ -727,8 +544,7 @@ reload()
 		cd(1);
 }
 
-static off_t
-count_dir(const char *path)
+off_t count_dir(const char *path)
 {
 	DIR *dp;
 	struct dirent *ep;
@@ -754,8 +570,7 @@ count_dir(const char *path)
 	return total;
 }
 
-static off_t
-count_marked()
+off_t count_marked()
 {
 	int i;
 	char *entry;
@@ -788,8 +603,7 @@ count_marked()
    E.g. to move directory /src/ (and all its contents) inside /dst/:
     strcpy(CWD, "/dst/");
     process_dir(adddir, movfile, deldir, "/src/"); */
-static int
-process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
+int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
 	int ret;
 	DIR *dp;
@@ -826,8 +640,7 @@ process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 /* Process all marked entries using CWD as destination root.
    All marked entries that are directories will be recursively processed.
    See process_dir() for details on the parameters. */
-static void
-process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
+void process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
                const char *msg_doing, const char *msg_done)
 {
 	int i, ret;
@@ -865,8 +678,7 @@ process_marked(PROCESS pre, PROCESS proc, PROCESS pos,
 	RV_ALERT();
 }
 
-static void
-update_progress(off_t delta)
+void update_progress(off_t delta)
 {
 	int percent;
 
@@ -879,7 +691,7 @@ update_progress(off_t delta)
 }
 
 /* Wrappers for file operations. */
-static int delfile(const char *path)
+int delfile(const char *path)
 {
 	int ret;
 	struct stat st;
@@ -890,8 +702,10 @@ static int delfile(const char *path)
 	update_progress(st.st_size);
 	return unlink(path);
 }
-static PROCESS deldir = rmdir;
-static int addfile(const char *path)
+
+PROCESS deldir = rmdir;
+
+int addfile(const char *path)
 {
 	/* Using creat(2) because mknod(2) doesn't seem to be portable. */
 	int ret;
@@ -901,7 +715,8 @@ static int addfile(const char *path)
 		return ret;
 	return close(ret);
 }
-static int cpyfile(const char *srcpath)
+
+int cpyfile(const char *srcpath)
 {
 	int src, dst, ret;
 	size_t size;
@@ -938,7 +753,8 @@ static int cpyfile(const char *srcpath)
 	}
 	return ret;
 }
-static int adddir(const char *path)
+
+int adddir(const char *path)
 {
 	int ret;
 	struct stat st;
@@ -948,7 +764,8 @@ static int adddir(const char *path)
 		return ret;
 	return mkdir(path, st.st_mode);
 }
-static int movfile(const char *srcpath)
+
+int movfile(const char *srcpath)
 {
 	int ret;
 	struct stat st;
@@ -971,8 +788,7 @@ static int movfile(const char *srcpath)
 	return ret;
 }
 
-static void
-start_line_edit(const char *init_input)
+void start_line_edit(const char *init_input)
 {
 	curs_set(TRUE);
 	strncpy(INPUT, init_input, BUFLEN);
@@ -983,8 +799,7 @@ start_line_edit(const char *init_input)
 }
 
 /* Read input and change editing state accordingly. */
-static EditStat
-get_line_edit()
+EditStat get_line_edit()
 {
 	wchar_t eraser, killer, wch;
 	int ret, length;
@@ -1042,8 +857,7 @@ get_line_edit()
 }
 
 /* Update line input on the screen. */
-static void
-update_input(const char *prompt, Color color)
+void update_input(const char *prompt, Color color)
 {
 	int plen, ilen, maxlen;
 
