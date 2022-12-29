@@ -91,17 +91,16 @@ int main(int argc, char *argv[])
 		strcpy(rover.tabs[i].cwd, rover.tabs[i -1].cwd);
 	
 	for (i = 0; i < 10; i++)
-		ADDSLASH(rover.tabs[i]);
+		ADDSLASH(rover.tabs[i].cwd);
 		
 	rover.tab    = 1;
 	rover.window = subwin(stdscr, LINES -2, COLS, 1, 0);
 	init_marks(&rover.marks);
 	cd(true);
-/* TODO check starting from here */
-
 	strcpy(clipboard, CWD);
 	if (rover.nfiles > 0)
 		strcat(clipboard, ENAME(ESEL));
+/* TODO use switch() instead of if-else */
 	while (1) {
 		ch  = rover_getch();
 		key = keyname(ch);
@@ -467,7 +466,7 @@ paste_path_fail:
 			for (i = 0; i < rover.nfiles; i++)
 				if (!MARKED(i)) {
 					add_mark(&rover.marks, CWD, ENAME(i));
-					MARKED(i) = 1;
+					MARKED(i) = true;
 				}
 			update_view();
 		} else if (!strcmp(key, RVK_MARK_DELETE)) {

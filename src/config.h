@@ -123,8 +123,8 @@ typedef struct Row {
 	char *name;
 	off_t size;
 	mode_t mode;
-	int islink;
-	int marked;
+	bool islink;
+	bool marked;
 } Row;
 
 /* Dynamic array of marked entries. */
