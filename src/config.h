@@ -123,19 +123,6 @@
 #define SIGWINCH 28
 #endif
 
-/* String buffers. */
-#define BUFLEN PATH_MAX
-static char BUF1[BUFLEN];
-static char BUF2[BUFLEN];
-static char INPUT[BUFLEN];
-static char CLIPBOARD[BUFLEN];
-static wchar_t WBUF[BUFLEN];
-
-/* Paths to external programs. */
-static char *user_shell;
-static char *user_pager;
-static char *user_editor;
-static char *user_open;
 
 /* Listing view parameters. */
 #define HEIGHT    (LINES - 4)
@@ -169,7 +156,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-	wchar_t buffer[BUFLEN + 1];
+	wchar_t buffer[PATH_MAX +1];
 	int left, right;
 } Edit;
 
@@ -221,7 +208,7 @@ static struct Rover {
 /* Line Editing Macros. */
 #define EDIT_FULL(E)      ((E).left == (E).right)
 #define EDIT_CAN_LEFT(E)  ((E).left)
-#define EDIT_CAN_RIGHT(E) ((E).right < BUFLEN - 1)
+#define EDIT_CAN_RIGHT(E) ((E).right < PATH_MAX -1)
 #define EDIT_LEFT(E)      (E).buffer[(E).right--] = (E).buffer[--(E).left]
 #define EDIT_RIGHT(E)     (E).buffer[(E).left++] = (E).buffer[++(E).right]
 #define EDIT_INSERT(E, C) (E).buffer[(E).left++] = (C)
@@ -230,23 +217,55 @@ static struct Rover {
 #define EDIT_CLEAR(E)           \
 	do {                        \
 		(E).left  = 0;          \
-		(E).right = BUFLEN - 1; \
+		(E).right = PATH_MAX -1; \
 	} while (0)
 
-typedef enum EditStat { CONTINUE,
-	                    CONFIRM,
-	                    CANCEL } EditStat;
-typedef enum Color { DEFAULT,
-	                 RED,
-	                 GREEN,
-	                 YELLOW,
-	                 BLUE,
-	                 CYAN,
-	                 MAGENTA,
-	                 WHITE,
-	                 BLACK } Color;
+
+
+typedef enum EditStat {
+	CONTINUE,
+	CONFIRM,
+	CANCEL
+} EditStat;
+
 typedef int (*PROCESS)(const char *path);
 
-
+void init_marks(Marks *marks);
+void mark_none(Marks *marks);
+void add_mark(Marks *marks, char *dirpath, char *entry);
+void del_mark(Marks *marks, char *entry);
+void free_marks(Marks *marks);
+void handle_usr1(int sig);
+void handle_winch(int sig);
+void enable_handlers();
+void disable_handlers();
+void reload();
+void update_view();
+void sync_signals();
+int rover_getch();
+int rover_get_wch(wint_t *wch);
+void spawn(char **args);
+void shell_escaped_cat(char *buf, char *str, size_t n);
+int open_with_env(char *program, char *path);
+void update_view();
+void clear_message();
+int rowcmp(const void *a, const void *b);
+int ls(Row **rowsp, uint8_t flags);
+void free_rows(Row **rowsp, int nfiles);
+void cd(int reset);
+void try_to_sel(const char *target);
+void reload();
+off_t count_dir(const char *path);
+off_t count_marked();
+int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path);
+void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done);
+void update_progress(off_t delta);
+int delfile(const char *path);
+int addfile(const char *path);
+int cpyfile(const char *srcpath);
+int adddir(const char *path);
+int movfile(const char *srcpath);
+void start_line_edit(const char *init_input);
+EditStat get_line_edit();
 
 #endif // _CONFIG_H
