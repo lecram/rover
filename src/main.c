@@ -10,6 +10,8 @@
 
 static PROCESS deldir = rmdir;
 
+struct Rover rover;
+
 int main(int argc, char *argv[])
 {
 	int i, ch;
@@ -18,7 +20,7 @@ int main(int argc, char *argv[])
 	const char *key, *clip_path;
 	DIR *d;
 	EditStat edit_stat;
-	FILE *save_cwd_file   = NULL, *save_marks_file = NULL, *clip_file;
+	FILE *save_cwd_file = NULL, *save_marks_file = NULL, *clip_file;
 
 	if (argc >= 2) {
 		if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
@@ -70,9 +72,11 @@ int main(int argc, char *argv[])
 	init_term();
 	rover.nfiles = 0;
 	for (i = 0; i < 10; i++) {
-		rover.tabs[i].esel = rover.tabs[i].scroll = 0;
-		rover.tabs[i].flags                       = RV_FLAGS;
+		rover.tabs[i].esel   = 0;
+		rover.tabs[i].scroll = 0;
+		rover.tabs[i].flags  = RV_FLAGS;
 	}
+
 	strcpy(rover.tabs[0].cwd, getenv("HOME"));
 	for (i = 1; i < argc && i < 10; i++) {
 		if ((d = opendir(argv[i]))) {
@@ -81,16 +85,20 @@ int main(int argc, char *argv[])
 		} else
 			strcpy(rover.tabs[i].cwd, rover.tabs[0].cwd);
 	}
+
 	getcwd(rover.tabs[i].cwd, PATH_MAX);
 	for (i++; i < 10; i++)
-		strcpy(rover.tabs[i].cwd, rover.tabs[i - 1].cwd);
+		strcpy(rover.tabs[i].cwd, rover.tabs[i -1].cwd);
+	
 	for (i = 0; i < 10; i++)
-		if (rover.tabs[i].cwd[strlen(rover.tabs[i].cwd) - 1] != '/')
-			strcat(rover.tabs[i].cwd, "/");
+		ADDSLASH(rover.tabs[i]);
+		
 	rover.tab    = 1;
-	rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+	rover.window = subwin(stdscr, LINES -2, COLS, 1, 0);
 	init_marks(&rover.marks);
-	cd(1);
+	cd(true);
+/* TODO check starting from here */
+
 	strcpy(clipboard, CWD);
 	if (rover.nfiles > 0)
 		strcat(clipboard, ENAME(ESEL));
@@ -102,7 +110,7 @@ int main(int argc, char *argv[])
 			break;
 		else if (ch >= '0' && ch <= '9') {
 			rover.tab = ch - '0';
-			cd(0);
+			cd(false);
 		} else if (!strcmp(key, RVK_HELP)) {
 			spawn((char *[]){ "man", "rover", NULL });
 		} else if (!strcmp(key, RVK_DOWN)) {
@@ -146,7 +154,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			strcat(CWD, ENAME(ESEL));
-			cd(1);
+			cd(true);
 		} else if (!strcmp(key, RVK_CD_UP)) {
 			char *dirname, first;
 			if (!strcmp(CWD, "/"))
@@ -155,7 +163,7 @@ int main(int argc, char *argv[])
 			dirname              = strrchr(CWD, '/') + 1;
 			first                = dirname[0];
 			dirname[0]           = '\0';
-			cd(1);
+			cd(true);
 			dirname[0]               = first;
 			dirname[strlen(dirname)] = '/';
 			try_to_sel(dirname);
@@ -165,13 +173,12 @@ int main(int argc, char *argv[])
 			update_view();
 		} else if (!strcmp(key, RVK_HOME)) {
 			strcpy(CWD, getenv("HOME"));
-			if (CWD[strlen(CWD) - 1] != '/')
-				strcat(CWD, "/");
-			cd(1);
+			ADDSLASH(CWD);
+			cd(true);
 		} else if (!strcmp(key, RVK_TARGET)) {
 			char *bname, first;
 			int is_dir  = S_ISDIR(EMODE(ESEL));
-			ssize_t len = readlink(ENAME(ESEL), buffer_one, PATH_MAX -1);
+			ssize_t len = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
 			if (len == -1)
 				continue;
 			buffer_one[len] = '\0';
@@ -198,7 +205,7 @@ int main(int argc, char *argv[])
 			bname  = strrchr(CWD, '/') + 1;
 			first  = *bname;
 			*bname = '\0';
-			cd(1);
+			cd(true);
 			*bname = first;
 			if (is_dir)
 				strcat(CWD, "/");
@@ -233,7 +240,7 @@ paste_path_fail:
 			strcpy(CWD, dirname(buffer_one));
 			if (strcmp(CWD, "/"))
 				strcat(CWD, "/");
-			cd(1);
+			cd(true);
 			strcpy(buffer_one, clipboard);
 			try_to_sel(strstr(clipboard, basename(buffer_one)));
 			update_view();
@@ -253,17 +260,17 @@ paste_path_fail:
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(user_pager, ENAME(ESEL)))
-				cd(0);
+				cd(false);
 		} else if (!strcmp(key, RVK_EDIT)) {
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(user_editor, ENAME(ESEL)))
-				cd(0);
+				cd(false);
 		} else if (!strcmp(key, RVK_OPEN)) {
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(user_open, ENAME(ESEL)))
-				cd(0);
+				cd(false);
 		} else if (!strcmp(key, RVK_SEARCH)) {
 			int oldsel, oldscroll, length;
 			if (!rover.nfiles)
@@ -336,7 +343,7 @@ paste_path_fail:
 			if (edit_stat == CONFIRM) {
 				if (ok) {
 					if (addfile(input) == 0) {
-						cd(1);
+						cd(true);
 						try_to_sel(input);
 						update_view();
 					} else
@@ -366,7 +373,7 @@ paste_path_fail:
 			if (edit_stat == CONFIRM) {
 				if (ok) {
 					if (adddir(input) == 0) {
-						cd(1);
+						cd(true);
 						strcat(input, "/");
 						try_to_sel(input);
 						update_view();
@@ -407,7 +414,7 @@ paste_path_fail:
 						del_mark(&rover.marks, ENAME(ESEL));
 						add_mark(&rover.marks, CWD, input);
 					}
-					cd(1);
+					cd(true);
 					try_to_sel(input);
 					update_view();
 				} else

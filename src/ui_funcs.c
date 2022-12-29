@@ -67,18 +67,134 @@ void update_input(const char *prompt, Color color, const char *input)
 /* Show a message on the status bar. */
 void message(Color color, char *fmt, ...)
 {
-	int len, pos;
+	int pos;
 	va_list args;
 	char buffer[PATH_MAX];
 
 	va_start(args, fmt);
-	vsnprintf(buffer, MIN(PATH_MAX, STATUSPOS), fmt, args);
+	// vsnprintf(buffer, MIN(PATH_MAX, STATUSPOS), fmt, args);
+	vsnprintf(buffer, STATUSPOS, fmt, args);
 	va_end(args);
-	len = strlen(buffer);
-	pos = (STATUSPOS - len) / 2;
+	
+	pos = (STATUSPOS - (int) strlen(buffer)) /2;
 	attr_on(A_BOLD, NULL);
 	color_set(color, NULL);
-	mvaddstr(LINES - 1, pos, buffer);
+	mvaddstr(LINES -1, pos, buffer);
 	color_set(DEFAULT, NULL);
 	attr_off(A_BOLD, NULL);
+}
+
+/* Update the listing view. */
+void update_view()
+{
+	int i, j, numsize, ishidden, marking;
+	char buffer_one[PATH_MAX], buffer_two[PATH_MAX];
+	wchar_t wbuffer[PATH_MAX];
+
+	mvhline(0, 0, ' ', COLS);
+	attr_on(A_BOLD, NULL);
+	color_set(RVC_TABNUM, NULL);
+	mvaddch(0, COLS - 2, rover.tab + '0');
+	attr_off(A_BOLD, NULL);
+	if (rover.marks.nentries) {
+		numsize = snprintf(buffer_one, PATH_MAX, "%d", rover.marks.nentries);
+		color_set(RVC_MARKS, NULL);
+		mvaddstr(0, COLS - 3 - numsize, buffer_one);
+	} else
+		numsize = -1;
+	color_set(RVC_CWD, NULL);
+	mbstowcs(wbuffer, CWD, PATH_MAX);
+	mvaddnwstr(0, 0, wbuffer, COLS - 4 - numsize);
+	wcolor_set(rover.window, RVC_BORDER, NULL);
+	wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+	ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
+	/* Selection might not be visible, due to cursor wrapping or window
+       shrinking. In that case, the scroll must be moved to make it visible. */
+	if (rover.nfiles > HEIGHT) {
+		SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
+		SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
+	} else
+		SCROLL = 0;
+	marking = !strcmp(CWD, rover.marks.dirpath);
+	for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
+		ishidden = ENAME(j)[0] == '.';
+		if (j == ESEL)
+			wattr_on(rover.window, A_REVERSE, NULL);
+		if (ISLINK(j))
+			wcolor_set(rover.window, RVC_LINK, NULL);
+		else if (ishidden)
+			wcolor_set(rover.window, RVC_HIDDEN, NULL);
+		else if (S_ISREG(EMODE(j))) {
+			if (EMODE(j) & (S_IXUSR | S_IXGRP | S_IXOTH))
+				wcolor_set(rover.window, RVC_EXEC, NULL);
+			else
+				wcolor_set(rover.window, RVC_REG, NULL);
+		} else if (S_ISDIR(EMODE(j)))
+			wcolor_set(rover.window, RVC_DIR, NULL);
+		else if (S_ISCHR(EMODE(j)))
+			wcolor_set(rover.window, RVC_CHR, NULL);
+		else if (S_ISBLK(EMODE(j)))
+			wcolor_set(rover.window, RVC_BLK, NULL);
+		else if (S_ISFIFO(EMODE(j)))
+			wcolor_set(rover.window, RVC_FIFO, NULL);
+		else if (S_ISSOCK(EMODE(j)))
+			wcolor_set(rover.window, RVC_SOCK, NULL);
+		if (S_ISDIR(EMODE(j))) {
+			mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+			if (ISLINK(j))
+				wcscat(wbuffer, L"/");
+		} else {
+			char *suffix, *suffixes = "BKMGTPEZY";
+			off_t human_size = ESIZE(j) * 10;
+			int length       = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+			int namecols     = wcswidth(wbuffer, length);
+			for (suffix = suffixes; human_size >= 10240; suffix++)
+				human_size = (human_size + 512) / 1024;
+			if (*suffix == 'B')
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d %c",
+				         (int)(COLS - namecols - 6),
+				         (int)human_size / 10, *suffix);
+			else
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %c",
+				         (int)(COLS - namecols - 8),
+				         (int)human_size / 10, (int)human_size % 10, *suffix);
+		}
+		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+		mvwaddnwstr(rover.window, i + 1, 2, wbuffer, COLS - 4);
+		if (marking && MARKED(j)) {
+			wcolor_set(rover.window, RVC_MARKS, NULL);
+			mvwaddch(rover.window, i + 1, 1, RVS_MARK);
+		} else
+			mvwaddch(rover.window, i + 1, 1, ' ');
+		if (j == ESEL)
+			wattr_off(rover.window, A_REVERSE, NULL);
+	}
+	for (; i < HEIGHT; i++)
+		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+	if (rover.nfiles > HEIGHT) {
+		int center, height;
+		center = (SCROLL + HEIGHT / 2) * HEIGHT / rover.nfiles;
+		height = (HEIGHT - 1) * HEIGHT / rover.nfiles;
+		if (!height)
+			height = 1;
+		wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
+		mvwvline(rover.window, center - height / 2 + 1, COLS - 1, RVS_SCROLLBAR, height);
+	}
+	buffer_one[0] = FLAGS & SHOW_FILES ? 'F' : ' ';
+	buffer_one[1] = FLAGS & SHOW_DIRS ? 'D' : ' ';
+	buffer_one[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
+	if (!rover.nfiles)
+		strcpy(buffer_two, "0/0");
+	else
+		snprintf(buffer_two, PATH_MAX, "%d/%d", ESEL + 1, rover.nfiles);
+	snprintf(buffer_one + 3, PATH_MAX, "%12s", buffer_two);
+	color_set(RVC_STATUS, NULL);
+	mvaddstr(LINES - 1, STATUSPOS, buffer_one);
+	wrefresh(rover.window);
+}
+
+/* Clear message area, leaving only status info. */
+void clear_message()
+{
+	mvhline(LINES -1, 0, ' ', STATUSPOS);
 }

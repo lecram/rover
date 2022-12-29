@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <curses.h>
+#include <stdbool.h>
 
 #define RV_VERSION "1.0.1"
 
@@ -67,24 +68,6 @@
 #define RVK_MARK_COPY   "C"
 #define RVK_MARK_MOVE   "V"
 
-/* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK. */
-#define RVC_CWD       GREEN
-#define RVC_STATUS    CYAN
-#define RVC_BORDER    BLUE
-#define RVC_SCROLLBAR CYAN
-#define RVC_LINK      CYAN
-#define RVC_HIDDEN    YELLOW
-#define RVC_EXEC      GREEN
-#define RVC_REG       DEFAULT
-#define RVC_DIR       DEFAULT
-#define RVC_CHR       MAGENTA
-#define RVC_BLK       MAGENTA
-#define RVC_FIFO      BLUE
-#define RVC_SOCK      MAGENTA
-#define RVC_PROMPT    DEFAULT
-#define RVC_TABNUM    DEFAULT
-#define RVC_MARKS     YELLOW
-
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR ACS_CKBOARD
 #define RVS_MARK      ACS_DIAMOND
@@ -123,10 +106,8 @@
 #define SIGWINCH 28
 #endif
 
-
 /* Listing view parameters. */
-#define HEIGHT    (LINES - 4)
-#define STATUSPOS (COLS - 16)
+#define HEIGHT (LINES - 4)
 
 /* Listing view flags. */
 #define SHOW_FILES  0x01u
@@ -156,7 +137,7 @@ typedef struct Marks {
 
 /* Line editing state. */
 typedef struct Edit {
-	wchar_t buffer[PATH_MAX +1];
+	wchar_t buffer[PATH_MAX + 1];
 	int left, right;
 } Edit;
 
@@ -175,7 +156,7 @@ typedef struct Prog {
 } Prog;
 
 /* Global state. */
-static struct Rover {
+struct Rover {
 	int tab;
 	int nfiles;
 	Row *rows;
@@ -187,7 +168,9 @@ static struct Rover {
 	volatile sig_atomic_t pending_winch;
 	Prog prog;
 	Tab tabs[10];
-} rover;
+};
+
+extern struct Rover rover;
 
 /* Macros for accessing global state. */
 #define ENAME(I)  rover.rows[I].name
@@ -208,20 +191,30 @@ static struct Rover {
 /* Line Editing Macros. */
 #define EDIT_FULL(E)      ((E).left == (E).right)
 #define EDIT_CAN_LEFT(E)  ((E).left)
-#define EDIT_CAN_RIGHT(E) ((E).right < PATH_MAX -1)
+#define EDIT_CAN_RIGHT(E) ((E).right < PATH_MAX - 1)
 #define EDIT_LEFT(E)      (E).buffer[(E).right--] = (E).buffer[--(E).left]
 #define EDIT_RIGHT(E)     (E).buffer[(E).left++] = (E).buffer[++(E).right]
 #define EDIT_INSERT(E, C) (E).buffer[(E).left++] = (C)
 #define EDIT_BACKSPACE(E) (E).left--
 #define EDIT_DELETE(E)    (E).right++
-#define EDIT_CLEAR(E)           \
-	do {                        \
-		(E).left  = 0;          \
-		(E).right = PATH_MAX -1; \
-	} while (0)
-
-
-
+#define EDIT_CLEAR(E)             \
+	{                             \
+		(E).left  = 0;            \
+		(E).right = PATH_MAX - 1; \
+	}
+/* Add / at the end of path */
+#define ADDSLASH(path)                     \
+	{                                      \
+		if (path[strlen(path) - 1] != '/') \
+			strcat(path, "/");             \
+	}
+/* Safe version of free() don't need assign NULL after free */
+#define FREE(p)        \
+	{                  \
+		if ((p))       \
+			free((p)); \
+		(p) = NULL;    \
+	}
 typedef enum EditStat {
 	CONTINUE,
 	CONFIRM,
@@ -230,6 +223,7 @@ typedef enum EditStat {
 
 typedef int (*PROCESS)(const char *path);
 
+// FUnction declarations
 void init_marks(Marks *marks);
 void mark_none(Marks *marks);
 void add_mark(Marks *marks, char *dirpath, char *entry);
@@ -240,7 +234,6 @@ void handle_winch(int sig);
 void enable_handlers();
 void disable_handlers();
 void reload();
-void update_view();
 void sync_signals();
 int rover_getch();
 int rover_get_wch(wint_t *wch);
@@ -248,11 +241,10 @@ void spawn(char **args);
 void shell_escaped_cat(char *buf, char *str, size_t n);
 int open_with_env(char *program, char *path);
 void update_view();
-void clear_message();
 int rowcmp(const void *a, const void *b);
 int ls(Row **rowsp, uint8_t flags);
 void free_rows(Row **rowsp, int nfiles);
-void cd(int reset);
+void cd(bool reset);
 void try_to_sel(const char *target);
 void reload();
 off_t count_dir(const char *path);
