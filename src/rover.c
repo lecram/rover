@@ -86,37 +86,6 @@ void free_marks(Marks *marks)
 	FREE(marks->entries);
 }
 
-void handle_usr1(int sig)
-{
-	rover.pending_usr1 = 1;
-}
-
-void handle_winch(int sig)
-{
-	rover.pending_winch = 1;
-}
-
-void enable_handlers()
-{
-	struct sigaction sa;
-
-	memset(&sa, 0, sizeof(struct sigaction));
-	sa.sa_handler = handle_usr1;
-	sigaction(SIGUSR1, &sa, NULL);
-	sa.sa_handler = handle_winch;
-	sigaction(SIGWINCH, &sa, NULL);
-}
-
-void disable_handlers()
-{
-	struct sigaction sa;
-
-	memset(&sa, 0, sizeof(struct sigaction));
-	sa.sa_handler = SIG_DFL;
-	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGWINCH, &sa, NULL);
-}
-
 /* Handle any signals received since last call. */
 void sync_signals()
 {
@@ -163,27 +132,6 @@ int rover_get_wch(wint_t *wch)
 	return ret;
 }
 
-/* Do a fork-exec to external program (e.g. $EDITOR). */
-void spawn(char **args)
-{
-	pid_t pid;
-	int status;
-
-	setenv("RVSEL", rover.nfiles ? ENAME(ESEL) : "", 1);
-	pid = fork();
-	if (pid > 0) {
-		/* fork() succeeded. */
-		disable_handlers();
-		endwin();
-		waitpid(pid, &status, 0);
-		enable_handlers();
-		kill(getpid(), SIGWINCH);
-	} else if (pid == 0) {
-		/* Child process. */
-		execvp(args[0], args);
-	}
-}
-
 void shell_escaped_cat(char *buf, char *str, size_t n)
 {
 	char *p = buf + strlen(buf);
@@ -208,23 +156,6 @@ done:
 	strncat(p, "'", n);
 }
 
-int open_with_env(char *program, char *path)
-{
-	char buffer[PATH_MAX];
-
-	if (program) {
-#ifdef RV_SHELL
-		strncpy(buffer, program, PATH_MAX - 1);
-		strncat(buffer, " ", PATH_MAX - strlen(program) - 1);
-		shell_escaped_cat(buffer, path, PATH_MAX - strlen(program) - 2);
-		spawn((char *[]){ RV_SHELL, "-c", buffer, NULL });
-#else
-		spawn((char *[]){ program, path, NULL });
-#endif
-		return 1;
-	}
-	return 0;
-}
 
 /* Comparison used to sort listing entries. */
 int rowcmp(const void *a, const void *b)
@@ -273,7 +204,7 @@ int ls(Row **rowsp, uint8_t flags)
 		stat(ep->d_name, &statbuf);
 		if (S_ISDIR(statbuf.st_mode)) {
 			if (flags & SHOW_DIRS) {
-				rows[i].name = (char *) malloc(strlen(ep->d_name) +2);
+				rows[i].name = (char *)malloc(strlen(ep->d_name) + 2);
 				strcpy(rows[i].name, ep->d_name);
 				if (!rows[i].islink)
 					ADDSLASH(rows[i].name);
@@ -281,7 +212,7 @@ int ls(Row **rowsp, uint8_t flags)
 				i++;
 			}
 		} else if (flags & SHOW_FILES) {
-			rows[i].name = (char *) malloc(strlen(ep->d_name) +1);
+			rows[i].name = (char *)malloc(strlen(ep->d_name) + 1);
 			strcpy(rows[i].name, ep->d_name);
 			rows[i].size = statbuf.st_size;
 			rows[i].mode = statbuf.st_mode;
@@ -292,7 +223,7 @@ int ls(Row **rowsp, uint8_t flags)
 	qsort(rows, n, sizeof(*rows), rowcmp);
 	closedir(dp);
 	*rowsp = rows;
-	
+
 	return n;
 }
 
@@ -313,10 +244,10 @@ void cd(bool reset)
 	message(CYAN, "Loading \"%s\"...", CWD);
 	refresh();
 	if (chdir(CWD) == -1) {
-		getcwd(CWD, PATH_MAX -1);
+		getcwd(CWD, PATH_MAX - 1);
 		ADDSLASH(CWD);
 
-		clear_message();
+		mvhline(LINES - 1, 0, ' ', STATUSPOS);
 		update_view();
 
 		return;
@@ -332,7 +263,7 @@ void cd(bool reset)
 	if (!strcmp(CWD, rover.marks.dirpath)) {
 		for (i = 0; i < rover.nfiles; i++) {
 			for (j = 0; j < rover.marks.bulk; j++)
-				if ( rover.marks.entries[j] && !strcmp(rover.marks.entries[j], ENAME(i)))
+				if (rover.marks.entries[j] && !strcmp(rover.marks.entries[j], ENAME(i)))
 					break;
 
 			MARKED(i) = j < rover.marks.bulk;
@@ -341,7 +272,7 @@ void cd(bool reset)
 		for (i = 0; i < rover.nfiles; i++)
 			MARKED(i) = false;
 
-	clear_message();
+	mvhline(LINES - 1, 0, ' ', STATUSPOS);
 	update_view();
 
 	return;
@@ -352,7 +283,7 @@ void try_to_sel(const char *target)
 {
 	ESEL = 0;
 	if (!ISDIR(target))
-		while ((ESEL +1) < rover.nfiles && S_ISDIR(EMODE(ESEL)))
+		while ((ESEL + 1) < rover.nfiles && S_ISDIR(EMODE(ESEL)))
 			ESEL++;
 
 	while ((ESEL + 1) < rover.nfiles && strcoll(ENAME(ESEL), target) < 0)
@@ -390,7 +321,7 @@ off_t count_dir(const char *path)
 		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
 		lstat(subpath, &statbuf);
 		if (S_ISDIR(statbuf.st_mode)) {
-			strcat(subpath, "/");
+			ADDSLASH(subpath);
 			total += count_dir(subpath);
 		} else
 			total += statbuf.st_size;
@@ -455,7 +386,7 @@ int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
 		lstat(subpath, &statbuf);
 		if (S_ISDIR(statbuf.st_mode)) {
-			strcat(subpath, "/");
+			ADDSLASH(subpath);
 			ret |= process_dir(pre, proc, pos, subpath);
 		} else
 			ret |= proc(subpath);
@@ -475,7 +406,7 @@ void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doin
 	char *entry;
 	char path[PATH_MAX];
 
-	clear_message();
+	mvhline(LINES - 1, 0, ' ', STATUSPOS);
 	message(CYAN, "%s...", msg_doing);
 	refresh();
 	rover.prog = (Prog){ 0, count_marked(), msg_doing };
@@ -670,7 +601,7 @@ EditStat get_line_edit()
 				EDIT_BACKSPACE(rover.edit);
 		} else if (wch == killer) {
 			EDIT_CLEAR(rover.edit);
-			clear_message();
+			mvhline(LINES - 1, 0, ' ', STATUSPOS);
 		} else if (iswprint(wch)) {
 			if (!EDIT_FULL(rover.edit))
 				EDIT_INSERT(rover.edit, wch);

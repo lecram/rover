@@ -1,11 +1,28 @@
 #ifndef _UI_FUNCS_H
 #define _UI_FUNCS_H
 
+#define _GNU_SOURCE /* for environ */
 #include <curses.h>
 #include <locale.h> /* setlocale(), LC_ALL */
 #include <limits.h> /* PATH_MAX */
+#include <stdlib.h>
+#include <unistd.h> /* environ PAGER SHELL EDITOR VISUAL */
 
 #define STATUSPOS (COLS - 16)
+
+/* Shell used to launch external  programs.
+   Defining   this  macro   will  force   Rover  to   launch  external
+   programs with  `sh -c  "$EXTERNAL_PROGRAM [arg]"`. This  gives more
+   flexibility,  allowing command-line  arguments  to  be embedded  in
+   environment variables  (e.g. PAGER="less  -N"). On the  other hand,
+   this requires the presence of a  shell and will spawn an additional
+   process each time an external  program is invoked. Leave this macro
+   undefined if you prefer external  programs to be launched with just
+   `$EXTERNAL_PROGRAM [arg]`. */
+#define RV_SHELL "/bin/sh"
+
+/* Number of entries to jump on RVK_JUMP_DOWN and RVK_JUMP_UP. */
+#define RV_JUMP 10
 
 /* Colors available: DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, MAGENTA, WHITE, BLACK. */
 #define RVC_CWD       GREEN
@@ -25,6 +42,39 @@
 #define RVC_TABNUM    DEFAULT
 #define RVC_MARKS     YELLOW
 
+/* KEY not defined by curses.h */
+#ifndef KEY_SPACE
+#define KEY_SPACE 32
+#endif
+#ifndef KEY_ESC
+#define KEY_ESC 27
+#endif
+#ifndef KEY_TAB
+#define KEY_TAB 9
+#endif
+#ifndef KEY_RETURN
+#define KEY_RETURN 10
+#endif
+#ifndef KEY_CTRL_DEL
+#define KEY_CTRL_DEL 519
+#endif
+#ifndef KEY_CTRL_BS
+#define KEY_CTRL_BS 8
+#endif
+#ifndef KEY_CTRL_LEFT
+#define KEY_CTRL_LEFT 545
+#endif
+#ifndef KEY_CTRL_RIGHT
+#define KEY_CTRL_RIGHT 560
+#endif
+
+/* Get user programs from the environment vars */
+#define ROVER_ENV(dst, src)                        \
+	{                                              \
+		if ((dst = getenv("ROVER_" #src)) == NULL) \
+			dst = getenv(#src);                    \
+	}
+
 typedef enum Color {
 	DEFAULT,
 	RED,
@@ -37,11 +87,18 @@ typedef enum Color {
 	BLACK
 } Color;
 
+struct User {
+	char *Shell;
+	char *Pager;
+	char *Editor;
+	char *Open;
+};
+
 // Function declarations
-void init_term();
+void init_term(void);
 void update_input(const char *prompt, Color color, const char *input);
 void message(Color color, char *fmt, ...);
-void update_view();
-void clear_message();
+void update_view(void);
+void main_menu(void);
 
 #endif // _UI_FUNCS_H
