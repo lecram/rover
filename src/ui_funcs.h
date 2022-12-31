@@ -7,6 +7,7 @@
 #include <limits.h> /* PATH_MAX */
 #include <stdlib.h>
 #include <unistd.h> /* environ PAGER SHELL EDITOR VISUAL */
+#include <libgen.h> /* dirname() */
 
 #define STATUSPOS (COLS - 16)
 
@@ -68,6 +69,21 @@
 #define KEY_CTRL_RIGHT 560
 #endif
 
+/* Line Editing Macros. */
+#define EDIT_FULL(E)      ((E).left == (E).right)
+#define EDIT_CAN_LEFT(E)  ((E).left)
+#define EDIT_CAN_RIGHT(E) ((E).right < PATH_MAX - 1)
+#define EDIT_LEFT(E)      (E).buffer[(E).right--] = (E).buffer[--(E).left]
+#define EDIT_RIGHT(E)     (E).buffer[(E).left++] = (E).buffer[++(E).right]
+#define EDIT_INSERT(E, C) (E).buffer[(E).left++] = (C)
+#define EDIT_BACKSPACE(E) (E).left--
+#define EDIT_DELETE(E)    (E).right++
+#define EDIT_CLEAR(E)             \
+	{                             \
+		(E).left  = 0;            \
+		(E).right = PATH_MAX - 1; \
+	}
+	
 /* Get user programs from the environment vars */
 #define ROVER_ENV(dst, src)                        \
 	{                                              \
@@ -94,9 +110,14 @@ struct User {
 	char *Open;
 };
 
+typedef enum EditStat {
+	CONTINUE,
+	CONFIRM,
+	CANCEL
+} EditStat;
+
 // Function declarations
 void init_term(void);
-void update_input(const char *prompt, Color color, const char *input);
 void message(Color color, char *fmt, ...);
 void update_view(void);
 void main_menu(void);

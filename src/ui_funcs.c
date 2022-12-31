@@ -11,28 +11,54 @@ static void handle_winch(int sig)
 	rover.pending_winch = 1;
 }
 
-static void enable_handlers(void)
+static void handlers(bool enable)
 {
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(struct sigaction));
-	
-	sa.sa_handler = handle_usr1;
-	sigaction(SIGUSR1, &sa, NULL);
-	
-	sa.sa_handler = handle_winch;
-	sigaction(SIGWINCH, &sa, NULL);
+
+	if (enable) {
+		sa.sa_handler = handle_usr1;
+		sigaction(SIGUSR1, &sa, NULL);
+
+		sa.sa_handler = handle_winch;
+		sigaction(SIGWINCH, &sa, NULL);
+	} else {
+		sa.sa_handler = SIG_DFL;
+		sigaction(SIGUSR1, &sa, NULL);
+		sigaction(SIGWINCH, &sa, NULL);
+	}
+	return;
 }
 
-static void disable_handlers(void)
-{
-	struct sigaction sa;
+/* Update line input on the screen. */
 
-	memset(&sa, 0, sizeof(struct sigaction));
-	
-	sa.sa_handler = SIG_DFL;
-	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGWINCH, &sa, NULL);
+static void update_input(const char *prompt, Color color, const char *input)
+{
+	int plen, ilen, maxlen;
+	wchar_t wbuffer[PATH_MAX];
+
+	plen   = strlen(prompt);
+	ilen   = mbstowcs(NULL, input, 0);
+	maxlen = STATUSPOS - plen - 2;
+	if ((ilen - rover.edit_scroll) < maxlen)
+		rover.edit_scroll = MAX(ilen - maxlen, 0);
+	else if (rover.edit.left > (rover.edit_scroll + maxlen - 1))
+		rover.edit_scroll = rover.edit.left - maxlen;
+	else if (rover.edit.left < rover.edit_scroll)
+		rover.edit_scroll = MAX(rover.edit.left - maxlen, 0);
+	color_set(RVC_PROMPT, NULL);
+	mvaddstr(LINES - 1, 0, prompt);
+	color_set(color, NULL);
+	mbstowcs(wbuffer, input, COLS);
+	mvaddnwstr(LINES - 1, plen, &wbuffer[rover.edit_scroll], maxlen);
+	mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
+	color_set(DEFAULT, NULL);
+	if (rover.edit_scroll)
+		mvaddch(LINES - 1, plen - 1, '<');
+	if (ilen > (rover.edit_scroll + maxlen))
+		mvaddch(LINES - 1, plen + maxlen, '>');
+	move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
 }
 
 /* Curses setup. */
@@ -66,36 +92,7 @@ void init_term(void)
 		init_pair(BLACK, COLOR_BLACK, bg);
 	}
 	atexit((void (*)(void))endwin);
-	enable_handlers();
-}
-
-/* Update line input on the screen. */
-void update_input(const char *prompt, Color color, const char *input)
-{
-	int plen, ilen, maxlen;
-	wchar_t wbuffer[PATH_MAX];
-
-	plen   = strlen(prompt);
-	ilen   = mbstowcs(NULL, input, 0);
-	maxlen = STATUSPOS - plen - 2;
-	if (ilen - rover.edit_scroll < maxlen)
-		rover.edit_scroll = MAX(ilen - maxlen, 0);
-	else if (rover.edit.left > rover.edit_scroll + maxlen - 1)
-		rover.edit_scroll = rover.edit.left - maxlen;
-	else if (rover.edit.left < rover.edit_scroll)
-		rover.edit_scroll = MAX(rover.edit.left - maxlen, 0);
-	color_set(RVC_PROMPT, NULL);
-	mvaddstr(LINES - 1, 0, prompt);
-	color_set(color, NULL);
-	mbstowcs(wbuffer, input, COLS);
-	mvaddnwstr(LINES - 1, plen, &wbuffer[rover.edit_scroll], maxlen);
-	mvaddch(LINES - 1, plen + MIN(ilen - rover.edit_scroll, maxlen + 1), ' ');
-	color_set(DEFAULT, NULL);
-	if (rover.edit_scroll)
-		mvaddch(LINES - 1, plen - 1, '<');
-	if (ilen > rover.edit_scroll + maxlen)
-		mvaddch(LINES - 1, plen + maxlen, '>');
-	move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
+	handlers(true); //enable handlers
 }
 
 /* Show a message on the status bar. */
@@ -121,9 +118,10 @@ void message(Color color, char *fmt, ...)
 /* Update the listing view. */
 void update_view(void)
 {
-	int i, j, numsize, ishidden, marking;
-	char buffer_one[PATH_MAX], buffer_two[PATH_MAX];
+	int i, j, numsize, ishidden, marking, length, namecols;
+	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], *suffix;
 	wchar_t wbuffer[PATH_MAX];
+	off_t human_size;
 
 	mvhline(0, 0, ' ', COLS);
 	attr_on(A_BOLD, NULL);
@@ -178,18 +176,17 @@ void update_view(void)
 			if (ISLINK(j))
 				wcscat(wbuffer, L"/");
 		} else {
-			char *suffix, *suffixes = "BKMGTPEZY";
-			off_t human_size = ESIZE(j) * 10;
-			int length       = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
-			int namecols     = wcswidth(wbuffer, length);
-			for (suffix = suffixes; human_size >= 10240; suffix++)
+			human_size = ESIZE(j) * 10;
+			length     = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+			namecols   = wcswidth(wbuffer, length);
+			for (suffix = "BKMGTPEZY"; human_size >= 10240; suffix++)
 				human_size = (human_size + 512) / 1024;
 			if (*suffix == 'B')
-				swprintf(wbuffer + length, PATH_MAX - length, L"%*d %c",
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d Bytes",
 				         (int)(COLS - namecols - 6),
-				         (int)human_size / 10, *suffix);
+				         (int)human_size / 10);
 			else
-				swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %c",
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %cb",
 				         (int)(COLS - namecols - 8),
 				         (int)human_size / 10, (int)human_size % 10, *suffix);
 		}
@@ -237,15 +234,36 @@ static void spawn(char **args)
 	pid = fork();
 	if (pid > 0) {
 		/* fork() succeeded. */
-		disable_handlers();
+		handlers(false); //disable handlers
 		endwin();
 		waitpid(pid, &status, 0);
-		enable_handlers();
+		handlers(true); //enable handlers
 		kill(getpid(), SIGWINCH);
 	} else if (pid == 0) {
 		/* Child process. */
 		execvp(args[0], args);
 	}
+}
+static void shell_escaped_cat(char *buf, char *str, size_t n)
+{
+	char *p = buf + strlen(buf);
+
+	*p++ = '\'';
+	for (n--; n; n--, str++) {
+		if (*str == '\'') {
+			if (n < 4)
+				break;
+			strcpy(p, "'\\''");
+			n -= 4;
+			p += 4;
+		} else if (*str == '\0')
+			break;
+		else {
+			*p = *str;
+			p++;
+		}
+	}
+	strncat(p, "'", n);
 }
 
 static int open_with_env(char *program, char *path)
@@ -256,7 +274,7 @@ static int open_with_env(char *program, char *path)
 #ifdef RV_SHELL
 		strncpy(buffer, program, PATH_MAX - 1);
 		strncat(buffer, " ", PATH_MAX - strlen(program) - 1);
-		shell_escaped_cat(buffer, path, PATH_MAX - strlen(program) - 2);
+		shell_escaped_cat(buffer, path, (size_t)PATH_MAX - strlen(program) - 2);
 		spawn((char *[]){ RV_SHELL, "-c", buffer, NULL });
 #else
 		spawn((char *[]){ program, path, NULL });
@@ -267,6 +285,282 @@ static int open_with_env(char *program, char *path)
 	return 0;
 }
 
+static void start_line_edit(const char *init_input)
+{
+	char input[PATH_MAX];
+
+	curs_set(TRUE);
+	strncpy(input, init_input, PATH_MAX);
+	rover.edit.left             = mbstowcs(rover.edit.buffer, init_input, PATH_MAX);
+	rover.edit.right            = PATH_MAX - 1;
+	rover.edit.buffer[PATH_MAX] = L'\0'; //buffuer lenght is defined with PATH_MAX +1
+	rover.edit_scroll           = 0;
+}
+
+/* This function must be used in place of getch().
+   It handles signals while waiting for user input. */
+ static int rover_getch(void)
+{
+	int ch;
+
+	keypad(rover.window, true);
+
+	while ((ch = getch()) == ERR)
+		sync_signals();
+
+	keypad(rover.window, false);
+
+	return ch;
+}
+
+/* Read input and change editing state accordingly. */
+static EditStat get_line_edit(char *string)
+{
+	int ch, length;
+
+	ch = rover_getch();
+	switch (ch) {
+		case '\r':
+		case '\n':
+			curs_set(FALSE);
+			return CONFIRM;
+			break;
+		case KEY_ESC:
+			curs_set(FALSE);
+			return CANCEL;
+			break;
+		case KEY_LEFT:
+			if (EDIT_CAN_LEFT(rover.edit))
+				EDIT_LEFT(rover.edit);
+			break;
+		case KEY_RIGHT:
+			if (EDIT_CAN_RIGHT(rover.edit))
+				EDIT_RIGHT(rover.edit);
+			break;
+		case KEY_HOME:
+		case KEY_UP:
+			while (EDIT_CAN_LEFT(rover.edit))
+				EDIT_LEFT(rover.edit);
+			break;
+		case KEY_END:
+		case KEY_DOWN:
+			while (EDIT_CAN_RIGHT(rover.edit))
+				EDIT_RIGHT(rover.edit);
+			break;
+		case KEY_BACKSPACE:
+			if (EDIT_CAN_LEFT(rover.edit))
+				EDIT_BACKSPACE(rover.edit);
+			break;
+		case KEY_DC:
+			if (EDIT_CAN_RIGHT(rover.edit))
+				EDIT_DELETE(rover.edit);
+			break;
+		case (KEY_CANCEL):
+			EDIT_CLEAR(rover.edit);
+			mvhline(LINES - 1, 0, ' ', STATUSPOS);
+		default:
+			if (iswprint(ch) && !EDIT_FULL(rover.edit))
+				EDIT_INSERT(rover.edit, ch);
+			break;
+	}
+
+	//Encode edit contents in input. 
+	rover.edit.buffer[rover.edit.left] = L'\0';
+	length                             = wcstombs(string, rover.edit.buffer, PATH_MAX);
+	wcstombs(&string[length], &rover.edit.buffer[rover.edit.right + 1], PATH_MAX - length);
+
+	return CONTINUE;
+}
+
+static int addfile(const char *path)
+{	/* Using creat(2) because mknod(2) doesn't seem to be portable. */
+	int ret;
+
+	ret = creat(path, 0644);
+	if (ret < 0)
+		return ret;
+
+	return close(ret);
+}
+
+static int adddir(const char *path)
+{
+	int ret;
+	struct stat st;
+
+	ret = stat(CWD, &st);
+	if (ret < 0)
+		return ret;
+
+	return mkdir(path, st.st_mode);
+}
+
+/* Unmark all entries. */
+static void mark_none(Marks *marks)
+{
+	int i;
+
+	strcpy(marks->dirpath, "");
+	for (i = 0; marks->nentries && i < marks->bulk; i++)
+		if (marks->entries[i]) {
+			FREE(marks->entries[i]);
+			marks->nentries--;
+		}
+
+	if (marks->bulk > BULK_THRESH) {
+		/* Reset bulk to free some memory. */
+		FREE(marks->entries);
+		marks->bulk    = BULK_INIT;
+		marks->entries = (char **)calloc(marks->bulk, sizeof *marks->entries);
+	}
+}
+
+static void add_mark(Marks *marks, char *dirpath, char *entry)
+{
+	int i, extra;
+
+	if (!strcmp(marks->dirpath, dirpath)) {
+		/* Append mark to directory. */
+		if (marks->nentries == marks->bulk) {
+			/* Expand bulk to accomodate new entry. */
+			extra = marks->bulk / 2;
+			marks->bulk += extra; /* bulk *= 1.5; */
+			marks->entries = (char **) realloc(marks->entries, marks->bulk * sizeof(*marks->entries));
+			memset(&marks->entries[marks->nentries], 0, extra * sizeof *marks->entries);
+			i = marks->nentries;
+		} else {
+			/* Search for empty slot (there must be one). */
+			for (i = 0; i < marks->bulk; i++)
+				if (!marks->entries[i])
+					break;
+		}
+	} else {
+		/* Directory changed. Discard old marks. */
+		mark_none(marks);
+		strcpy(marks->dirpath, dirpath);
+		i = 0;
+	}
+
+	marks->entries[i] = (char *) malloc(strlen(entry) + 1);
+	strcpy(marks->entries[i], entry);
+	marks->nentries++;
+}
+
+void del_mark(Marks *marks, char *entry)
+{
+	int i;
+
+	if (marks->nentries > 1) {
+		for (i = 0; i < marks->bulk; i++)
+			if (marks->entries[i] && !strcmp(marks->entries[i], entry))
+				break;
+
+		FREE(marks->entries[i]);
+		marks->nentries--;
+	} else
+		mark_none(marks);
+}
+
+/* Recursively process a source directory using CWD as destination root.
+   For each node (i.e. directory), do the following:
+    1. call pre(destination);
+    2. call proc() on every child leaf (i.e. files);
+    3. recurse into every child node;
+    4. call pos(source).
+   E.g. to move directory /src/ (and all its contents) inside /dst/:
+    strcpy(CWD, "/dst/");
+    process_dir(adddir, movfile, deldir, "/src/"); */
+static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
+{
+	int ret;
+	DIR *dp;
+	struct dirent *ep;
+	struct stat statbuf;
+	char subpath[PATH_MAX], dstpath[PATH_MAX];
+
+	ret = 0;
+	if (pre) {
+		strcpy(dstpath, CWD);
+		strcat(dstpath, path + strlen(rover.marks.dirpath));
+		ret |= pre(dstpath);
+	}
+
+	if (!(dp = opendir(path)))
+		return -1;
+	
+	while ((ep = readdir(dp))) {
+		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+			continue;
+		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
+		lstat(subpath, &statbuf);
+		if (S_ISDIR(statbuf.st_mode)) {
+			ADDSLASH(subpath);
+			ret |= process_dir(pre, proc, pos, subpath);
+		} else
+			ret |= proc(subpath);
+	}
+	closedir(dp);	
+	if (pos)
+		ret |= pos(path);
+
+	return ret;
+}
+
+/* Process all marked entries using CWD as destination root.
+   All marked entries that are directories will be recursively processed.
+   See process_dir() for details on the parameters. */
+static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done)
+{
+	int i, ret;
+	char *entry;
+	char path[PATH_MAX];
+
+	mvhline(LINES - 1, 0, ' ', STATUSPOS);
+	message(CYAN, "%s...", msg_doing);
+	refresh();
+	rover.prog = (Prog){ 0, count_marked(), msg_doing };
+	for (i = 0; i < rover.marks.bulk; i++) {
+		entry = rover.marks.entries[i];
+		if (entry) {
+			ret = 0;
+			snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, entry);
+			if (ISDIR(entry)) {
+				if (!strncmp(path, CWD, strlen(path)))
+					ret = -1;
+				else
+					ret = process_dir(pre, proc, pos, path);
+			} else
+				ret = proc(path);
+			if (!ret) {
+				del_mark(&rover.marks, entry);
+				reload();
+			}
+		}
+	}
+	rover.prog.total = 0;
+	reload();
+	if (!rover.marks.nentries)
+		message(GREEN, "%s all marked entries.", msg_done);
+	else
+		message(RED, "Some errors occured while %s.", msg_doing);
+	RV_ALERT();
+}
+
+/* Wrappers for file operations. */
+static int delfile(const char *path)
+{
+	int ret;
+	struct stat st;
+
+	ret = lstat(path, &st);
+	if (ret < 0)
+		return ret;
+
+	update_progress(st.st_size);
+
+	return unlink(path);
+}
+
 static PROCESS deldir = rmdir;
 
 void main_menu(void)
@@ -274,7 +568,7 @@ void main_menu(void)
 	int i, ch, oldsel, oldscroll, length, ok, sel;
 	bool quit = false, isdir;
 	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], input[PATH_MAX], clipboard[PATH_MAX];
-	char *program, *dir_name, *bname, *last, first;
+	char *program, *dir_name, *bname, *last, *msg, first;
 	const char *clip_path;
 	ssize_t len = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
 	Color color = RED;
@@ -301,8 +595,11 @@ void main_menu(void)
 			cd(false);
 			break;
 		case '?': //Help
-			//spawn((char *[]){ "man", "rover", NULL });
-			spawn((char *[]){ "man", "./rover.1", NULL });
+			if (access("./rover.1", R_OK))
+				bname = "rover"; //default man path
+			else
+				bname = "./rover.1";
+			spawn((char *[]){ "man", bname, NULL });
 			break;
 		case KEY_DOWN: //Move cursor down
 			if (!rover.nfiles)
@@ -343,7 +640,7 @@ void main_menu(void)
 			ESEL = rover.nfiles - 1;
 			update_view();
 			break;
-		case KEY_SPACE: //Enter selected directory
+		case KEY_RIGHT: //Enter selected directory
 			if (!rover.nfiles || !S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (chdir(ENAME(ESEL)) == -1) {
@@ -353,7 +650,7 @@ void main_menu(void)
 			strcat(CWD, ENAME(ESEL));
 			cd(true);
 			break;
-		case KEY_BACKSPACE: //Go to parent directory
+		case KEY_LEFT: //Go to parent directory
 			if (!strcmp(CWD, "/"))
 				continue;
 			CWD[strlen(CWD) - 1] = '\0';
@@ -369,7 +666,7 @@ void main_menu(void)
 				SCROLL = ESEL - HEIGHT / 2;
 			update_view();
 			break;
-		case '\\': //Go to home directory
+		case 'h': //Go to home directory
 			strcpy(CWD, getenv("HOME"));
 			ADDSLASH(CWD);
 			cd(true);
@@ -381,7 +678,6 @@ void main_menu(void)
 				continue;
 			buffer_one[len] = '\0';
 			if (access(buffer_one, F_OK) == -1) {
-				char *msg;
 				switch (errno) {
 				case EACCES:
 					msg = "Cannot access \"%s\".";
@@ -413,29 +709,25 @@ void main_menu(void)
 			break;
 		case 'y': //Copy location to clipboard
 			clip_path = getenv("CLIP");
-			if (!clip_path)
-				goto copy_path_fail;
-			clip_file = fopen(clip_path, "w");
-			if (!clip_file)
-				goto copy_path_fail;
-			fprintf(clip_file, "%s%s\n", CWD, ENAME(ESEL));
-			fclose(clip_file);
-			goto copy_path_done;
-copy_path_fail:
-			strcpy(clipboard, CWD);
-			strcat(clipboard, ENAME(ESEL));
-copy_path_done:;
+			if (clip_path) {
+				clip_file = fopen(clip_path, "w");
+				if (clip_file) {
+					fprintf(clip_file, "%s%s\n", CWD, ENAME(ESEL));
+					fclose(clip_file);
+				}
+			}
+			if (!clip_path || !clip_file)
+				sprintf(clipboard, "%s%s", CWD, ENAME(ESEL));
 			break;
 		case 'p': //Go to location in clipboard
 			clip_path = getenv("CLIP");
-			if (!clip_path)
-				goto paste_path_fail;
-			clip_file = fopen(clip_path, "r");
-			if (!clip_file)
-				goto paste_path_fail;
-			fscanf(clip_file, "%s\n", clipboard);
-			fclose(clip_file);
-paste_path_fail:
+			if (clip_path) {
+				clip_file = fopen(clip_path, "r");
+				if (clip_file) {
+					fscanf(clip_file, "%s\n", clipboard);
+					fclose(clip_file);
+				}
+			}
 			strcpy(buffer_one, clipboard);
 			strcpy(CWD, dirname(buffer_one));
 			if (strcmp(CWD, "/"))
@@ -484,7 +776,7 @@ paste_path_fail:
 			oldscroll = SCROLL;
 			start_line_edit("");
 			update_input(RVP_SEARCH, RED, input);
-			while ((edit_stat = get_line_edit()) == CONTINUE) {
+			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
 				length = strlen(input);
 				if (length) {
 					for (sel = 0; sel < rover.nfiles; sel++)
@@ -532,16 +824,14 @@ paste_path_fail:
 			ok = 0;
 			start_line_edit("");
 			update_input(RVP_NEW_FILE, RED, input);
-			while ((edit_stat = get_line_edit()) == CONTINUE) {
-				int length = strlen(input);
-				ok         = length;
+			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
+				length = strlen(input);
+				ok     = length;
 				for (i = 0; i < rover.nfiles; i++) {
-					if (
-						!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") ||
-					     !strcmp(ENAME(i) + length, "/"))) {
+					if (!strncmp(ENAME(i), input, length) &&
+						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
 						ok = 0;
-						break;
+						i = rover.nfiles; //in order to exit from nested loop without using break;
 					}
 				}
 				update_input(RVP_NEW_FILE, (ok ? GREEN : RED), input);
@@ -563,16 +853,14 @@ paste_path_fail:
 			ok = 0;
 			start_line_edit("");
 			update_input(RVP_NEW_DIR, RED, input);
-			while ((edit_stat = get_line_edit()) == CONTINUE) {
-				int length = strlen(input);
-				ok         = length;
+			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
+				length = strlen(input);
+				ok     = length;
 				for (i = 0; i < rover.nfiles; i++) {
-					if (
-						!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") ||
-					     !strcmp(ENAME(i) + length, "/"))) {
+					if (!strncmp(ENAME(i), input, length) &&
+						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
 						ok = 0;
-						break;
+						i = rover.nfiles; //in order to exit from nested loop without using break;
 					}
 				}
 				update_input(RVP_NEW_DIR, (ok ? GREEN : RED), input);
@@ -595,20 +883,19 @@ paste_path_fail:
 			ok = 0;
 			strcpy(input, ENAME(ESEL));
 			last = input + strlen(input) - 1;
-			if ((isdir = *last == '/'))
+			isdir = *last;
+			if (*last == '/')
 				*last = '\0';
 			start_line_edit(input);
 			update_input(RVP_RENAME, RED, input);
-			while ((edit_stat = get_line_edit()) == CONTINUE) {
+			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
 				length = strlen(input);
 				ok     = length;
 				for (i = 0; i < rover.nfiles; i++)
-					if (
-						!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") ||
-					     !strcmp(ENAME(i) + length, "/"))) {
+					if (!strncmp(ENAME(i), input, length) &&
+						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
 						ok = 0;
-						break;
+						i = rover.nfiles; //in order to exit from nested loop without using break;
 					}
 				update_input(RVP_RENAME, (ok ? GREEN : RED), input);
 			}
@@ -646,11 +933,13 @@ paste_path_fail:
 			if (rover.nfiles) {
 				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
 				if (rover_getch() == 'Y') {
-					const char *name = ENAME(ESEL);
-					int ret          = ISDIR(ENAME(ESEL)) ? deldir(name) : delfile(name);
+					bname = ENAME(ESEL);
+					ok     = ISDIR(ENAME(ESEL)) ? deldir(bname) : delfile(bname);
 					reload();
-					if (ret)
+					if (ok)
 						message(RED, "Could not delete \"%s\".", ENAME(ESEL));
+					else
+						message(YELLOW, "\"%s\" deleted!", bname);
 				} else
 					mvhline(LINES - 1, 0, ' ', STATUSPOS);
 			} else
@@ -702,18 +991,17 @@ paste_path_fail:
 			} else
 				message(RED, "No entries marked for copying.");
 			break;
-			case 'V': //Move all marked entries
-				if (rover.marks.nentries) {
-					if (strcmp(CWD, rover.marks.dirpath))
-						process_marked(adddir, movfile, deldir, "Moving", "Moved");
-					else
-						message(RED, "Cannot move to the same path.");
-				} else
-					message(RED, "No entries marked for moving.");
-				break;
-
+		case 'V': //Move all marked entries
+			if (rover.marks.nentries) {
+				if (strcmp(CWD, rover.marks.dirpath))
+					process_marked(adddir, movfile, deldir, "Moving", "Moved");
+				else
+					message(RED, "Cannot move to the same path.");
+			} else
+				message(RED, "No entries marked for moving.");
+			break;
 		}
-	} while(!quit);
+	} while (!quit);
 
 	return;
 }

@@ -1,91 +1,6 @@
 #include "config.h"
 #include "ui_funcs.h"
 
-void init_marks(Marks *marks)
-{
-	strcpy(marks->dirpath, "");
-	marks->bulk     = BULK_INIT;
-	marks->nentries = 0;
-	marks->entries  = (char **)calloc(marks->bulk, sizeof(*marks->entries));
-}
-
-/* Unmark all entries. */
-void mark_none(Marks *marks)
-{
-	int i;
-
-	strcpy(marks->dirpath, "");
-	for (i = 0; i < marks->bulk && marks->nentries; i++)
-		if (marks->entries[i]) {
-			FREE(marks->entries[i]);
-			marks->nentries--;
-		}
-	if (marks->bulk > BULK_THRESH) {
-		/* Reset bulk to free some memory. */
-		FREE(marks->entries);
-		marks->bulk    = BULK_INIT;
-		marks->entries = calloc(marks->bulk, sizeof *marks->entries);
-	}
-}
-
-void add_mark(Marks *marks, char *dirpath, char *entry)
-{
-	int i;
-
-	if (!strcmp(marks->dirpath, dirpath)) {
-		/* Append mark to directory. */
-		if (marks->nentries == marks->bulk) {
-			/* Expand bulk to accomodate new entry. */
-			int extra = marks->bulk / 2;
-			marks->bulk += extra; /* bulk *= 1.5; */
-			marks->entries = realloc(marks->entries,
-			                         marks->bulk * sizeof *marks->entries);
-			memset(&marks->entries[marks->nentries], 0,
-			       extra * sizeof *marks->entries);
-			i = marks->nentries;
-		} else {
-			/* Search for empty slot (there must be one). */
-			for (i = 0; i < marks->bulk; i++)
-				if (!marks->entries[i])
-					break;
-		}
-	} else {
-		/* Directory changed. Discard old marks. */
-		mark_none(marks);
-		strcpy(marks->dirpath, dirpath);
-		i = 0;
-	}
-	marks->entries[i] = malloc(strlen(entry) + 1);
-	strcpy(marks->entries[i], entry);
-	marks->nentries++;
-}
-
-void del_mark(Marks *marks, char *entry)
-{
-	int i;
-
-	if (marks->nentries > 1) {
-		for (i = 0; i < marks->bulk; i++)
-			if (marks->entries[i] && !strcmp(marks->entries[i], entry))
-				break;
-		FREE(marks->entries[i]);
-		marks->nentries--;
-	} else
-		mark_none(marks);
-}
-
-void free_marks(Marks *marks)
-{
-	int i;
-
-	for (i = 0; i < marks->bulk && marks->nentries; i++)
-		if (marks->entries[i]) {
-			FREE(marks->entries[i]);
-			marks->nentries--;
-		}
-	FREE(marks->entries);
-}
-
 /* Handle any signals received since last call. */
 void sync_signals()
 {
@@ -108,54 +23,6 @@ void sync_signals()
 		rover.pending_winch = 0;
 	}
 }
-
-/* This function must be used in place of getch().
-   It handles signals while waiting for user input. */
-int rover_getch()
-{
-	int ch;
-
-	while ((ch = getch()) == ERR)
-		sync_signals();
-
-	return ch;
-}
-
-/* This function must be used in place of get_wch().
-   It handles signals while waiting for user input. */
-int rover_get_wch(wint_t *wch)
-{
-	wint_t ret;
-
-	while ((ret = get_wch(wch)) == (wint_t)ERR)
-		sync_signals();
-	return ret;
-}
-
-void shell_escaped_cat(char *buf, char *str, size_t n)
-{
-	char *p = buf + strlen(buf);
-	*p++    = '\'';
-	for (n--; n; n--, str++) {
-		switch (*str) {
-		case '\'':
-			if (n < 4)
-				goto done;
-			strcpy(p, "'\\''");
-			n -= 4;
-			p += 4;
-			break;
-		case '\0':
-			goto done;
-		default:
-			*p = *str;
-			p++;
-		}
-	}
-done:
-	strncat(p, "'", n);
-}
-
 
 /* Comparison used to sort listing entries. */
 int rowcmp(const void *a, const void *b)
@@ -354,123 +221,19 @@ off_t count_marked()
 	return total;
 }
 
-/* Recursively process a source directory using CWD as destination root.
-   For each node (i.e. directory), do the following:
-    1. call pre(destination);
-    2. call proc() on every child leaf (i.e. files);
-    3. recurse into every child node;
-    4. call pos(source).
-   E.g. to move directory /src/ (and all its contents) inside /dst/:
-    strcpy(CWD, "/dst/");
-    process_dir(adddir, movfile, deldir, "/src/"); */
-int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
-{
-	int ret;
-	DIR *dp;
-	struct dirent *ep;
-	struct stat statbuf;
-	char subpath[PATH_MAX];
-
-	ret = 0;
-	if (pre) {
-		char dstpath[PATH_MAX];
-		strcpy(dstpath, CWD);
-		strcat(dstpath, path + strlen(rover.marks.dirpath));
-		ret |= pre(dstpath);
-	}
-	if (!(dp = opendir(path)))
-		return -1;
-	while ((ep = readdir(dp))) {
-		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
-			continue;
-		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
-		lstat(subpath, &statbuf);
-		if (S_ISDIR(statbuf.st_mode)) {
-			ADDSLASH(subpath);
-			ret |= process_dir(pre, proc, pos, subpath);
-		} else
-			ret |= proc(subpath);
-	}
-	closedir(dp);
-	if (pos)
-		ret |= pos(path);
-	return ret;
-}
-
-/* Process all marked entries using CWD as destination root.
-   All marked entries that are directories will be recursively processed.
-   See process_dir() for details on the parameters. */
-void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done)
-{
-	int i, ret;
-	char *entry;
-	char path[PATH_MAX];
-
-	mvhline(LINES - 1, 0, ' ', STATUSPOS);
-	message(CYAN, "%s...", msg_doing);
-	refresh();
-	rover.prog = (Prog){ 0, count_marked(), msg_doing };
-	for (i = 0; i < rover.marks.bulk; i++) {
-		entry = rover.marks.entries[i];
-		if (entry) {
-			ret = 0;
-			snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, entry);
-			if (ISDIR(entry)) {
-				if (!strncmp(path, CWD, strlen(path)))
-					ret = -1;
-				else
-					ret = process_dir(pre, proc, pos, path);
-			} else
-				ret = proc(path);
-			if (!ret) {
-				del_mark(&rover.marks, entry);
-				reload();
-			}
-		}
-	}
-	rover.prog.total = 0;
-	reload();
-	if (!rover.marks.nentries)
-		message(GREEN, "%s all marked entries.", msg_done);
-	else
-		message(RED, "Some errors occured while %s.", msg_doing);
-	RV_ALERT();
-}
-
 void update_progress(off_t delta)
 {
 	int percent;
 
 	if (!rover.prog.total)
 		return;
+
 	rover.prog.partial += delta;
 	percent = (int)(rover.prog.partial * 100 / rover.prog.total);
 	message(CYAN, "%s...%d%%", rover.prog.msg, percent);
 	refresh();
-}
 
-/* Wrappers for file operations. */
-int delfile(const char *path)
-{
-	int ret;
-	struct stat st;
-
-	ret = lstat(path, &st);
-	if (ret < 0)
-		return ret;
-	update_progress(st.st_size);
-	return unlink(path);
-}
-
-int addfile(const char *path)
-{
-	/* Using creat(2) because mknod(2) doesn't seem to be portable. */
-	int ret;
-
-	ret = creat(path, 0644);
-	if (ret < 0)
-		return ret;
-	return close(ret);
+	return;
 }
 
 int cpyfile(const char *srcpath)
@@ -510,17 +273,6 @@ int cpyfile(const char *srcpath)
 	return ret;
 }
 
-int adddir(const char *path)
-{
-	int ret;
-	struct stat st;
-
-	ret = stat(CWD, &st);
-	if (ret < 0)
-		return ret;
-	return mkdir(path, st.st_mode);
-}
-
 int movfile(const char *srcpath)
 {
 	int ret;
@@ -542,75 +294,4 @@ int movfile(const char *srcpath)
 		ret = unlink(srcpath);
 	}
 	return ret;
-}
-
-void start_line_edit(const char *init_input)
-{
-	char input[PATH_MAX];
-
-	curs_set(TRUE);
-	strncpy(input, init_input, PATH_MAX);
-	rover.edit.left             = mbstowcs(rover.edit.buffer, init_input, PATH_MAX);
-	rover.edit.right            = PATH_MAX - 1;
-	rover.edit.buffer[PATH_MAX] = L'\0';
-	rover.edit_scroll           = 0;
-}
-
-/* Read input and change editing state accordingly. */
-EditStat get_line_edit()
-{
-	wchar_t eraser, killer, wch;
-	int ret, length;
-	char input[PATH_MAX];
-
-	ret = rover_get_wch((wint_t *)&wch);
-	erasewchar(&eraser);
-	killwchar(&killer);
-	if (ret == KEY_CODE_YES) {
-		if (wch == KEY_ENTER) {
-			curs_set(FALSE);
-			return CONFIRM;
-		} else if (wch == KEY_LEFT) {
-			if (EDIT_CAN_LEFT(rover.edit))
-				EDIT_LEFT(rover.edit);
-		} else if (wch == KEY_RIGHT) {
-			if (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_RIGHT(rover.edit);
-		} else if (wch == KEY_UP) {
-			while (EDIT_CAN_LEFT(rover.edit))
-				EDIT_LEFT(rover.edit);
-		} else if (wch == KEY_DOWN) {
-			while (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_RIGHT(rover.edit);
-		} else if (wch == KEY_BACKSPACE) {
-			if (EDIT_CAN_LEFT(rover.edit))
-				EDIT_BACKSPACE(rover.edit);
-		} else if (wch == KEY_DC) {
-			if (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_DELETE(rover.edit);
-		}
-	} else {
-		if (wch == L'\r' || wch == L'\n') {
-			curs_set(FALSE);
-			return CONFIRM;
-		} else if (wch == L'\t') {
-			curs_set(FALSE);
-			return CANCEL;
-		} else if (wch == eraser) {
-			if (EDIT_CAN_LEFT(rover.edit))
-				EDIT_BACKSPACE(rover.edit);
-		} else if (wch == killer) {
-			EDIT_CLEAR(rover.edit);
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
-		} else if (iswprint(wch)) {
-			if (!EDIT_FULL(rover.edit))
-				EDIT_INSERT(rover.edit, wch);
-		}
-	}
-	/* Encode edit contents in input. */
-	rover.edit.buffer[rover.edit.left] = L'\0';
-	length                             = wcstombs(input, rover.edit.buffer, PATH_MAX);
-	wcstombs(&input[length], &rover.edit.buffer[rover.edit.right + 1],
-	         PATH_MAX - length);
-	return CONTINUE;
 }
