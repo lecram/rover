@@ -9,16 +9,19 @@ static void init_term(void)
 {
 	setlocale(LC_ALL, "");
 	initscr();
+
 	cbreak(); /* Get one character at a time. */
-	timeout(100); /* For getch(). */
+	nodelay(stdscr, TRUE); /* For getch(). */
 	noecho();
 	nonl(); /* No NL->CR/NL on output. */
 	intrflush(stdscr, FALSE);
 	keypad(stdscr, TRUE);
 	curs_set(FALSE); /* Hide blinking cursor. */
+
 	if (has_colors()) {
 		short bg;
 		start_color();
+
 #ifdef NCURSES_EXT_FUNCS
 		use_default_colors();
 		bg = -1;

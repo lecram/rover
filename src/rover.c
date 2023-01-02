@@ -38,11 +38,18 @@ void logfile(const char *format, ...)
 int endsession(void)
 {
 	handlers(false);
+ 	delwin(rover.window);
+/* 
 	curs_set(TRUE);
-	keypad(stdscr, TRUE);
+	keypad(stdscr, FALSE);
+	intrflush(stdscr, TRUE);
 	nl();
 	echo();
-	timeout(0);
+	nodelay(stdscr, FALSE);
+	nocbreak();
+	refresh();
+ */ 
+ 	clear();
 	endwin();
 
 	return EXIT_SUCCESS;
@@ -149,7 +156,7 @@ void update_view()
         strcpy(buffer_two, "0/0");
     else
         snprintf(buffer_two, PATH_MAX, "%d/%d", ESEL + 1, rover.nfiles);
-    snprintf((buffer_one+3), (PATH_MAX-3), "%12s", buffer_two);
+    snprintf(buffer_one+3, PATH_MAX, "%12s", buffer_two);
     color_set(RVC_STATUS, NULL);
     mvaddstr(LINES - 1, STATUSPOS, buffer_one);
     wrefresh(rover.window);
@@ -168,9 +175,9 @@ void sync_signals(void)
 		delwin(rover.window);
 		endwin();
 		refresh();
-		clear();
 		rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
-		if (HEIGHT < rover.nfiles && SCROLL + HEIGHT > rover.nfiles)
+		if (HEIGHT < rover.nfiles &&
+			SCROLL + HEIGHT > rover.nfiles)
 			SCROLL = ESEL - HEIGHT;
 
 		update_view();

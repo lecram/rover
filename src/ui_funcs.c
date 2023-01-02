@@ -69,7 +69,6 @@ void message(Color color, char *fmt, ...)
 	char buffer[PATH_MAX];
 
 	va_start(args, fmt);
-	// vsnprintf(buffer, MIN(PATH_MAX, STATUSPOS), fmt, args);
 	vsnprintf(buffer, STATUSPOS, fmt, args);
 	va_end(args);
 
@@ -102,37 +101,13 @@ static void spawn(char **args)
 	}
 }
 
-static void shell_escaped_cat(char *buf, char *str, size_t n)
-{
-	char *p = buf + strlen(buf);
-
-	*p++ = '\'';
-	for (n--; n; n--, str++) {
-		if (*str == '\'') {
-			if (n < 4)
-				break;
-			strcpy(p, "'\\''");
-			n -= 4;
-			p += 4;
-		} else if (*str == '\0')
-			break;
-		else {
-			*p = *str;
-			p++;
-		}
-	}
-	strncat(p, "'", n);
-}
-
 static int open_with_env(char *program, char *path)
 {
 	char buffer[PATH_MAX];
 
 	if (program) {
 #ifdef RV_SHELL
-		strncpy(buffer, program, PATH_MAX - 1);
-		strncat(buffer, " ", PATH_MAX - strlen(program) - 1);
-		shell_escaped_cat(buffer, path, (size_t)PATH_MAX - strlen(program) - 2);
+		snprintf(buffer, PATH_MAX, "%s \'%s\'", program, path);
 		spawn((char *[]){ RV_SHELL, "-c", buffer, NULL });
 #else
 		spawn((char *[]){ program, path, NULL });
@@ -161,12 +136,8 @@ static int rover_getch(void)
 {
 	int ch;
 
-	keypad(rover.window, TRUE);
-
 	while ((ch = getch()) == ERR)
 		sync_signals();
-
-	keypad(rover.window, FALSE);
 
 	return ch;
 }
@@ -196,11 +167,13 @@ static EditStat get_line_edit(char *string)
 			EDIT_RIGHT(rover.edit);
 		break;
 	case KEY_HOME:
+	case KEY_PPAGE:
 	case KEY_UP:
 		while (EDIT_CAN_LEFT(rover.edit))
 			EDIT_LEFT(rover.edit);
 		break;
 	case KEY_END:
+	case KEY_NPAGE:
 	case KEY_DOWN:
 		while (EDIT_CAN_RIGHT(rover.edit))
 			EDIT_RIGHT(rover.edit);
@@ -213,9 +186,13 @@ static EditStat get_line_edit(char *string)
 		if (EDIT_CAN_RIGHT(rover.edit))
 			EDIT_DELETE(rover.edit);
 		break;
-	case (KEY_CANCEL):
+	case KEY_CANCEL:
 		EDIT_CLEAR(rover.edit);
 		CLEAR_MESSAGE();
+		break;
+	case KEY_F(1) ... KEY_F(12):
+	case KEY_IC:
+		break;
 	default:
 		if (iswprint(ch) && !EDIT_FULL(rover.edit))
 			EDIT_INSERT(rover.edit, ch);
@@ -679,7 +656,6 @@ void main_menu(void)
 							message(RED, "\"%s\" already exists!", input);
 							rover_getch();
 							CLEAR_MESSAGE();
-							curs_set(TRUE);
 							edit_stat = CONTINUE;
 						}
 					} else if (!isvalidfilename(input, false)) {
@@ -690,7 +666,6 @@ void main_menu(void)
 							message(RED, "\"%s\" invalid filename!", input);
 							rover_getch();
 							CLEAR_MESSAGE();
-							curs_set(TRUE);
 							edit_stat = CONTINUE;
 						}
 					}
@@ -724,7 +699,6 @@ void main_menu(void)
 							message(RED, "\"%s\" already exists!", input);
 							rover_getch();
 							CLEAR_MESSAGE();
-							curs_set(TRUE);
 							edit_stat = CONTINUE;
 						}
 					} else if (!isvalidfilename(input, false)) {
@@ -735,7 +709,6 @@ void main_menu(void)
 							message(RED, "\"%s\" invalid dirname!", input);
 							rover_getch();
 							CLEAR_MESSAGE();
-							curs_set(TRUE);
 							edit_stat = CONTINUE;
 						}
 					}
