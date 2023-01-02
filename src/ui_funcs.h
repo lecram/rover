@@ -1,7 +1,10 @@
 #ifndef _UI_FUNCS_H
 #define _UI_FUNCS_H
 
-#define _GNU_SOURCE /* for environ */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* for asprintf() environ */
+#endif
+
 #include <curses.h>
 #include <locale.h> /* setlocale(), LC_ALL */
 #include <limits.h> /* PATH_MAX */
@@ -54,7 +57,7 @@
 #define KEY_TAB 9
 #endif
 #ifndef KEY_RETURN
-#define KEY_RETURN 10
+#define KEY_RETURN '\r'
 #endif
 #ifndef KEY_CTRL_DEL
 #define KEY_CTRL_DEL 519
@@ -91,6 +94,9 @@
 			dst = getenv(#src);                    \
 	}
 
+/* Clear message line */
+#define CLEAR_MESSAGE() mvhline(LINES - 1, 0, ' ', STATUSPOS)
+
 typedef enum Color {
 	DEFAULT,
 	RED,
@@ -117,7 +123,9 @@ typedef enum EditStat {
 } EditStat;
 
 // Function declarations
-void init_term(void);
+void handle_usr1(int sig);
+void handle_winch(int sig);
+void handlers(bool enable);
 void message(Color color, char *fmt, ...);
 void update_view(void);
 void main_menu(void);

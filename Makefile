@@ -13,7 +13,7 @@ LIBS_NCURSESW := `$(PKG_CONFIG) --libs ncursesw`
 
 all: rover
 
-rover: rover.c config.h
+rover: rover.c rover.h
 	$(CC) $(CFLAGS) $(CFLAGS_NCURSESW) -o $@ $< $(LDFLAGS) $(LIBS_NCURSESW)
 
 install: rover

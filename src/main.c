@@ -1,7 +1,42 @@
-#include "config.h"
 #include "ui_funcs.h"
+#include "rover.h"
 
 struct Rover rover;
+char rover_home_path[RV_PATH_MAX];
+
+/* Curses setup. */
+static void init_term(void)
+{
+	setlocale(LC_ALL, "");
+	initscr();
+	cbreak(); /* Get one character at a time. */
+	timeout(100); /* For getch(). */
+	noecho();
+	nonl(); /* No NL->CR/NL on output. */
+	intrflush(stdscr, FALSE);
+	keypad(stdscr, TRUE);
+	curs_set(FALSE); /* Hide blinking cursor. */
+	if (has_colors()) {
+		short bg;
+		start_color();
+#ifdef NCURSES_EXT_FUNCS
+		use_default_colors();
+		bg = -1;
+#else
+		bg = COLOR_BLACK;
+#endif
+		init_pair(RED, COLOR_RED, bg);
+		init_pair(GREEN, COLOR_GREEN, bg);
+		init_pair(YELLOW, COLOR_YELLOW, bg);
+		init_pair(BLUE, COLOR_BLUE, bg);
+		init_pair(CYAN, COLOR_CYAN, bg);
+		init_pair(MAGENTA, COLOR_MAGENTA, bg);
+		init_pair(WHITE, COLOR_WHITE, bg);
+		init_pair(BLACK, COLOR_BLACK, bg);
+	}
+	atexit((void (*)(void))endsession);
+	handlers(true); //enable handlers
+}
 
 static void init_marks(Marks *marks)
 {
@@ -72,6 +107,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	strcpy(clipboard, argv[0]);
+	strcpy(rover_home_path, dirname(clipboard)); //get the home directory of rover
+
 	init_term();
 	rover.nfiles = 0;
 	for (i = 0; i < 10; i++) {
@@ -122,6 +160,6 @@ int main(int argc, char *argv[])
 		fclose(save_marks_file);
 	}
 	free_marks(&rover.marks);
-
-	return 0;
+	
+	return EXIT_SUCCESS;
 }

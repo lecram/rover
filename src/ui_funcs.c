@@ -1,17 +1,18 @@
-#include "config.h"
+#include "rover.h"
 #include "ui_funcs.h"
+#include "os_funcs.h"
 
-static void handle_usr1(int sig)
+void handle_usr1(int sig)
 {
 	rover.pending_usr1 = 1;
 }
 
-static void handle_winch(int sig)
+void handle_winch(int sig)
 {
 	rover.pending_winch = 1;
 }
 
-static void handlers(bool enable)
+void handlers(bool enable)
 {
 	struct sigaction sa;
 
@@ -28,11 +29,9 @@ static void handlers(bool enable)
 		sigaction(SIGUSR1, &sa, NULL);
 		sigaction(SIGWINCH, &sa, NULL);
 	}
-	return;
 }
 
 /* Update line input on the screen. */
-
 static void update_input(const char *prompt, Color color, const char *input)
 {
 	int plen, ilen, maxlen;
@@ -47,6 +46,7 @@ static void update_input(const char *prompt, Color color, const char *input)
 		rover.edit_scroll = rover.edit.left - maxlen;
 	else if (rover.edit.left < rover.edit_scroll)
 		rover.edit_scroll = MAX(rover.edit.left - maxlen, 0);
+
 	color_set(RVC_PROMPT, NULL);
 	mvaddstr(LINES - 1, 0, prompt);
 	color_set(color, NULL);
@@ -59,40 +59,6 @@ static void update_input(const char *prompt, Color color, const char *input)
 	if (ilen > (rover.edit_scroll + maxlen))
 		mvaddch(LINES - 1, plen + maxlen, '>');
 	move(LINES - 1, plen + rover.edit.left - rover.edit_scroll);
-}
-
-/* Curses setup. */
-void init_term(void)
-{
-	setlocale(LC_ALL, "");
-	initscr();
-	cbreak(); /* Get one character at a time. */
-	timeout(100); /* For getch(). */
-	noecho();
-	nonl(); /* No NL->CR/NL on output. */
-	intrflush(stdscr, FALSE);
-	keypad(stdscr, TRUE);
-	curs_set(FALSE); /* Hide blinking cursor. */
-	if (has_colors()) {
-		short bg;
-		start_color();
-#ifdef NCURSES_EXT_FUNCS
-		use_default_colors();
-		bg = -1;
-#else
-		bg = COLOR_BLACK;
-#endif
-		init_pair(RED, COLOR_RED, bg);
-		init_pair(GREEN, COLOR_GREEN, bg);
-		init_pair(YELLOW, COLOR_YELLOW, bg);
-		init_pair(BLUE, COLOR_BLUE, bg);
-		init_pair(CYAN, COLOR_CYAN, bg);
-		init_pair(MAGENTA, COLOR_MAGENTA, bg);
-		init_pair(WHITE, COLOR_WHITE, bg);
-		init_pair(BLACK, COLOR_BLACK, bg);
-	}
-	atexit((void (*)(void))endwin);
-	handlers(true); //enable handlers
 }
 
 /* Show a message on the status bar. */
@@ -115,115 +81,6 @@ void message(Color color, char *fmt, ...)
 	attr_off(A_BOLD, NULL);
 }
 
-/* Update the listing view. */
-void update_view(void)
-{
-	int i, j, numsize, ishidden, marking, length, namecols;
-	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], *suffix;
-	wchar_t wbuffer[PATH_MAX];
-	off_t human_size;
-
-	mvhline(0, 0, ' ', COLS);
-	attr_on(A_BOLD, NULL);
-	color_set(RVC_TABNUM, NULL);
-	mvaddch(0, COLS - 2, rover.tab + '0');
-	attr_off(A_BOLD, NULL);
-	if (rover.marks.nentries) {
-		numsize = snprintf(buffer_one, PATH_MAX, "%d", rover.marks.nentries);
-		color_set(RVC_MARKS, NULL);
-		mvaddstr(0, COLS - 3 - numsize, buffer_one);
-	} else
-		numsize = -1;
-	color_set(RVC_CWD, NULL);
-	mbstowcs(wbuffer, CWD, PATH_MAX);
-	mvaddnwstr(0, 0, wbuffer, COLS - 4 - numsize);
-	wcolor_set(rover.window, RVC_BORDER, NULL);
-	wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
-	ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
-	/* Selection might not be visible, due to cursor wrapping or window
-       shrinking. In that case, the scroll must be moved to make it visible. */
-	if (rover.nfiles > HEIGHT) {
-		SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
-		SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
-	} else
-		SCROLL = 0;
-	marking = !strcmp(CWD, rover.marks.dirpath);
-	for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
-		ishidden = ENAME(j)[0] == '.';
-		if (j == ESEL)
-			wattr_on(rover.window, A_REVERSE, NULL);
-		if (ISLINK(j))
-			wcolor_set(rover.window, RVC_LINK, NULL);
-		else if (ishidden)
-			wcolor_set(rover.window, RVC_HIDDEN, NULL);
-		else if (S_ISREG(EMODE(j))) {
-			if (EMODE(j) & (S_IXUSR | S_IXGRP | S_IXOTH))
-				wcolor_set(rover.window, RVC_EXEC, NULL);
-			else
-				wcolor_set(rover.window, RVC_REG, NULL);
-		} else if (S_ISDIR(EMODE(j)))
-			wcolor_set(rover.window, RVC_DIR, NULL);
-		else if (S_ISCHR(EMODE(j)))
-			wcolor_set(rover.window, RVC_CHR, NULL);
-		else if (S_ISBLK(EMODE(j)))
-			wcolor_set(rover.window, RVC_BLK, NULL);
-		else if (S_ISFIFO(EMODE(j)))
-			wcolor_set(rover.window, RVC_FIFO, NULL);
-		else if (S_ISSOCK(EMODE(j)))
-			wcolor_set(rover.window, RVC_SOCK, NULL);
-		if (S_ISDIR(EMODE(j))) {
-			mbstowcs(wbuffer, ENAME(j), PATH_MAX);
-			if (ISLINK(j))
-				wcscat(wbuffer, L"/");
-		} else {
-			human_size = ESIZE(j) * 10;
-			length     = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
-			namecols   = wcswidth(wbuffer, length);
-			for (suffix = "BKMGTPEZY"; human_size >= 10240; suffix++)
-				human_size = (human_size + 512) / 1024;
-			if (*suffix == 'B')
-				swprintf(wbuffer + length, PATH_MAX - length, L"%*d Bytes",
-				         (int)(COLS - namecols - 6),
-				         (int)human_size / 10);
-			else
-				swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %cb",
-				         (int)(COLS - namecols - 8),
-				         (int)human_size / 10, (int)human_size % 10, *suffix);
-		}
-		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-		mvwaddnwstr(rover.window, i + 1, 2, wbuffer, COLS - 4);
-		if (marking && MARKED(j)) {
-			wcolor_set(rover.window, RVC_MARKS, NULL);
-			mvwaddch(rover.window, i + 1, 1, RVS_MARK);
-		} else
-			mvwaddch(rover.window, i + 1, 1, ' ');
-		if (j == ESEL)
-			wattr_off(rover.window, A_REVERSE, NULL);
-	}
-	for (; i < HEIGHT; i++)
-		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
-	if (rover.nfiles > HEIGHT) {
-		int center, height;
-		center = (SCROLL + HEIGHT / 2) * HEIGHT / rover.nfiles;
-		height = (HEIGHT - 1) * HEIGHT / rover.nfiles;
-		if (!height)
-			height = 1;
-		wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
-		mvwvline(rover.window, center - height / 2 + 1, COLS - 1, RVS_SCROLLBAR, height);
-	}
-	buffer_one[0] = FLAGS & SHOW_FILES ? 'F' : ' ';
-	buffer_one[1] = FLAGS & SHOW_DIRS ? 'D' : ' ';
-	buffer_one[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
-	if (!rover.nfiles)
-		strcpy(buffer_two, "0/0");
-	else
-		snprintf(buffer_two, PATH_MAX, "%d/%d", ESEL + 1, rover.nfiles);
-	snprintf(buffer_one + 3, PATH_MAX, "%12s", buffer_two);
-	color_set(RVC_STATUS, NULL);
-	mvaddstr(LINES - 1, STATUSPOS, buffer_one);
-	wrefresh(rover.window);
-}
-
 /* Do a fork-exec to external program (e.g. $EDITOR). */
 static void spawn(char **args)
 {
@@ -244,6 +101,7 @@ static void spawn(char **args)
 		execvp(args[0], args);
 	}
 }
+
 static void shell_escaped_cat(char *buf, char *str, size_t n)
 {
 	char *p = buf + strlen(buf);
@@ -299,16 +157,16 @@ static void start_line_edit(const char *init_input)
 
 /* This function must be used in place of getch().
    It handles signals while waiting for user input. */
- static int rover_getch(void)
+static int rover_getch(void)
 {
 	int ch;
 
-	keypad(rover.window, true);
+	keypad(rover.window, TRUE);
 
 	while ((ch = getch()) == ERR)
 		sync_signals();
 
-	keypad(rover.window, false);
+	keypad(rover.window, FALSE);
 
 	return ch;
 }
@@ -320,51 +178,51 @@ static EditStat get_line_edit(char *string)
 
 	ch = rover_getch();
 	switch (ch) {
-		case '\r':
-		case '\n':
-			curs_set(FALSE);
-			return CONFIRM;
-			break;
-		case KEY_ESC:
-			curs_set(FALSE);
-			return CANCEL;
-			break;
-		case KEY_LEFT:
-			if (EDIT_CAN_LEFT(rover.edit))
-				EDIT_LEFT(rover.edit);
-			break;
-		case KEY_RIGHT:
-			if (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_RIGHT(rover.edit);
-			break;
-		case KEY_HOME:
-		case KEY_UP:
-			while (EDIT_CAN_LEFT(rover.edit))
-				EDIT_LEFT(rover.edit);
-			break;
-		case KEY_END:
-		case KEY_DOWN:
-			while (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_RIGHT(rover.edit);
-			break;
-		case KEY_BACKSPACE:
-			if (EDIT_CAN_LEFT(rover.edit))
-				EDIT_BACKSPACE(rover.edit);
-			break;
-		case KEY_DC:
-			if (EDIT_CAN_RIGHT(rover.edit))
-				EDIT_DELETE(rover.edit);
-			break;
-		case (KEY_CANCEL):
-			EDIT_CLEAR(rover.edit);
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
-		default:
-			if (iswprint(ch) && !EDIT_FULL(rover.edit))
-				EDIT_INSERT(rover.edit, ch);
-			break;
+	case KEY_ENTER:
+	case KEY_RETURN:
+		curs_set(FALSE);
+		return CONFIRM;
+		break;
+	case KEY_ESC:
+		curs_set(FALSE);
+		return CANCEL;
+		break;
+	case KEY_LEFT:
+		if (EDIT_CAN_LEFT(rover.edit))
+			EDIT_LEFT(rover.edit);
+		break;
+	case KEY_RIGHT:
+		if (EDIT_CAN_RIGHT(rover.edit))
+			EDIT_RIGHT(rover.edit);
+		break;
+	case KEY_HOME:
+	case KEY_UP:
+		while (EDIT_CAN_LEFT(rover.edit))
+			EDIT_LEFT(rover.edit);
+		break;
+	case KEY_END:
+	case KEY_DOWN:
+		while (EDIT_CAN_RIGHT(rover.edit))
+			EDIT_RIGHT(rover.edit);
+		break;
+	case KEY_BACKSPACE:
+		if (EDIT_CAN_LEFT(rover.edit))
+			EDIT_BACKSPACE(rover.edit);
+		break;
+	case KEY_DC:
+		if (EDIT_CAN_RIGHT(rover.edit))
+			EDIT_DELETE(rover.edit);
+		break;
+	case (KEY_CANCEL):
+		EDIT_CLEAR(rover.edit);
+		CLEAR_MESSAGE();
+	default:
+		if (iswprint(ch) && !EDIT_FULL(rover.edit))
+			EDIT_INSERT(rover.edit, ch);
+		break;
 	}
 
-	//Encode edit contents in input. 
+	//Encode edit contents in input.
 	rover.edit.buffer[rover.edit.left] = L'\0';
 	length                             = wcstombs(string, rover.edit.buffer, PATH_MAX);
 	wcstombs(&string[length], &rover.edit.buffer[rover.edit.right + 1], PATH_MAX - length);
@@ -373,7 +231,7 @@ static EditStat get_line_edit(char *string)
 }
 
 static int addfile(const char *path)
-{	/* Using creat(2) because mknod(2) doesn't seem to be portable. */
+{ /* Using creat(2) because mknod(2) doesn't seem to be portable. */
 	int ret;
 
 	ret = creat(path, 0644);
@@ -425,7 +283,7 @@ static void add_mark(Marks *marks, char *dirpath, char *entry)
 			/* Expand bulk to accomodate new entry. */
 			extra = marks->bulk / 2;
 			marks->bulk += extra; /* bulk *= 1.5; */
-			marks->entries = (char **) realloc(marks->entries, marks->bulk * sizeof(*marks->entries));
+			marks->entries = (char **)realloc(marks->entries, marks->bulk * sizeof(*marks->entries));
 			memset(&marks->entries[marks->nentries], 0, extra * sizeof *marks->entries);
 			i = marks->nentries;
 		} else {
@@ -441,7 +299,7 @@ static void add_mark(Marks *marks, char *dirpath, char *entry)
 		i = 0;
 	}
 
-	marks->entries[i] = (char *) malloc(strlen(entry) + 1);
+	marks->entries[i] = (char *)malloc(strlen(entry) + 1);
 	strcpy(marks->entries[i], entry);
 	marks->nentries++;
 }
@@ -469,7 +327,7 @@ void del_mark(Marks *marks, char *entry)
     4. call pos(source).
    E.g. to move directory /src/ (and all its contents) inside /dst/:
     strcpy(CWD, "/dst/");
-    process_dir(adddir, movfile, deldir, "/src/"); */
+    process_dir(adddir, movfile, rm, "/src/"); */
 static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
 	int ret;
@@ -487,7 +345,7 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 
 	if (!(dp = opendir(path)))
 		return -1;
-	
+
 	while ((ep = readdir(dp))) {
 		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
 			continue;
@@ -499,7 +357,7 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 		} else
 			ret |= proc(subpath);
 	}
-	closedir(dp);	
+	closedir(dp);
 	if (pos)
 		ret |= pos(path);
 
@@ -515,7 +373,7 @@ static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *m
 	char *entry;
 	char path[PATH_MAX];
 
-	mvhline(LINES - 1, 0, ' ', STATUSPOS);
+	CLEAR_MESSAGE();
 	message(CYAN, "%s...", msg_doing);
 	refresh();
 	rover.prog = (Prog){ 0, count_marked(), msg_doing };
@@ -546,31 +404,14 @@ static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *m
 	RV_ALERT();
 }
 
-/* Wrappers for file operations. */
-static int delfile(const char *path)
-{
-	int ret;
-	struct stat st;
-
-	ret = lstat(path, &st);
-	if (ret < 0)
-		return ret;
-
-	update_progress(st.st_size);
-
-	return unlink(path);
-}
-
-static PROCESS deldir = rmdir;
-
 void main_menu(void)
 {
 	int i, ch, oldsel, oldscroll, length, ok, sel;
 	bool quit = false, isdir;
-	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], input[PATH_MAX], clipboard[PATH_MAX];
+	char buffer_one[PATH_MAX], input[PATH_MAX], clipboard[PATH_MAX];
 	char *program, *dir_name, *bname, *last, *msg, first;
 	const char *clip_path;
-	ssize_t len = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
+	ssize_t link;
 	Color color = RED;
 	FILE *clip_file;
 	EditStat edit_stat;
@@ -585,21 +426,21 @@ void main_menu(void)
 
 	do {
 		ch = rover_getch();
-		mvhline(LINES - 1, 0, ' ', STATUSPOS);
+		CLEAR_MESSAGE();
 		switch (ch) {
 		case KEY_ESC: //Quit Rover
-			quit = true;
+			message(RED, "Press any key to exit or ESC to back");
+			if (rover_getch() != KEY_ESC)
+				quit = true;
+			CLEAR_MESSAGE();
 			break;
 		case '0' ... '9': //Change Tab
 			rover.tab = ch - '0';
 			cd(false);
 			break;
 		case '?': //Help
-			if (access("./rover.1", R_OK))
-				bname = "rover"; //default man path
-			else
-				bname = "./rover.1";
-			spawn((char *[]){ "man", bname, NULL });
+			sprintf(buffer_one, "%s/%s.1", rover_home_path, ROVER); // local manfile
+			spawn((char *[]){ "man", access(buffer_one, R_OK) ? ROVER : buffer_one, NULL });
 			break;
 		case KEY_DOWN: //Move cursor down
 			if (!rover.nfiles)
@@ -653,13 +494,15 @@ void main_menu(void)
 		case KEY_LEFT: //Go to parent directory
 			if (!strcmp(CWD, "/"))
 				continue;
-			CWD[strlen(CWD) - 1] = '\0';
-			dir_name             = strrchr(CWD, '/') + 1;
-			first                = dir_name[0];
-			dir_name[0]          = '\0';
+			//length      = strlen(CWD) - 1;
+			//CWD[length] = '\0';
+			DELSLASH(CWD);
+			dir_name    = strrchr(CWD, '/') + 1;
+			first       = dir_name[0];
+			dir_name[0] = '\0';			
 			cd(true);
-			dir_name[0]                = first;
-			dir_name[strlen(dir_name)] = '/';
+			dir_name[0] = first;
+			ADDSLASH(dir_name);
 			try_to_sel(dir_name);
 			dir_name[0] = '\0';
 			if (rover.nfiles > HEIGHT)
@@ -673,10 +516,11 @@ void main_menu(void)
 			break;
 		case 't': //Go to the target of the selected link
 			isdir = S_ISDIR(EMODE(ESEL));
-			len   = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
-			if (len == -1)
-				continue;
-			buffer_one[len] = '\0';
+			link  = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
+			if (link == -1)
+				continue;				
+			buffer_one[link] = '\0';
+			errno = 0;
 			if (access(buffer_one, F_OK) == -1) {
 				switch (errno) {
 				case EACCES:
@@ -688,14 +532,13 @@ void main_menu(void)
 				default:
 					msg = "Cannot navigate to \"%s\".";
 				}
-				strcpy(buffer_two, buffer_one); /* message() uses buffer_one. */
-				message(RED, msg, buffer_two);
+				message(RED, msg, buffer_one);
 				continue;
 			}
 			realpath(buffer_one, CWD);
-			len = strlen(CWD);
-			if (CWD[len - 1] == '/')
-				CWD[len - 1] = '\0';
+			link = strlen(CWD);
+			if (CWD[link - 1] == '/')
+				CWD[link - 1] = '\0';
 			bname  = strrchr(CWD, '/') + 1;
 			first  = *bname;
 			*bname = '\0';
@@ -805,7 +648,7 @@ void main_menu(void)
 				ESEL   = oldsel;
 				SCROLL = oldscroll;
 			}
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
+			CLEAR_MESSAGE();
 			update_view();
 			break;
 		case 'F': //Toggle file listing
@@ -821,68 +664,100 @@ void main_menu(void)
 			reload();
 			break;
 		case 'n': //Create new file
-			ok = 0;
 			start_line_edit("");
-			update_input(RVP_NEW_FILE, RED, input);
-			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
-				length = strlen(input);
-				ok     = length;
-				for (i = 0; i < rover.nfiles; i++) {
-					if (!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
+			DELSLASH(input);
+			update_input(RVP_NEW_FILE, YELLOW, input);
+			do {
+				edit_stat = get_line_edit(input);
+				ok        = strlen(input);
+				for (i = 0; ok && i < rover.nfiles; i++) {
+					if (!strcmp(ENAME(i), input)) {
 						ok = 0;
-						i = rover.nfiles; //in order to exit from nested loop without using break;
+						update_input(RVP_NEW_FILE, RED, input);
+						if (edit_stat == CONFIRM) {
+							CLEAR_MESSAGE();
+							message(RED, "\"%s\" already exists!", input);
+							rover_getch();
+							CLEAR_MESSAGE();
+							curs_set(TRUE);
+							edit_stat = CONTINUE;
+						}
+					} else if (!isvalidfilename(input, false)) {
+						ok = 0;
+						update_input(RVP_NEW_FILE, RED, input);
+						if (edit_stat == CONFIRM) {
+							CLEAR_MESSAGE();
+							message(RED, "\"%s\" invalid filename!", input);
+							rover_getch();
+							CLEAR_MESSAGE();
+							curs_set(TRUE);
+							edit_stat = CONTINUE;
+						}
 					}
 				}
 				update_input(RVP_NEW_FILE, (ok ? GREEN : RED), input);
-			}
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
-			if (edit_stat == CONFIRM) {
-				if (ok) {
-					if (addfile(input) == 0) {
-						cd(true);
-						try_to_sel(input);
-						update_view();
-					} else
-						message(RED, "Could not create \"%s\".", input);
+			} while (edit_stat == CONTINUE);
+
+			CLEAR_MESSAGE();
+			if (ok && edit_stat == CONFIRM) {
+				if (addfile(input) == 0) {
+					cd(true);
+					try_to_sel(input);
+					update_view();
 				} else
-					message(RED, "\"%s\" already exists.", input);
+					message(RED, "Could not create \"%s\".", input);
 			}
 			break;
 		case 'N': //Create new dir
-			ok = 0;
 			start_line_edit("");
-			update_input(RVP_NEW_DIR, RED, input);
-			while ((edit_stat = get_line_edit(input)) == CONTINUE) {
-				length = strlen(input);
-				ok     = length;
+			DELSLASH(input);
+			update_input(RVP_NEW_DIR, YELLOW, input);
+			do {
+				edit_stat = get_line_edit(input);
+				ok        = strlen(input);
 				for (i = 0; i < rover.nfiles; i++) {
-					if (!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
+					if (!strncmp(ENAME(i), input, length)) {
 						ok = 0;
-						i = rover.nfiles; //in order to exit from nested loop without using break;
+						update_input(RVP_NEW_DIR, RED, input);
+						if (edit_stat == CONFIRM) {
+							CLEAR_MESSAGE();
+							message(RED, "\"%s\" already exists!", input);
+							rover_getch();
+							CLEAR_MESSAGE();
+							curs_set(TRUE);
+							edit_stat = CONTINUE;
+						}
+					} else if (!isvalidfilename(input, false)) {
+						ok = 0;
+						update_input(RVP_NEW_DIR, RED, input);
+						if (edit_stat == CONFIRM) {
+							CLEAR_MESSAGE();
+							message(RED, "\"%s\" invalid dirname!", input);
+							rover_getch();
+							CLEAR_MESSAGE();
+							curs_set(TRUE);
+							edit_stat = CONTINUE;
+						}
 					}
 				}
 				update_input(RVP_NEW_DIR, (ok ? GREEN : RED), input);
-			}
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
-			if (edit_stat == CONFIRM) {
-				if (ok) {
-					if (adddir(input) == 0) {
-						cd(true);
-						ADDSLASH(input);
-						try_to_sel(input);
-						update_view();
-					} else
-						message(RED, "Could not create \"%s/\".", input);
+			} while (edit_stat == CONTINUE);
+
+			CLEAR_MESSAGE();
+			if (ok && edit_stat == CONFIRM) {
+				if (adddir(input) == 0) {
+					cd(true);
+					ADDSLASH(input);
+					try_to_sel(input);
+					update_view();
 				} else
-					message(RED, "\"%s\" already exists.", input);
+					message(RED, "Could not create \"%s/\".", input);
 			}
 			break;
 		case KEY_F(2): //Rename selected file or directory
 			ok = 0;
 			strcpy(input, ENAME(ESEL));
-			last = input + strlen(input) - 1;
+			last  = input + strlen(input) - 1;
 			isdir = *last;
 			if (*last == '/')
 				*last = '\0';
@@ -893,13 +768,13 @@ void main_menu(void)
 				ok     = length;
 				for (i = 0; i < rover.nfiles; i++)
 					if (!strncmp(ENAME(i), input, length) &&
-						(!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
+					    (!strcmp(ENAME(i) + length, "") || !strcmp(ENAME(i) + length, "/"))) {
 						ok = 0;
-						i = rover.nfiles; //in order to exit from nested loop without using break;
+						i  = rover.nfiles; //in order to exit from nested loop without using break;
 					}
 				update_input(RVP_RENAME, (ok ? GREEN : RED), input);
 			}
-			mvhline(LINES - 1, 0, ' ', STATUSPOS);
+			CLEAR_MESSAGE();
 			if (edit_stat == CONFIRM) {
 				if (isdir)
 					ADDSLASH(input);
@@ -933,17 +808,27 @@ void main_menu(void)
 			if (rover.nfiles) {
 				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
 				if (rover_getch() == 'Y') {
-					bname = ENAME(ESEL);
-					ok     = ISDIR(ENAME(ESEL)) ? deldir(bname) : delfile(bname);
+					strcpy(buffer_one, ENAME(ESEL));
+					if (MARKED(ESEL))
+						del_mark(&rover.marks, ENAME(ESEL));
+					ok = rm(buffer_one);
 					reload();
-					if (ok)
-						message(RED, "Could not delete \"%s\".", ENAME(ESEL));
-					else
-						message(YELLOW, "\"%s\" deleted!", bname);
-				} else
-					mvhline(LINES - 1, 0, ' ', STATUSPOS);
-			} else
-				message(RED, "No entry selected for deletion.");
+					if (ok == 0) {
+						CLEAR_MESSAGE();
+						message(YELLOW, "\"%s\" deleted!", buffer_one);
+						rover_getch();
+					} else {
+						CLEAR_MESSAGE();
+						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer_one, ROVER); //print error message
+						rover_getch();
+						CLEAR_MESSAGE();
+					}
+				}
+				CLEAR_MESSAGE();
+			} else {
+				message(RED, "No entry for deletion.");
+				rover_getch();
+			}
 			break;
 		case 'm': //Toggle mark on the selected entry
 			if (MARKED(ESEL))
@@ -976,9 +861,9 @@ void main_menu(void)
 			if (rover.marks.nentries) {
 				message(YELLOW, "Delete all marked entries? (Y/n)");
 				if (rover_getch() == 'Y')
-					process_marked(NULL, delfile, deldir, "Deleting", "Deleted");
+					process_marked(NULL, rm, rm, "Deleting", "Deleted");
 				else
-					mvhline(LINES - 1, 0, ' ', STATUSPOS);
+					CLEAR_MESSAGE();
 			} else
 				message(RED, "No entries marked for deletion.");
 			break;
@@ -994,7 +879,7 @@ void main_menu(void)
 		case 'V': //Move all marked entries
 			if (rover.marks.nentries) {
 				if (strcmp(CWD, rover.marks.dirpath))
-					process_marked(adddir, movfile, deldir, "Moving", "Moved");
+					process_marked(adddir, movfile, rm, "Moving", "Moved");
 				else
 					message(RED, "Cannot move to the same path.");
 			} else

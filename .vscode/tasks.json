@@ -12,7 +12,7 @@
 				"-O0",
 				"-ggdb",
 				"-D_DEFAULT_SOURCE", // pkg-config --cflags ncursesw
-				/* "-D_XOPEN_SOURCE=600", already defined in config.h */// pkg-config --cflags ncursesw
+				/* "-D_XOPEN_SOURCE=600", already defined in rover.h */ // pkg-config --cflags ncursesw
 				"${workspaceFolder}/src/*c",
 				"-o",
 				"${workspaceFolder}/rover",

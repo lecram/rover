@@ -1,8 +1,162 @@
-#include "config.h"
+#include "rover.h"
 #include "ui_funcs.h"
 
+void logfile(const char *format, ...)
+{
+	char filelog[PATH_MAX];
+	FILE *fd;
+	time_t current_time;
+	struct tm *local;
+	static unsigned int logcount = 0; // each session start from 0
+	va_list args;
+
+	sprintf(filelog, "%s/%s.log", rover_home_path, ROVER);
+	fd = fopen(filelog, "a+"); // a+ create or append that is useful in a log file
+	if (!fd) {
+		fprintf(stderr, "ERROR APPEND/WRITE LOG FILE\n");
+		sleep(3);
+
+		return;
+	}
+
+	time(&current_time); // get time
+	local = localtime(&current_time); // convert to local
+	fprintf(fd, "%d/%02d/%02d ", local->tm_year + 1900, local->tm_mon + 1, local->tm_mday); // write current date yyyy/mm/dd
+	fprintf(fd, "%02d:%02d:%02d ", local->tm_hour, local->tm_min, local->tm_sec); // write local time hh:mm:ss
+	fprintf(fd, "[%03u] ", logcount++); // write the index log of current session
+
+	va_start(args, format);
+	vfprintf(fd, format, args); // write the info recieved from function arguments
+	va_end(args);
+
+	fclose(fd);
+
+	return;
+}
+
+/* atexit func */
+int endsession(void)
+{
+	handlers(false);
+	curs_set(TRUE);
+	keypad(stdscr, TRUE);
+	nl();
+	echo();
+	timeout(0);
+	endwin();
+
+	return EXIT_SUCCESS;
+}
+
+void update_view()
+{
+	int i, j, numsize, ishidden, marking, length, namecols, center, height;
+	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], *suffix;
+	wchar_t wbuffer[PATH_MAX];
+	off_t human_size;
+
+    mvhline(0, 0, ' ', COLS);
+    attr_on(A_BOLD, NULL);
+    color_set(RVC_TABNUM, NULL);
+    mvaddch(0, COLS - 2, rover.tab + '0');
+    attr_off(A_BOLD, NULL);
+    if (rover.marks.nentries) {
+        numsize = snprintf(buffer_one, PATH_MAX, "%d", rover.marks.nentries);
+        color_set(RVC_MARKS, NULL);
+        mvaddstr(0, COLS - 3 - numsize, buffer_one);
+    } else
+        numsize = -1;
+    color_set(RVC_CWD, NULL);
+    mbstowcs(wbuffer, CWD, PATH_MAX);
+    mvaddnwstr(0, 0, wbuffer, COLS - 4 - numsize);
+    wcolor_set(rover.window, RVC_BORDER, NULL);
+    wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+    ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
+    /* Selection might not be visible, due to cursor wrapping or window
+       shrinking. In that case, the scroll must be moved to make it visible. */
+    if (rover.nfiles > HEIGHT) {
+        SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
+        SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
+    } else
+        SCROLL = 0;
+    marking = !strcmp(CWD, rover.marks.dirpath);
+    for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
+        ishidden = ENAME(j)[0] == '.';
+        if (j == ESEL)
+            wattr_on(rover.window, A_REVERSE, NULL);
+        if (ISLINK(j))
+            wcolor_set(rover.window, RVC_LINK, NULL);
+        else if (ishidden)
+            wcolor_set(rover.window, RVC_HIDDEN, NULL);
+        else if (S_ISREG(EMODE(j))) {
+            if (EMODE(j) & (S_IXUSR | S_IXGRP | S_IXOTH))
+                wcolor_set(rover.window, RVC_EXEC, NULL);
+            else
+                wcolor_set(rover.window, RVC_REG, NULL);
+        } else if (S_ISDIR(EMODE(j)))
+            wcolor_set(rover.window, RVC_DIR, NULL);
+        else if (S_ISCHR(EMODE(j)))
+            wcolor_set(rover.window, RVC_CHR, NULL);
+        else if (S_ISBLK(EMODE(j)))
+            wcolor_set(rover.window, RVC_BLK, NULL);
+        else if (S_ISFIFO(EMODE(j)))
+            wcolor_set(rover.window, RVC_FIFO, NULL);
+        else if (S_ISSOCK(EMODE(j)))
+            wcolor_set(rover.window, RVC_SOCK, NULL);
+        if (S_ISDIR(EMODE(j))) {
+            mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+            if (ISLINK(j))
+                wcscat(wbuffer, L"/");
+        } else {
+            human_size = ESIZE(j) * 10;
+            length = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+            namecols = wcswidth(wbuffer, length);
+            for (suffix = "BKMGTPEZY"; human_size >= 10240; suffix++)
+                human_size = (human_size + 512) / 1024;
+            if (*suffix == 'B')
+                swprintf(wbuffer + length, PATH_MAX - length, L"%*d Bytes",
+                         (int) (COLS - namecols - 6),
+                         (int) human_size / 10);
+            else
+                swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %cb",
+                         (int) (COLS - namecols - 8),
+                         (int) human_size / 10, (int) human_size % 10, *suffix);
+        }
+        mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+        mvwaddnwstr(rover.window, i + 1, 2, wbuffer, COLS - 4);
+        if (marking && MARKED(j)) {
+            wcolor_set(rover.window, RVC_MARKS, NULL);
+            mvwaddch(rover.window, i + 1, 1, RVS_MARK);
+        } else
+            mvwaddch(rover.window, i + 1, 1, ' ');
+        if (j == ESEL)
+            wattr_off(rover.window, A_REVERSE, NULL);
+    }
+    for (; i < HEIGHT; i++)
+        mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+    if (rover.nfiles > HEIGHT) {
+        center = (SCROLL + HEIGHT / 2) * HEIGHT / rover.nfiles;
+        height = (HEIGHT-1) * HEIGHT / rover.nfiles;
+        if (!height)
+			height = 1;
+        wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
+        mvwvline(rover.window, center-height/2+1, COLS-1, RVS_SCROLLBAR, height);
+    }
+    buffer_one[0] = FLAGS & SHOW_FILES  ? 'F' : ' ';
+    buffer_one[1] = FLAGS & SHOW_DIRS   ? 'D' : ' ';
+    buffer_one[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
+    if (!rover.nfiles)
+        strcpy(buffer_two, "0/0");
+    else
+        snprintf(buffer_two, PATH_MAX, "%d/%d", ESEL + 1, rover.nfiles);
+    snprintf((buffer_one+3), (PATH_MAX-3), "%12s", buffer_two);
+    color_set(RVC_STATUS, NULL);
+    mvaddstr(LINES - 1, STATUSPOS, buffer_one);
+    wrefresh(rover.window);
+}
+
 /* Handle any signals received since last call. */
-void sync_signals()
+void sync_signals(void)
 {
 	if (rover.pending_usr1) {
 		/* SIGUSR1 received: refresh directory listing. */
@@ -28,12 +182,13 @@ void sync_signals()
 int rowcmp(const void *a, const void *b)
 {
 	int isdir1, isdir2, cmpdir;
-	const Row *r1 = a;
-	const Row *r2 = b;
-	isdir1        = S_ISDIR(r1->mode);
+	const Row *r1 = a, *r2 = b;
+
+	isdir1 = S_ISDIR(r1->mode);
 	isdir2        = S_ISDIR(r2->mode);
 	cmpdir        = isdir2 - isdir1;
-	return cmpdir ? cmpdir : strcoll(r1->name, r2->name);
+
+	return (cmpdir ? cmpdir : strcoll(r1->name, r2->name));
 }
 
 /* Get all entries in current working directory. */
@@ -110,36 +265,32 @@ void cd(bool reset)
 
 	message(CYAN, "Loading \"%s\"...", CWD);
 	refresh();
+
 	if (chdir(CWD) == -1) {
 		getcwd(CWD, PATH_MAX - 1);
 		ADDSLASH(CWD);
+	} else {
+		if (reset)
+			ESEL = SCROLL = 0;
+		if (rover.nfiles)
+			free_rows(&rover.rows, rover.nfiles);
 
-		mvhline(LINES - 1, 0, ' ', STATUSPOS);
-		update_view();
-
-		return;
-	}
-
-	if (reset)
-		ESEL = SCROLL = 0;
-
-	if (rover.nfiles)
-		free_rows(&rover.rows, rover.nfiles);
-
-	rover.nfiles = ls(&rover.rows, FLAGS);
-	if (!strcmp(CWD, rover.marks.dirpath)) {
-		for (i = 0; i < rover.nfiles; i++) {
-			for (j = 0; j < rover.marks.bulk; j++)
-				if (rover.marks.entries[j] && !strcmp(rover.marks.entries[j], ENAME(i)))
-					break;
-
-			MARKED(i) = j < rover.marks.bulk;
+		rover.nfiles = ls(&rover.rows, FLAGS);
+		if (!strcmp(CWD, rover.marks.dirpath)) {
+			for (i = 0; i < rover.nfiles; i++) {
+				for (j = 0; j < rover.marks.bulk; j++) {
+					if (rover.marks.entries[j] &&
+						!strcmp(rover.marks.entries[j], ENAME(i)))
+						break;
+				}
+				MARKED(i) = j < rover.marks.bulk;
+			}
+		} else {
+			for (i = 0; i < rover.nfiles; i++)
+				MARKED(i) = false;
 		}
-	} else
-		for (i = 0; i < rover.nfiles; i++)
-			MARKED(i) = false;
-
-	mvhline(LINES - 1, 0, ' ', STATUSPOS);
+	}
+	CLEAR_MESSAGE();
 	update_view();
 
 	return;
@@ -194,6 +345,7 @@ off_t count_dir(const char *path)
 			total += statbuf.st_size;
 	}
 	closedir(dp);
+
 	return total;
 }
 
@@ -218,6 +370,7 @@ off_t count_marked()
 		}
 	}
 	chdir(CWD);
+
 	return total;
 }
 
@@ -270,6 +423,7 @@ int cpyfile(const char *srcpath)
 		close(dst);
 		ret = 0;
 	}
+	
 	return ret;
 }
 

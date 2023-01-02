@@ -1,11 +1,15 @@
-#ifndef _CONFIG_H
-#define _CONFIG_H
+#ifndef _ROVER_H
+#define _ROVER_H
 
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 700
 #endif
+#ifndef _XOPEN_SOURCE_EXTENDED
 #define _XOPEN_SOURCE_EXTENDED
+#endif
+#ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+#endif
 
 #include <stdint.h>
 #include <ctype.h>
@@ -26,6 +30,7 @@
 #include <stdarg.h>
 #include <curses.h>
 #include <stdbool.h>
+#include <time.h>
 
 #define RV_VERSION "2.0.1"
 
@@ -117,8 +122,6 @@ struct Rover {
 	Tab tabs[10];
 };
 
-extern struct Rover rover;
-
 /* Macros for accessing global state. */
 #define ENAME(I)  rover.rows[I].name
 #define ESIZE(I)  rover.rows[I].size
@@ -141,6 +144,12 @@ extern struct Rover rover;
 		if (path[strlen(path) - 1] != '/') \
 			strcat(path, "/");             \
 	}
+
+#define DELSLASH(path)                     \
+	{                                      \
+		if (path[strlen(path) - 1] == '/') \
+			path[strlen(path) - 1] = '\0'; \
+	}
 /* Safe version of free() don't need assign NULL after free */
 #define FREE(p)        \
 	{                  \
@@ -149,21 +158,36 @@ extern struct Rover rover;
 		(p) = NULL;    \
 	}
 
+#define ROVER       "rover"
+#define LOG_INFO    false
+#define LOG_ERR     true
+#define RV_PATH_MAX (PATH_MAX - 16)
+
+#define LOG(flag, msg, ...)                                                                                                      \
+	{                                                                                                                            \
+		logfile("{%s} %s %s() <%d>: " msg "\n", (flag ? "ERR" : "INFO"), basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__); \
+	}
+
 typedef int (*PROCESS)(const char *path);
 
-// FUnction declarations
+extern struct Rover rover;
+extern char rover_home_path[RV_PATH_MAX];
+
+// Functions declaration
+void logfile(const char *format, ...);
+int endsession(void);
 void reload(void);
-void sync_signals();
-void update_view();
+void sync_signals(void);
+void update_view(void);
 int rowcmp(const void *a, const void *b);
 int ls(Row **rowsp, uint8_t flags);
 void free_rows(Row **rowsp, int nfiles);
 void cd(bool reset);
 void try_to_sel(const char *target);
 off_t count_dir(const char *path);
-off_t count_marked();
+off_t count_marked(void);
 void update_progress(off_t delta);
 int cpyfile(const char *srcpath);
 int movfile(const char *srcpath);
 
-#endif // _CONFIG_H
+#endif // _ROVER_H

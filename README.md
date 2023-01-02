@@ -60,7 +60,7 @@ Configuration
 =============
 
  Rover configuration (mostly key bindings and colors) can only be changed by
-editing the file `config.h` and rebuilding the binary.
+editing the file `rover.h` and rebuilding the binary.
 
  Note that the external programs executed by some Rover commands may be changed
 via the appropriate environment variables. For example, to specify an editor:
