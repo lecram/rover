@@ -184,10 +184,7 @@ int ls(Row **rowsp, uint8_t flags);
 void free_rows(Row **rowsp, int nfiles);
 void cd(bool reset);
 void try_to_sel(const char *target);
-off_t count_dir(const char *path);
 off_t count_marked(void);
 void update_progress(off_t delta);
-int cpyfile(const char *srcpath);
-int movfile(const char *srcpath);
 
 #endif // _ROVER_H

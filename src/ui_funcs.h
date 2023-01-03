@@ -126,6 +126,7 @@ typedef enum EditStat {
 void handle_usr1(int sig);
 void handle_winch(int sig);
 void handlers(bool enable);
+int rover_getch(void);
 void message(Color color, char *fmt, ...);
 void update_view(void);
 void main_menu(void);

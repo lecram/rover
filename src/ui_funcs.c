@@ -132,7 +132,7 @@ static void start_line_edit(const char *init_input)
 
 /* This function must be used in place of getch().
    It handles signals while waiting for user input. */
-static int rover_getch(void)
+int rover_getch(void)
 {
 	int ch;
 
@@ -353,7 +353,7 @@ static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *m
 	CLEAR_MESSAGE();
 	message(CYAN, "%s...", msg_doing);
 	refresh();
-	rover.prog = (Prog){ 0, count_marked(), msg_doing };
+	rover.prog = (Prog){ 0, count_marked(), msg_doing }; // init progress
 	for (i = 0; i < rover.marks.bulk; i++) {
 		entry = rover.marks.entries[i];
 		if (entry) {
@@ -372,7 +372,7 @@ static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *m
 			}
 		}
 	}
-	rover.prog.total = 0;
+	rover.prog.total = 0; // reset progress
 	reload();
 	if (!rover.marks.nentries)
 		message(GREEN, "%s all marked entries.", msg_done);

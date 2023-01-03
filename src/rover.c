@@ -258,9 +258,7 @@ int ls(Row **rowsp, uint8_t flags)
 
 void free_rows(Row **rowsp, int nfiles)
 {
-	int i;
-
-	for (i = 0; i < nfiles; i++)
+	for (int i = 0; i < nfiles; i++)
 		FREE((*rowsp)[i].name);
 	FREE(*rowsp);
 }
@@ -329,17 +327,17 @@ void reload()
 		cd(true);
 }
 
-off_t count_dir(const char *path)
+static off_t count_dir(const char *path)
 {
 	DIR *dp;
 	struct dirent *ep;
 	struct stat statbuf;
 	char subpath[PATH_MAX];
-	off_t total;
+	off_t total = 0;
 
 	if (!(dp = opendir(path)))
-		return 0;
-	total = 0;
+		return total;
+
 	while ((ep = readdir(dp))) {
 		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
 			continue;
@@ -358,14 +356,12 @@ off_t count_dir(const char *path)
 
 off_t count_marked()
 {
-	int i;
 	char *entry;
-	off_t total;
+	off_t total = 0;
 	struct stat statbuf;
 
-	total = 0;
 	chdir(rover.marks.dirpath);
-	for (i = 0; i < rover.marks.bulk; i++) {
+	for (int i = 0; i < rover.marks.bulk; i++) {
 		entry = rover.marks.entries[i];
 		if (entry) {
 			if (ISDIR(entry)) {
@@ -394,65 +390,4 @@ void update_progress(off_t delta)
 	refresh();
 
 	return;
-}
-
-int cpyfile(const char *srcpath)
-{
-	int src, dst, ret;
-	size_t size;
-	struct stat st;
-	char buf[BUFSIZ], dstpath[PATH_MAX], buffer[PATH_MAX];
-
-	strcpy(dstpath, CWD);
-	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
-	ret = lstat(srcpath, &st);
-	if (ret < 0)
-		return ret;
-	if (S_ISLNK(st.st_mode)) {
-		ret = readlink(srcpath, buffer, PATH_MAX - 1);
-		if (ret < 0)
-			return ret;
-		buffer[ret] = '\0';
-		ret         = symlink(buffer, dstpath);
-	} else {
-		ret = src = open(srcpath, O_RDONLY);
-		if (ret < 0)
-			return ret;
-		ret = dst = creat(dstpath, st.st_mode);
-		if (ret < 0)
-			return ret;
-		while ((size = read(src, buf, BUFSIZ)) > 0) {
-			write(dst, buf, size);
-			update_progress(size);
-			sync_signals();
-		}
-		close(src);
-		close(dst);
-		ret = 0;
-	}
-	
-	return ret;
-}
-
-int movfile(const char *srcpath)
-{
-	int ret;
-	struct stat st;
-	char dstpath[PATH_MAX];
-
-	strcpy(dstpath, CWD);
-	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
-	ret = rename(srcpath, dstpath);
-	if (ret == 0) {
-		ret = lstat(dstpath, &st);
-		if (ret < 0)
-			return ret;
-		update_progress(st.st_size);
-	} else if (errno == EXDEV) {
-		ret = cpyfile(srcpath);
-		if (ret < 0)
-			return ret;
-		ret = unlink(srcpath);
-	}
-	return ret;
 }
