@@ -130,6 +130,29 @@ static void start_line_edit(const char *init_input)
 	rover.edit_scroll           = 0;
 }
 
+/* Handle any signals received since last call. */
+static void sync_signals(void)
+{
+	if (rover.pending_usr1) {
+		/* SIGUSR1 received: refresh directory listing. */
+		reload();
+		rover.pending_usr1 = 0;
+	}
+	if (rover.pending_winch) {
+		/* SIGWINCH received: resize application accordingly. */
+		delwin(rover.window);
+		endwin();
+		refresh();
+		rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
+		if (HEIGHT < rover.nfiles &&
+		    SCROLL + HEIGHT > rover.nfiles)
+			SCROLL = ESEL - HEIGHT;
+
+		update_view();
+		rover.pending_winch = 0;
+	}
+}
+
 /* This function must be used in place of getch().
    It handles signals while waiting for user input. */
 int rover_getch(void)
@@ -220,14 +243,13 @@ static int addfile(const char *path)
 
 static int adddir(const char *path)
 {
-	int ret;
-	struct stat st;
+	mode_t mode;
 
-	ret = stat(CWD, &st);
-	if (ret < 0)
-		return ret;
+	mode = fileinfo(CWD, NULL);
+	if (!mode)
+		return -1;
 
-	return mkdir(path, st.st_mode);
+	return mkdir(path, mode);
 }
 
 /* Unmark all entries. */
@@ -310,7 +332,6 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 	int ret;
 	DIR *dp;
 	struct dirent *ep;
-	struct stat statbuf;
 	char subpath[PATH_MAX], dstpath[PATH_MAX];
 
 	ret = 0;
@@ -327,8 +348,7 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
 			continue;
 		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
-		lstat(subpath, &statbuf);
-		if (S_ISDIR(statbuf.st_mode)) {
+		if (S_ISDIR(fileinfo(subpath, NULL))) {
 			ADDSLASH(subpath);
 			ret |= process_dir(pre, proc, pos, subpath);
 		} else
@@ -471,8 +491,6 @@ void main_menu(void)
 		case KEY_LEFT: //Go to parent directory
 			if (!strcmp(CWD, "/"))
 				continue;
-			//length      = strlen(CWD) - 1;
-			//CWD[length] = '\0';
 			DELSLASH(CWD);
 			dir_name    = strrchr(CWD, '/') + 1;
 			first       = dir_name[0];

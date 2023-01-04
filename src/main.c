@@ -1,5 +1,6 @@
-#include "ui_funcs.h"
 #include "rover.h"
+#include "ui_funcs.h"
+#include "os_funcs.h"
 
 struct Rover rover;
 char rover_home_path[RV_PATH_MAX];
@@ -110,9 +111,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	strcpy(clipboard, argv[0]);
-	strcpy(rover_home_path, dirname(clipboard)); //get the home directory of rover
-
 	init_term();
 	rover.nfiles = 0;
 	for (i = 0; i < 10; i++) {
@@ -130,7 +128,9 @@ int main(int argc, char *argv[])
 			strcpy(rover.tabs[i].cwd, rover.tabs[0].cwd);
 	}
 
-	getcwd(rover.tabs[i].cwd, PATH_MAX);
+	getcwd(rover_home_path, RV_PATH_MAX); //get the current work directory for rover.log and rover manual file
+	strcpy(rover.tabs[i].cwd, rover_home_path);
+
 	for (i++; i < 10; i++)
 		strcpy(rover.tabs[i].cwd, rover.tabs[i - 1].cwd);
 
@@ -140,16 +140,15 @@ int main(int argc, char *argv[])
 	rover.tab    = 1;
 	rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
 	init_marks(&rover.marks);
-	cd(true);
+	if(!cd(true))
+		exit(EXIT_FAILURE);
+		
 	strcpy(clipboard, CWD);
 	if (rover.nfiles > 0)
 		strcat(clipboard, ENAME(ESEL));
 
 	main_menu();
 
-	if (rover.nfiles)
-		free_rows(&rover.rows, rover.nfiles);
-	delwin(rover.window);
 	if (save_cwd_file != NULL) {
 		fputs(CWD, save_cwd_file);
 		fclose(save_cwd_file);

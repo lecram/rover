@@ -2,29 +2,40 @@
 #include "os_funcs.h"
 #include "ui_funcs.h"
 
-mode_t filetype(const char *filename)
+/*
+assign at param size the total size in bytes 
+returns the type mode of file specified in fname
+*/
+mode_t fileinfo(const char *fname, off_t *size)
 {
 	struct stat sb;
 
-	if (lstat(filename, &sb) == -1) {
-		return false;
+	*size = -1L;
+	if (lstat(fname, &sb) == -1) {
+		return 0;
 	}
+	if (size) //check in NULL pointer
+		*size = sb.st_size;
 
-	return (sb.st_mode & S_IFMT);
+	return sb.st_mode;
 }
 
-/* Wrappers for file operations. */
+/*
+Delete fname even is file, symbolic link or directory
+On success, zero is returned.  On error, -1 is returned
+*/
 int rm(const char *fname)
 {
-	int result;
+	int result = -1;
+	mode_t mode;
 	char *errnomsg;
 
-	errno  = 0;
+	errno = 0;
 
-    result = filetype(fname);	
-	if (result == S_IFREG || result == S_IFLNK)
+	mode = fileinfo(fname, NULL);
+	if (S_ISREG(mode) || S_ISLNK(mode))
 		result = unlink(fname);
-	else if (result == S_IFDIR)
+	else if (S_ISDIR(mode))
 		result = rmdir(fname);
 	else
 		LOG(LOG_ERR, "\"%s\" is not a regular file, symbolic link or directory.", fname);
@@ -82,44 +93,48 @@ int rm(const char *fname)
 	return result;
 }
 
+/*
+check if the specified name is a valid file name
+return true if is valid or false if is not valid
+*/
 bool isvalidfilename(const char *filename, bool wildcard)
 {
-	mode_t st_mode;
 	char dir_template[] = "/tmp/rover-tmpdir.XXXXXX", forbidden[] = "/<>\"|:&", extmatch[] = "?*+@!", temp_file[FILENAME_MAX], *temp_dir = NULL;
 	FILE *fd;
+	bool result = false;
 
 	if (strpbrk(filename, forbidden)) //check for invalid characters for filename
-		return false;
+		return result;
 	if (strlen(filename) > 255) //check if the lenght of file exceed the max acceppted by filesystem
-		return false;
+		return result;
 	if (strpbrk(filename, extmatch)) { //check if filname contains wildchars FNM_EXTMATCH
-        if(wildcard)
-            return true;
+		if (wildcard)
+			return result;
 
-        return false;
+		return result;
 	}
 	temp_dir = mkdtemp(dir_template);
 	if (temp_dir == NULL)
-		return false;
+		return result;
 	if (!mkdir(temp_dir, S_IRWXU | S_IRWXG | S_IRWXO)) //creating temp dir 0777
-		return false;
+		return result;
 
 	sprintf(temp_file, "%s/%s", temp_dir, filename);
 	fd = fopen(temp_file, "w"); //try to create an empty file using "filename"
 	if (fd == NULL) {
 		rm(temp_dir);
 
-		return false;
+		return result;
 	}
 	fclose(fd);
 
-	st_mode = filetype(temp_file); //check if the tempo file is regular
+	result = S_ISREG(fileinfo(temp_file, NULL)); //check if the temp file is regular
 	if (rm(temp_file))
 		return false;
 	if (rm(temp_dir))
 		return false;
 
-	return (st_mode == S_IFREG);
+	return result; //return true if filename its valid
 }
 
 static ino_t inodeof(const char *filename)
@@ -135,7 +150,7 @@ static ino_t inodeof(const char *filename)
 static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 {
 	int handle = -1L;
-	bool ok = true;
+	bool ok    = true;
 
 	if (access(fname, F_OK) == 0) { //check if the target file already exists
 		if (inodeof(fname) == source_inode)
@@ -149,7 +164,7 @@ static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 
 		CLEAR_MESSAGE();
 	}
-	if(ok)
+	if (ok)
 		handle = open(fname, O_CREAT | O_WRONLY | O_TRUNC, mode);
 
 	return handle;
@@ -158,9 +173,9 @@ static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 static ssize_t filecopy(const char *source, const char *todir)
 {
 	int input, output;
-	struct stat fileinfo = { 0 };
-	ssize_t result       = -1L;
-	off_t chunk, bytesCount    = 0;
+	struct stat sb = { 0 };
+	ssize_t result = -1L;
+	off_t chunk, bytesCount = 0;
 	char *errnomsg, *filename, *data, *ptr, *end, destination[FILENAME_MAX];
 	bool trayAgain = false; /* Applications may wish to fall back to read(2)/write(2) in
 								the case where sendfile() fails with EINVAL or ENOSYS. */
@@ -176,7 +191,7 @@ static ssize_t filecopy(const char *source, const char *todir)
 	}
 
 	errno = 0;
-	if (fstat(input, &fileinfo)) { //read the attributes of the source file
+	if (fstat(input, &sb)) { //read the attributes of the source file
 		switch (errno) {
 		case EACCES:
 			errnomsg = "Search permission is denied for one of the directories in the path prefix of source file.";
@@ -218,7 +233,7 @@ static ssize_t filecopy(const char *source, const char *todir)
 		return result;
 	}
 
-	output = opennew(destination, fileinfo.st_mode, inodeof(source)); //try to open the destinatiion file with same mode of source
+	output = opennew(destination, sb.st_mode, inodeof(source)); //try to open the destinatiion file with same mode of source
 	if (output < 0) { //try to open the destinatiion file
 		close(input);
 		errnomsg = (output == -1 ? "Error opening destination file" : "Destination file must be in a different directory of the source file");
@@ -231,9 +246,9 @@ static ssize_t filecopy(const char *source, const char *todir)
 		return result;
 	}
 
-	errno  = 0;
-	bytesCount = fileinfo.st_size;
-	result = sendfile(output, input, NULL, bytesCount); //sendfile will work with non-socket output (i.e. regular file) on Linux 2.6.33+
+	errno      = 0;
+	bytesCount = sb.st_size;
+	result     = sendfile(output, input, NULL, bytesCount); //sendfile will work with non-socket output (i.e. regular file) on Linux 2.6.33+
 
 	switch (errno) {
 	case EAGAIN:
@@ -247,7 +262,7 @@ static ssize_t filecopy(const char *source, const char *todir)
 		break;
 	case EINVAL:
 	case ENOSYS:
-		errnomsg = "Descriptor is not valid or locked, or an mmap(2)-like operation is not available for in_fd, or count is negative.";
+		errnomsg  = "Descriptor is not valid or locked, or an mmap(2)-like operation is not available for in_fd, or count is negative.";
 		trayAgain = true; /* read NOTES at https://man7.org/linux/man-pages/man2/sendfile.2.html */
 		break;
 	case EIO:
@@ -269,18 +284,18 @@ static ssize_t filecopy(const char *source, const char *todir)
 	}
 	if (errno) //if an error has occurred
 		LOG(LOG_ERR, "File copy error errno[%d]: %s", errno, errnomsg);
-	
-	if (result != fileinfo.st_size) { //verify that all bytes have been copied
-		message(RED, "Error not all data was copied! Writed %ld bytes on %ld bytes", result, fileinfo.st_size);
+
+	if (result != sb.st_size) { //verify that all bytes have been copied
+		message(RED, "Error not all data was copied! Writed %ld bytes on %ld bytes", result, sb.st_size);
 		rover_getch();
-		CLEAR_MESSAGE();		
+		CLEAR_MESSAGE();
 	}
 
-	if(trayAgain) {
+	if (trayAgain) {
 		LOG(LOG_INFO, "%s try to copy again with read()/write() instead of sendfile().", ROVER);
 		errno = 0;
-		chunk = MIN(fileinfo.st_size, DEFAULT_CHUNK); //set better performance for copy
-		data = malloc((size_t) chunk); /* Allocate temporary data buffer. */
+		chunk = MIN(sb.st_size, DEFAULT_CHUNK); //set better performance for copy
+		data  = malloc((size_t)chunk); /* Allocate temporary data buffer. */
 		if (data) {
 			do { /* Copy loop. */
 				bytesCount = read(input, data, chunk);
@@ -290,27 +305,30 @@ static ssize_t filecopy(const char *source, const char *todir)
 				}
 				/* Write that same chunk. */
 				ptr = data;
-				for(end = (char *) (data + bytesCount); ptr < end; ptr += bytesCount) {
-					bytesCount = write(output, ptr, (size_t) (end - ptr));
+				for (end = (char *)(data + bytesCount); ptr < end; ptr += bytesCount) {
+					bytesCount = write(output, ptr, (size_t)(end - ptr));
 					if (bytesCount <= 0) {
-						FREE(data);
 						trayAgain = false; // exit from do while
 						break; // exit from for
 					}
 				}
-			} while(trayAgain);
-			if(!errno)
+			} while (trayAgain);
+			FREE(data);
+			if (!errno)
 				LOG(LOG_INFO, "%s copy with success using read()/write() instead of sendfile().", ROVER);
 		}
 	}
 	close(input); //close the handle
 	close(output); //close the handle
-	if(errno)
+	if (errno)
 		unlink(destination); /* Remove output file. */
 
 	return result; //return the number of bytes copied
 }
 
+/*
+copy source file in CWD using filecopy() func
+*/
 int cpyfile(const char *srcpath)
 {
 	char dstpath[PATH_MAX], buffer[PATH_MAX];
@@ -320,11 +338,11 @@ int cpyfile(const char *srcpath)
 	strcpy(dstpath, CWD);
 	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
 
-	mode = filetype(srcpath);
+	mode = fileinfo(srcpath, NULL);
 	if (!mode)
-		return (int) result;
+		return (int)result;
 
-	if (mode == S_IFLNK) {
+	if (S_ISLNK(mode)) {
 		result = readlink(srcpath, buffer, PATH_MAX);
 		if (result < 0) {
 			message(RED, "Error reading symbolic link");
@@ -334,36 +352,153 @@ int cpyfile(const char *srcpath)
 			buffer[result] = '\0';
 			result         = symlink(buffer, dstpath);
 		}
-	} else if (mode == S_IFREG) {
+	} else if (S_ISREG(mode)) {
 		result = filecopy(srcpath, dstpath);
 	} else {
 		message(RED, "Error: source file must be a regular file or symbolic link");
 		rover_getch();
-		CLEAR_MESSAGE();	
+		CLEAR_MESSAGE();
 	}
-	
-	return (int) result;
+
+	return (int)result;
 }
 
+/*
+move source file in CWD using rename() or the combination of filecopy() + rm() funcs
+*/
 int movfile(const char *srcpath)
 {
 	char dstpath[PATH_MAX];
-	ssize_t result = -1L;
-	mode_t mode;
+	int result;
 
 	strcpy(dstpath, CWD);
 	strcat(dstpath, srcpath + strlen(rover.marks.dirpath));
 
-	if (rename(srcpath, dstpath) == 0) {
-		mode = filetype(dstpath);
-		if (!mode)
-			return result;
-	} else if (errno == EXDEV) {
-		result = filecopy(srcpath, dstpath);
-		if (result < 0)
-			return result;
+	errno  = 0;
+	result = rename(srcpath, dstpath);
+	if (errno == EXDEV) {
+		filecopy(srcpath, dstpath);
 		result = rm(srcpath);
 	}
+	if (!access(dstpath, F_OK))
+		return -1;
 
 	return result;
+}
+
+/* Comparison used to sort listing entries. */
+static int rowcmp(const void *a, const void *b)
+{
+	int isdir1, isdir2, cmpdir;
+	const Row *r1 = a, *r2 = b;
+
+	isdir1 = S_ISDIR(r1->mode);
+	isdir2 = S_ISDIR(r2->mode);
+	cmpdir = isdir2 - isdir1;
+
+	return (cmpdir ? cmpdir : strcoll(r1->name, r2->name));
+}
+
+/* Get all entries in current working directory. */
+static int ls(Row **rowsp, uint8_t flags)
+{
+	DIR *dp;
+	struct dirent *ep;
+	Row *rows;
+	mode_t mode;
+	off_t size = -1L;
+	int n, i = 0;
+
+	if (!(dp = opendir(".")))
+		return -1;
+
+	for (n = 0; (ep = readdir(dp)); n++)
+		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+			n--;  // We don't want the entries "." and "..".
+
+	if (n == 0) {
+		closedir(dp);
+
+		return 0;
+	}
+
+	rewinddir(dp);
+	rows = malloc(n * sizeof *rows);
+	while ((ep = readdir(dp))) {
+		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
+			continue;
+		if (!(flags & SHOW_HIDDEN) && ep->d_name[0] == '.')
+			continue;
+
+		mode = fileinfo(ep->d_name, &size);
+		rows[i].islink = (S_ISLNK(mode));
+		if (S_ISDIR(mode)) {
+			if (flags & SHOW_DIRS) {
+				rows[i].name = (char *) malloc(strlen(ep->d_name) + 2);
+				strcpy(rows[i].name, ep->d_name);
+				if (!rows[i].islink)
+					ADDSLASH(rows[i].name);
+				rows[i].mode = mode;
+				i++;
+			}
+		} else if (flags & SHOW_FILES) {
+			rows[i].name = malloc(strlen(ep->d_name) + 1);
+			strcpy(rows[i].name, ep->d_name);
+			rows[i].size = size;
+			rows[i].mode = mode;
+			i++;
+		}
+	}
+	n = i; // Ignore unused space in array caused by filters.
+	qsort(rows, n, sizeof(*rows), rowcmp);
+	closedir(dp);
+	*rowsp = rows;
+
+	return n;
+}
+
+/* Change working directory to the path in CWD. */
+bool cd(bool reset)
+{
+	int i, j;
+
+	message(CYAN, "Loading \"%s\"...", CWD);
+	refresh();
+
+	if (chdir(CWD) == -1) {
+		getcwd(CWD, PATH_MAX - 1);
+		ADDSLASH(CWD);
+	} else {
+		if (reset)
+			ESEL = SCROLL = 0;
+		if (rover.nfiles)
+			free_rows(&rover.rows, rover.nfiles);
+
+		rover.nfiles = ls(&rover.rows, FLAGS);
+		if(rover.nfiles < 0) {
+			message(RED, "Error reading current directory");
+			rover_getch();
+			CLEAR_MESSAGE();
+
+			return false;
+		}
+
+		if (!strcmp(CWD, rover.marks.dirpath)) {
+			for (i = 0; i < rover.nfiles; i++) {
+				for (j = 0; j < rover.marks.bulk; j++) {
+					if (rover.marks.entries[j] &&
+					    !strcmp(rover.marks.entries[j], ENAME(i)))
+						break;
+				}
+				MARKED(i) = j < rover.marks.bulk;
+			}
+		} else {
+			for (i = 0; i < rover.nfiles; i++)
+				MARKED(i) = false;
+		}
+	}
+	CLEAR_MESSAGE();
+	update_view();
+
+	return true;
 }
