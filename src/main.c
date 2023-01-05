@@ -141,9 +141,9 @@ int main(int argc, char *argv[])
 	rover.tab    = 1;
 	rover.window = subwin(stdscr, LINES - 2, COLS, 1, 0);
 	init_marks(&rover.marks);
-	if(!cd(true))
+	if (!cd(true))
 		exit(EXIT_FAILURE);
-		
+
 	strcpy(clipboard, CWD);
 	if (rover.nfiles > 0)
 		strcat(clipboard, ENAME(ESEL));
@@ -163,6 +163,6 @@ int main(int argc, char *argv[])
 		fclose(save_marks_file);
 	}
 	free_marks(&rover.marks);
-	
+
 	return EXIT_SUCCESS;
 }

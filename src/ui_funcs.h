@@ -54,16 +54,16 @@
 #define KEY_ESC 0x1B
 #endif
 #ifndef KEY_TAB
-#define KEY_TAB 0x9
+#define KEY_TAB 0x09
 #endif
 #ifndef KEY_RETURN
-#define KEY_RETURN 0xD
+#define KEY_RETURN 0x0D
 #endif
 #ifndef KEY_CTRL_DEL
 #define KEY_CTRL_DEL 0x207
 #endif
 #ifndef KEY_CTRL_BS
-#define KEY_CTRL_BS 0x8
+#define KEY_CTRL_BS 0x08
 #endif
 #ifndef KEY_CTRL_LEFT
 #define KEY_CTRL_LEFT 0x221
@@ -75,7 +75,7 @@
 #define KEY_CTRL_X 0x18
 #endif
 #ifndef KEY_CTRL_C
-#define KEY_CTRL_C 0x3
+#define KEY_CTRL_C 0x03
 #endif
 #ifndef KEY_CTRL_V
 #define KEY_CTRL_V 0x10
@@ -85,6 +85,9 @@
 #endif
 #ifndef KEY_CTRL_S
 #define KEY_CTRL_S 0x13
+#endif
+#ifndef KEY_CTRL_D
+#define KEY_CTRL_D 0x04
 #endif
 
 /* Line Editing Macros. */
@@ -101,7 +104,7 @@
 		(E).left  = 0;            \
 		(E).right = PATH_MAX - 1; \
 	}
-	
+
 /* Get user programs from the environment vars */
 #define ROVER_ENV(dst, src)                        \
 	{                                              \
@@ -144,6 +147,7 @@ void handlers(bool enable);
 int rover_getch(void);
 void message(Color color, char *fmt, ...);
 void update_view(void);
+void del_mark(Marks *marks, char *entry);
 void main_menu(void);
 
 #endif // _UI_FUNCS_H

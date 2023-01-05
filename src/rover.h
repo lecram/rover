@@ -179,10 +179,8 @@ extern char rover_home_path[RV_PATH_MAX];
 void logfile(const char *format, ...);
 int endsession(void);
 void reload(void);
-void update_view(void);
 void free_rows(Row **rowsp, int nfiles);
 void try_to_sel(const char *target);
-off_t count_marked(void);
-void update_progress(off_t delta);
+void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done);
 
 #endif // _ROVER_H

@@ -130,6 +130,120 @@ static void start_line_edit(const char *init_input)
 	rover.edit_scroll           = 0;
 }
 
+void update_view()
+{
+	int i, j, numsize, ishidden, marking, length, namecols, center, height;
+	char buffer_one[PATH_MAX], buffer_two[PATH_MAX], *suffix;
+	wchar_t wbuffer[PATH_MAX];
+	off_t human_size;
+
+	mvhline(0, 0, ' ', COLS);
+	attr_on(A_BOLD, NULL);
+	color_set(RVC_TABNUM, NULL);
+	mvaddch(0, COLS - 2, rover.tab + '0');
+	attr_off(A_BOLD, NULL);
+	if (rover.marks.nentries) {
+		numsize = snprintf(buffer_one, PATH_MAX, "%d", rover.marks.nentries);
+		color_set(RVC_MARKS, NULL);
+		mvaddstr(0, COLS - 3 - numsize, buffer_one);
+	} else
+		numsize = -1;
+	color_set(RVC_CWD, NULL);
+	mbstowcs(wbuffer, CWD, PATH_MAX);
+	mvaddnwstr(0, 0, wbuffer, COLS - 4 - numsize);
+	wcolor_set(rover.window, RVC_BORDER, NULL);
+	wborder(rover.window, 0, 0, 0, 0, 0, 0, 0, 0);
+	ESEL = MAX(MIN(ESEL, rover.nfiles - 1), 0);
+	/* Selection might not be visible, due to cursor wrapping or window
+       shrinking. In that case, the scroll must be moved to make it visible. */
+	if (rover.nfiles > HEIGHT) {
+		SCROLL = MAX(MIN(SCROLL, ESEL), ESEL - HEIGHT + 1);
+		SCROLL = MIN(MAX(SCROLL, 0), rover.nfiles - HEIGHT);
+	} else
+		SCROLL = 0;
+	marking = !strcmp(CWD, rover.marks.dirpath);
+	for (i = 0, j = SCROLL; i < HEIGHT && j < rover.nfiles; i++, j++) {
+		ishidden = (ENAME(j)[0] == '.');
+		if (j == ESEL)
+			wattr_on(rover.window, A_REVERSE, NULL);
+		/* following a series of if else in order to set colors of listing */
+		if (ISLINK(j))
+			wcolor_set(rover.window, RVC_LINK, NULL);
+		else if (ishidden)
+			wcolor_set(rover.window, RVC_HIDDEN, NULL);
+		else if (S_ISREG(EMODE(j))) {
+			if (EMODE(j) & (S_IXUSR | S_IXGRP | S_IXOTH))
+				wcolor_set(rover.window, RVC_EXEC, NULL);
+			else
+				wcolor_set(rover.window, RVC_REG, NULL);
+		} else if (S_ISDIR(EMODE(j)))
+			wcolor_set(rover.window, RVC_DIR, NULL);
+		else if (S_ISCHR(EMODE(j)))
+			wcolor_set(rover.window, RVC_CHR, NULL);
+		else if (S_ISBLK(EMODE(j)))
+			wcolor_set(rover.window, RVC_BLK, NULL);
+		else if (S_ISFIFO(EMODE(j)))
+			wcolor_set(rover.window, RVC_FIFO, NULL);
+		else if (S_ISSOCK(EMODE(j)))
+			wcolor_set(rover.window, RVC_SOCK, NULL);
+
+		if (S_ISDIR(EMODE(j))) {
+			mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+			if (ISLINK(j))
+				wcscat(wbuffer, L"/");
+		} else {
+			human_size = ESIZE(j) * 10;
+			length     = mbstowcs(wbuffer, ENAME(j), PATH_MAX);
+			namecols   = wcswidth(wbuffer, length);
+
+			for (suffix = "BKMGTPEZY"; human_size >= 10240; suffix++)
+				human_size = (human_size + 512) / 1024;
+
+			if (*suffix == 'B')
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d %c",
+				         (int)(COLS - namecols - 6),
+				         (int)human_size / 10, *suffix);
+			else
+				swprintf(wbuffer + length, PATH_MAX - length, L"%*d.%d %c",
+				         (int)(COLS - namecols - 8),
+				         (int)human_size / 10, (int)human_size % 10, *suffix);
+		}
+		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+		mvwaddnwstr(rover.window, i + 1, 2, wbuffer, COLS - 4);
+		if (marking && MARKED(j)) {
+			wcolor_set(rover.window, RVC_MARKS, NULL);
+			mvwaddch(rover.window, i + 1, 1, RVS_MARK);
+		} else
+			mvwaddch(rover.window, i + 1, 1, ' ');
+
+		if (j == ESEL)
+			wattr_off(rover.window, A_REVERSE, NULL);
+	}
+	for (; i < HEIGHT; i++)
+		mvwhline(rover.window, i + 1, 1, ' ', COLS - 2);
+
+	if (rover.nfiles > HEIGHT) {
+		center = (SCROLL + HEIGHT / 2) * HEIGHT / rover.nfiles;
+		height = (HEIGHT - 1) * HEIGHT / rover.nfiles;
+		height = height ? height : 1;
+		wcolor_set(rover.window, RVC_SCROLLBAR, NULL);
+		mvwvline(rover.window, center - height / 2 + 1, COLS - 1, RVS_SCROLLBAR, height);
+	}
+	buffer_one[0] = FLAGS & SHOW_FILES ? 'F' : ' ';
+	buffer_one[1] = FLAGS & SHOW_DIRS ? 'D' : ' ';
+	buffer_one[2] = FLAGS & SHOW_HIDDEN ? 'H' : ' ';
+
+	if (!rover.nfiles)
+		strcpy(buffer_two, "0/0");
+	else
+		snprintf(buffer_two, PATH_MAX, "%d/%d", ESEL + 1, rover.nfiles);
+
+	snprintf(buffer_one + 3, PATH_MAX, "%12s", buffer_two);
+	color_set(RVC_STATUS, NULL);
+	mvaddstr(LINES - 1, STATUSPOS, buffer_one);
+	wrefresh(rover.window);
+}
+
 /* Handle any signals received since last call. */
 static void sync_signals(void)
 {
@@ -172,12 +286,12 @@ static EditStat get_line_edit(char *string)
 	ch = rover_getch();
 	switch (ch) {
 	case KEY_ENTER:
-	case KEY_RETURN:	
+	case KEY_RETURN:
 		curs_set(FALSE);
 		return CONFIRM;
 		break;
 	case KEY_ESC:
-		if(strlen(string)) {
+		if (strlen(string)) {
 			EDIT_CLEAR(rover.edit);
 			CLEAR_MESSAGE();
 		} else {
@@ -217,7 +331,7 @@ static EditStat get_line_edit(char *string)
 		if (EDIT_CAN_RIGHT(rover.edit))
 			EDIT_DELETE(rover.edit);
 		break;
-	case KEY_CANCEL:		
+	case KEY_CANCEL:
 		break;
 	case KEY_F(1)... KEY_F(12):
 	case KEY_IC:
@@ -234,28 +348,6 @@ static EditStat get_line_edit(char *string)
 	wcstombs(&string[length], &rover.edit.buffer[rover.edit.right + 1], PATH_MAX - length);
 
 	return CONTINUE;
-}
-
-static int addfile(const char *path)
-{ /* Using creat(2) because mknod(2) doesn't seem to be portable. */
-	int ret;
-
-	ret = creat(path, 0644);
-	if (ret < 0)
-		return ret;
-
-	return close(ret);
-}
-
-static int adddir(const char *path)
-{
-	mode_t mode;
-
-	mode = fileinfo(CWD, NULL);
-	if (!mode)
-		return -1;
-
-	return mkdir(path, mode);
 }
 
 /* Unmark all entries. */
@@ -322,89 +414,6 @@ void del_mark(Marks *marks, char *entry)
 		marks->nentries--;
 	} else
 		mark_none(marks);
-}
-
-/* Recursively process a source directory using CWD as destination root.
-   For each node (i.e. directory), do the following:
-    1. call pre(destination);
-    2. call proc() on every child leaf (i.e. files);
-    3. recurse into every child node;
-    4. call pos(source).
-   E.g. to move directory /src/ (and all its contents) inside /dst/:
-    strcpy(CWD, "/dst/");
-    process_dir(adddir, movfile, rm, "/src/"); */
-static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
-{
-	int ret;
-	DIR *dp;
-	struct dirent *ep;
-	char subpath[PATH_MAX], dstpath[PATH_MAX];
-
-	ret = 0;
-	if (pre) {
-		strcpy(dstpath, CWD);
-		strcat(dstpath, path + strlen(rover.marks.dirpath));
-		ret |= pre(dstpath);
-	}
-
-	if (!(dp = opendir(path)))
-		return -1;
-
-	while ((ep = readdir(dp))) {
-		if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, ".."))
-			continue;
-		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
-		if (S_ISDIR(fileinfo(subpath, NULL))) {
-			ADDSLASH(subpath);
-			ret |= process_dir(pre, proc, pos, subpath);
-		} else
-			ret |= proc(subpath);
-	}
-	closedir(dp);
-	if (pos)
-		ret |= pos(path);
-
-	return ret;
-}
-
-/* Process all marked entries using CWD as destination root.
-   All marked entries that are directories will be recursively processed.
-   See process_dir() for details on the parameters. */
-static void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done)
-{
-	int i, ret;
-	char *entry;
-	char path[PATH_MAX];
-
-	CLEAR_MESSAGE();
-	message(CYAN, "%s...", msg_doing);
-	refresh();
-	rover.prog = (Prog){ 0, count_marked(), msg_doing }; // init progress
-	for (i = 0; i < rover.marks.bulk; i++) {
-		entry = rover.marks.entries[i];
-		if (entry) {
-			ret = 0;
-			snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, entry);
-			if (ISDIR(entry)) {
-				if (!strncmp(path, CWD, strlen(path)))
-					ret = -1;
-				else
-					ret = process_dir(pre, proc, pos, path);
-			} else
-				ret = proc(path);
-			if (!ret) {
-				del_mark(&rover.marks, entry);
-				reload();
-			}
-		}
-	}
-	rover.prog.total = 0; // reset progress
-	reload();
-	if (!rover.marks.nentries)
-		message(GREEN, "%s all marked entries.", msg_done);
-	else
-		message(RED, "Some errors occured while %s.", msg_doing);
-	RV_ALERT();
 }
 
 void main_menu(void)
@@ -527,15 +536,15 @@ void main_menu(void)
 				continue;
 			}
 			mode = fileinfo(buffer, NULL);
-			strcpy(CWD, buffer);		
+			strcpy(CWD, buffer);
 			if (S_ISREG(mode)) {
 				strcpy(CWD, buffer);
-				strcpy(buffer, strrchr(CWD, '/') +1 );
+				strcpy(buffer, strrchr(CWD, '/') + 1);
 				dirname(CWD);
 				ADDSLASH(CWD);
 			}
 			cd(true);
-			if(S_ISREG(mode))
+			if (S_ISREG(mode))
 				try_to_sel(buffer);
 			if (rover.nfiles > HEIGHT)
 				SCROLL = ESEL - HEIGHT / 2;
@@ -699,7 +708,7 @@ void main_menu(void)
 				}
 			}
 			break;
-		case KEY_F(10): //Create new dir
+		case KEY_F(12): //Create new dir
 			start_line_edit("");
 			DELSLASH(input);
 			update_input(RVP_NEW_DIR, YELLOW, input);
@@ -785,16 +794,20 @@ void main_menu(void)
 		case KEY_F(4): //Toggle execute permission of the selected file
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
+
 			if (S_IXUSR & EMODE(ESEL))
 				EMODE(ESEL) &= ~(S_IXUSR | S_IXGRP | S_IXOTH);
 			else
 				EMODE(ESEL) |= S_IXUSR | S_IXGRP | S_IXOTH;
+
 			if (chmod(ENAME(ESEL), EMODE(ESEL))) {
 				message(RED, "Failed to change mode of \"%s\".", ENAME(ESEL));
 			} else {
 				message(GREEN, "Changed mode of \"%s\".", ENAME(ESEL));
 				update_view();
 			}
+			rover_getch();
+			CLEAR_MESSAGE();
 			break;
 		case KEY_DC: //Delete selected file or (empty) directory
 			if (rover.nfiles) {
@@ -805,30 +818,26 @@ void main_menu(void)
 						del_mark(&rover.marks, ENAME(ESEL));
 					ok = rm(buffer);
 					reload();
-					if (ok == 0) {
-						CLEAR_MESSAGE();
-						message(YELLOW, "\"%s\" deleted!", buffer);
-						rover_getch();
-					} else {
-						CLEAR_MESSAGE();
+					CLEAR_MESSAGE();
+					if (ok == 0)
+						message(GREEN, "\"%s\" deleted!", buffer);
+					else
 						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer, ROVER); //print error message
-						rover_getch();
-						CLEAR_MESSAGE();
-					}
+					rover_getch();
 				}
-				CLEAR_MESSAGE();
 			} else {
 				message(RED, "No entry for deletion.");
 				rover_getch();
 			}
+			CLEAR_MESSAGE();
 			break;
 		case KEY_SPACE: //Toggle mark on the selected entry
 			if (MARKED(ESEL))
 				del_mark(&rover.marks, ENAME(ESEL));
 			else
 				add_mark(&rover.marks, CWD, ENAME(ESEL));
-			MARKED(ESEL) = !MARKED(ESEL);
-			ESEL         = (ESEL + 1) % rover.nfiles;
+			MARKED(ESEL) = !MARKED(ESEL); //toggle mark
+			ESEL         = (ESEL + 1);// % rover.nfiles; // if remove comment to the modulo the selection restart from first element of listing
 			update_view();
 			break;
 		case KEY_CTRL_S: //Toggle mark on all visible entries
@@ -846,6 +855,14 @@ void main_menu(void)
 				if (!MARKED(i)) {
 					add_mark(&rover.marks, CWD, ENAME(i));
 					MARKED(i) = true;
+				}
+			update_view();
+			break;
+		case KEY_CTRL_D: //Unmark all visible entries
+			for (i = 0; i < rover.nfiles; i++)
+				if (MARKED(i)) {
+					del_mark(&rover.marks, ENAME(i));
+					MARKED(i) = false;
 				}
 			update_view();
 			break;
@@ -878,7 +895,8 @@ void main_menu(void)
 				message(RED, "No entries marked for moving.");
 			break;
 		default:
-			LOG(LOG_INFO, "0x%02X", ch);
+			RV_ALERT();
+			break;
 		}
 	} while (!quit);
 
