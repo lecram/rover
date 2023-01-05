@@ -33,11 +33,11 @@
 #define RVC_STATUS    CYAN
 #define RVC_BORDER    BLUE
 #define RVC_SCROLLBAR CYAN
-#define RVC_LINK      CYAN
-#define RVC_HIDDEN    YELLOW
-#define RVC_EXEC      GREEN
-#define RVC_REG       DEFAULT
-#define RVC_DIR       DEFAULT
+#define RVC_LINK      YELLOW
+#define RVC_HIDDEN    BLUE
+#define RVC_EXEC      CYAN
+#define RVC_REG       GREEN
+#define RVC_DIR       WHITE
 #define RVC_CHR       MAGENTA
 #define RVC_BLK       MAGENTA
 #define RVC_FIFO      BLUE
@@ -48,28 +48,43 @@
 
 /* KEY not defined by curses.h */
 #ifndef KEY_SPACE
-#define KEY_SPACE 32
+#define KEY_SPACE 0x20
 #endif
 #ifndef KEY_ESC
-#define KEY_ESC 27
+#define KEY_ESC 0x1B
 #endif
 #ifndef KEY_TAB
-#define KEY_TAB 9
+#define KEY_TAB 0x9
 #endif
 #ifndef KEY_RETURN
-#define KEY_RETURN '\r'
+#define KEY_RETURN 0xD
 #endif
 #ifndef KEY_CTRL_DEL
-#define KEY_CTRL_DEL 519
+#define KEY_CTRL_DEL 0x207
 #endif
 #ifndef KEY_CTRL_BS
-#define KEY_CTRL_BS 8
+#define KEY_CTRL_BS 0x8
 #endif
 #ifndef KEY_CTRL_LEFT
-#define KEY_CTRL_LEFT 545
+#define KEY_CTRL_LEFT 0x221
 #endif
 #ifndef KEY_CTRL_RIGHT
-#define KEY_CTRL_RIGHT 560
+#define KEY_CTRL_RIGHT 0x230
+#endif
+#ifndef KEY_CTRL_X
+#define KEY_CTRL_X 0x18
+#endif
+#ifndef KEY_CTRL_C
+#define KEY_CTRL_C 0x3
+#endif
+#ifndef KEY_CTRL_V
+#define KEY_CTRL_V 0x10
+#endif
+#ifndef KEY_CTRL_A
+#define KEY_CTRL_A 0x01
+#endif
+#ifndef KEY_CTRL_S
+#define KEY_CTRL_S 0x13
 #endif
 
 /* Line Editing Macros. */

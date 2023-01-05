@@ -10,7 +10,6 @@ mode_t fileinfo(const char *fname, off_t *size)
 {
 	struct stat sb;
 
-	*size = -1L;
 	if (lstat(fname, &sb) == -1) {
 		return 0;
 	}
@@ -18,6 +17,64 @@ mode_t fileinfo(const char *fname, off_t *size)
 		*size = sb.st_size;
 
 	return sb.st_mode;
+}
+
+/*
+check if file or directory is accessible
+in case of error write detailed error message in log file
+return 0 if accesible otherwise -1
+*/
+int fileexist(const char *fname)
+{
+	int result;
+	char *errnomsg;
+
+	errno = 0;
+
+	result = access(fname, F_OK);
+	switch (errno)
+	{
+		case EACCES:
+			errnomsg = "The requested access would be denied to the file, or search permission is denied for one of the directories in the path prefix of pathname.";
+			break;
+		case EFAULT:
+			errnomsg = "pathname points outside your accessible address space.";
+			break;
+		case EINVAL:
+			errnomsg = "mode was incorrectly specified.";
+			break;
+		case EIO:
+			errnomsg = "An I/O error occurred.";
+			break;
+		case ELOOP:
+			errnomsg = "Too many symbolic links were encountered in resolving pathname.";
+			break;
+		case  ENAMETOOLONG:
+			errnomsg = "pathname is too long.";
+			break;
+		case ENOENT:
+			errnomsg = "A component of pathname does not exist or is a dangling symbolic link.";
+			break;
+		case ENOMEM:
+			errnomsg = "Insufficient kernel memory was available.";
+			break;
+		case ENOTDIR:
+			errnomsg = "A component used as a directory in pathname is not, in fact, a directory.";
+			break;
+		case EROFS:
+			errnomsg = "Write permission was requested for a file on a read-only filesystem.";
+			break;
+		case ETXTBSY:
+			errnomsg = "Write access was requested to an executable which is being executed.";
+			break;
+		default:
+			errnomsg = "Unspecified error.";
+			break;
+	}
+	if (errno) //error is occurred
+		LOG(LOG_ERR, "Unable to access: \"%s\" errno[%d]: %s", fname, errno, errnomsg); //write detailed error message to log file
+	
+	return result;
 }
 
 /*
@@ -380,7 +437,7 @@ int movfile(const char *srcpath)
 		filecopy(srcpath, dstpath);
 		result = rm(srcpath);
 	}
-	if (!access(dstpath, F_OK))
+	if (!fileexist(dstpath))
 		return -1;
 
 	return result;

@@ -18,6 +18,7 @@ static void init_term(void)
 	intrflush(stdscr, FALSE);
 	keypad(stdscr, TRUE);
 	curs_set(FALSE); /* Hide blinking cursor. */
+	raw();
 
 	if (has_colors()) {
 		short bg;

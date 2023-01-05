@@ -15,6 +15,7 @@
 #define  DEFAULT_CHUNK  262144  /* https://stackoverflow.com/questions/42156041/copying-a-huge-file-using-read-write-and-open-apis-in-linux */
 
 mode_t fileinfo(const char *fname, off_t *size);
+int fileexist(const char *fname);
 int rm(const char *fname);
 bool isvalidfilename(const char *filename, bool wildcard);
 int cpyfile(const char *srcpath);

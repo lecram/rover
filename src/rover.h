@@ -138,17 +138,19 @@ struct Rover {
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define ISDIR(E)  (strchr((E), '/') != NULL)
 
-/* Add / at the end of path */
-#define ADDSLASH(path)                     \
-	{                                      \
-		if (path[strlen(path) - 1] != '/') \
-			strcat(path, "/");             \
+/* Check if not root dir than add / at the end of path */
+#define ADDSLASH(_path)                      \
+	{                                        \
+		if (strcmp(_path, "/") &&            \
+		    _path[strlen(_path) - 1] != '/') \
+			strcat(_path, "/");              \
 	}
 
-#define DELSLASH(path)                     \
-	{                                      \
-		if (path[strlen(path) - 1] == '/') \
-			path[strlen(path) - 1] = '\0'; \
+#define DELSLASH(_path)                      \
+	{                                        \
+		if (strcmp(_path, "/") &&            \
+		    _path[strlen(_path) - 1] == '/') \
+			_path[strlen(_path) - 1] = '\0'; \
 	}
 /* Safe version of free() don't need assign NULL after free */
 #define FREE(p)        \

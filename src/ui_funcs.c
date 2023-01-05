@@ -169,17 +169,25 @@ int rover_getch(void)
 static EditStat get_line_edit(char *string)
 {
 	int ch, length;
-
 	ch = rover_getch();
 	switch (ch) {
 	case KEY_ENTER:
-	case KEY_RETURN:
+	case KEY_RETURN:	
 		curs_set(FALSE);
 		return CONFIRM;
 		break;
 	case KEY_ESC:
-		curs_set(FALSE);
-		return CANCEL;
+		if(strlen(string)) {
+			EDIT_CLEAR(rover.edit);
+			CLEAR_MESSAGE();
+		} else {
+			curs_set(FALSE);
+			return CANCEL;
+		}
+		break;
+	case KEY_TAB:
+		EDIT_CLEAR(rover.edit);
+		CLEAR_MESSAGE();
 		break;
 	case KEY_LEFT:
 		if (EDIT_CAN_LEFT(rover.edit))
@@ -209,11 +217,9 @@ static EditStat get_line_edit(char *string)
 		if (EDIT_CAN_RIGHT(rover.edit))
 			EDIT_DELETE(rover.edit);
 		break;
-	case KEY_CANCEL:
-		EDIT_CLEAR(rover.edit);
-		CLEAR_MESSAGE();
+	case KEY_CANCEL:		
 		break;
-	case KEY_F(1) ... KEY_F(12):
+	case KEY_F(1)... KEY_F(12):
 	case KEY_IC:
 		break;
 	default:
@@ -405,14 +411,15 @@ void main_menu(void)
 {
 	int i, ch, oldsel, oldscroll, length, ok, sel;
 	bool quit = false, isdir;
-	char buffer_one[PATH_MAX], input[PATH_MAX], clipboard[PATH_MAX];
-	char *program, *dir_name, *bname, *last, *msg, first;
+	char buffer[PATH_MAX], input[PATH_MAX], clipboard[PATH_MAX];
+	char *program, *last;
 	const char *clip_path;
 	ssize_t link;
 	Color color = RED;
 	FILE *clip_file;
 	EditStat edit_stat;
 	struct User prg;
+	mode_t mode;
 
 	ROVER_ENV(prg.Shell, SHELL);
 	ROVER_ENV(prg.Pager, PAGER);
@@ -436,8 +443,9 @@ void main_menu(void)
 			cd(false);
 			break;
 		case '?': //Help
-			sprintf(buffer_one, "%s/%s.1", rover_home_path, ROVER); // local manfile
-			spawn((char *[]){ "man", access(buffer_one, R_OK) ? ROVER : buffer_one, NULL });
+		case KEY_F(1):
+			sprintf(buffer, "%s/%s.1", rover_home_path, ROVER); // local manfile
+			spawn((char *[]){ "man", access(buffer, R_OK) ? ROVER : buffer, NULL });
 			break;
 		case KEY_DOWN: //Move cursor down
 			if (!rover.nfiles)
@@ -492,60 +500,48 @@ void main_menu(void)
 			if (!strcmp(CWD, "/"))
 				continue;
 			DELSLASH(CWD);
-			dir_name    = strrchr(CWD, '/') + 1;
-			first       = dir_name[0];
-			dir_name[0] = '\0';			
+			strcpy(buffer, strrchr(CWD, '/') + 1); //copy the cwd for try_to_sel
+			ADDSLASH(buffer);
+			dirname(CWD);
+			ADDSLASH(CWD);
 			cd(true);
-			dir_name[0] = first;
-			ADDSLASH(dir_name);
-			try_to_sel(dir_name);
-			dir_name[0] = '\0';
+			try_to_sel(buffer);
 			if (rover.nfiles > HEIGHT)
 				SCROLL = ESEL - HEIGHT / 2;
 			update_view();
 			break;
-		case 'h': //Go to home directory
+		case '/': //Go to home directory
 			strcpy(CWD, getenv("HOME"));
 			ADDSLASH(CWD);
 			cd(true);
 			break;
-		case 't': //Go to the target of the selected link
-			isdir = S_ISDIR(EMODE(ESEL));
-			link  = readlink(ENAME(ESEL), buffer_one, PATH_MAX - 1);
+		case 'l': //Go to the target of the selected link
+			link = readlink(ENAME(ESEL), buffer, PATH_MAX - 1);
 			if (link == -1)
-				continue;				
-			buffer_one[link] = '\0';
-			errno = 0;
-			if (access(buffer_one, F_OK) == -1) {
-				switch (errno) {
-				case EACCES:
-					msg = "Cannot access \"%s\".";
-					break;
-				case ENOENT:
-					msg = "\"%s\" does not exist.";
-					break;
-				default:
-					msg = "Cannot navigate to \"%s\".";
-				}
-				message(RED, msg, buffer_one);
+				continue;
+			buffer[link] = '\0'; // needed because of readlink return not null-terminated string
+			if (fileexist(buffer) != 0) {
+				message(RED, "File doesn't exist, more detail in %s.log", ROVER);
+				rover_getch();
+				CLEAR_MESSAGE();
 				continue;
 			}
-			realpath(buffer_one, CWD);
-			link = strlen(CWD);
-			if (CWD[link - 1] == '/')
-				CWD[link - 1] = '\0';
-			bname  = strrchr(CWD, '/') + 1;
-			first  = *bname;
-			*bname = '\0';
-			cd(true);
-			*bname = first;
-			if (isdir)
+			mode = fileinfo(buffer, NULL);
+			strcpy(CWD, buffer);		
+			if (S_ISREG(mode)) {
+				strcpy(CWD, buffer);
+				strcpy(buffer, strrchr(CWD, '/') +1 );
+				dirname(CWD);
 				ADDSLASH(CWD);
-			try_to_sel(bname);
-			*bname = '\0';
+			}
+			cd(true);
+			if(S_ISREG(mode))
+				try_to_sel(buffer);
+			if (rover.nfiles > HEIGHT)
+				SCROLL = ESEL - HEIGHT / 2;
 			update_view();
 			break;
-		case 'y': //Copy location to clipboard
+		case KEY_CTRL_C: //Copy location to clipboard
 			clip_path = getenv("CLIP");
 			if (clip_path) {
 				clip_file = fopen(clip_path, "w");
@@ -557,7 +553,7 @@ void main_menu(void)
 			if (!clip_path || !clip_file)
 				sprintf(clipboard, "%s%s", CWD, ENAME(ESEL));
 			break;
-		case 'p': //Go to location in clipboard
+		case KEY_CTRL_V: //Go to location in clipboard
 			clip_path = getenv("CLIP");
 			if (clip_path) {
 				clip_file = fopen(clip_path, "r");
@@ -566,19 +562,18 @@ void main_menu(void)
 					fclose(clip_file);
 				}
 			}
-			strcpy(buffer_one, clipboard);
-			strcpy(CWD, dirname(buffer_one));
-			if (strcmp(CWD, "/"))
-				ADDSLASH(CWD);
+			strcpy(buffer, clipboard);
+			strcpy(CWD, dirname(buffer));
+			ADDSLASH(CWD);
 			cd(true);
-			strcpy(buffer_one, clipboard);
-			try_to_sel(strstr(clipboard, basename(buffer_one)));
+			strcpy(buffer, clipboard);
+			try_to_sel(strstr(clipboard, basename(buffer)));
 			update_view();
 			break;
-		case 'r': //Refresh directory listing
+		case KEY_F(5): //Refresh directory listing
 			reload();
 			break;
-		case 's': //Open SHELL on the current directory
+		case 't': //Open SHELL on the current directory
 			program = prg.Shell;
 			if (program) {
 #ifdef RV_SHELL
@@ -589,25 +584,25 @@ void main_menu(void)
 				reload();
 			}
 			break;
-		case 'v': //Open PAGER with the selected file
+		case KEY_F(6): //Open PAGER with the selected file
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(prg.Pager, ENAME(ESEL)))
 				cd(false);
 			break;
-		case 'e': //Open VISUAL or EDITOR with the selected file
+		case KEY_F(7): //Open VISUAL or EDITOR with the selected file
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(prg.Editor, ENAME(ESEL)))
 				cd(false);
 			break;
-		case 'o': //Open OPEN with the selected file
+		case KEY_F(8): //Open OPEN with the selected file
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (open_with_env(prg.Open, ENAME(ESEL)))
 				cd(false);
 			break;
-		case 'i': //Start incremental search
+		case KEY_F(3): //Start incremental search
 			if (!rover.nfiles)
 				continue;
 			oldsel    = ESEL;
@@ -658,7 +653,7 @@ void main_menu(void)
 			FLAGS ^= SHOW_HIDDEN;
 			reload();
 			break;
-		case 'n': //Create new file
+		case KEY_F(9): //Create new file
 			start_line_edit("");
 			DELSLASH(input);
 			update_input(RVP_NEW_FILE, YELLOW, input);
@@ -690,18 +685,21 @@ void main_menu(void)
 				}
 				update_input(RVP_NEW_FILE, (ok ? GREEN : RED), input);
 			} while (edit_stat == CONTINUE);
-
 			CLEAR_MESSAGE();
+
 			if (ok && edit_stat == CONFIRM) {
 				if (addfile(input) == 0) {
 					cd(true);
 					try_to_sel(input);
 					update_view();
-				} else
+				} else {
 					message(RED, "Could not create \"%s\".", input);
+					rover_getch();
+					CLEAR_MESSAGE();
+				}
 			}
 			break;
-		case 'N': //Create new dir
+		case KEY_F(10): //Create new dir
 			start_line_edit("");
 			DELSLASH(input);
 			update_input(RVP_NEW_DIR, YELLOW, input);
@@ -741,8 +739,11 @@ void main_menu(void)
 					ADDSLASH(input);
 					try_to_sel(input);
 					update_view();
-				} else
+				} else {
 					message(RED, "Could not create \"%s/\".", input);
+					rover_getch();
+					CLEAR_MESSAGE();
+				}
 			}
 			break;
 		case KEY_F(2): //Rename selected file or directory
@@ -781,7 +782,7 @@ void main_menu(void)
 					message(RED, "\"%s\" already exists.", input);
 			}
 			break;
-		case 'E': //Toggle execute permission of the selected file
+		case KEY_F(4): //Toggle execute permission of the selected file
 			if (!rover.nfiles || S_ISDIR(EMODE(ESEL)))
 				continue;
 			if (S_IXUSR & EMODE(ESEL))
@@ -799,18 +800,18 @@ void main_menu(void)
 			if (rover.nfiles) {
 				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
 				if (rover_getch() == 'Y') {
-					strcpy(buffer_one, ENAME(ESEL));
+					strcpy(buffer, ENAME(ESEL));
 					if (MARKED(ESEL))
 						del_mark(&rover.marks, ENAME(ESEL));
-					ok = rm(buffer_one);
+					ok = rm(buffer);
 					reload();
 					if (ok == 0) {
 						CLEAR_MESSAGE();
-						message(YELLOW, "\"%s\" deleted!", buffer_one);
+						message(YELLOW, "\"%s\" deleted!", buffer);
 						rover_getch();
 					} else {
 						CLEAR_MESSAGE();
-						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer_one, ROVER); //print error message
+						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer, ROVER); //print error message
 						rover_getch();
 						CLEAR_MESSAGE();
 					}
@@ -821,7 +822,7 @@ void main_menu(void)
 				rover_getch();
 			}
 			break;
-		case 'm': //Toggle mark on the selected entry
+		case KEY_SPACE: //Toggle mark on the selected entry
 			if (MARKED(ESEL))
 				del_mark(&rover.marks, ENAME(ESEL));
 			else
@@ -830,7 +831,7 @@ void main_menu(void)
 			ESEL         = (ESEL + 1) % rover.nfiles;
 			update_view();
 			break;
-		case 'M': //Toggle mark on all visible entries
+		case KEY_CTRL_S: //Toggle mark on all visible entries
 			for (i = 0; i < rover.nfiles; i++) {
 				if (MARKED(i))
 					del_mark(&rover.marks, ENAME(i));
@@ -840,7 +841,7 @@ void main_menu(void)
 			}
 			update_view();
 			break;
-		case 'a': //Mark all visible entries
+		case KEY_CTRL_A: //Mark all visible entries
 			for (i = 0; i < rover.nfiles; i++)
 				if (!MARKED(i)) {
 					add_mark(&rover.marks, CWD, ENAME(i));
@@ -876,6 +877,8 @@ void main_menu(void)
 			} else
 				message(RED, "No entries marked for moving.");
 			break;
+		default:
+			LOG(LOG_INFO, "0x%02X", ch);
 		}
 	} while (!quit);
 

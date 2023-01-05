@@ -75,76 +75,73 @@ pointed to the "source" directory of the operation and then issue the command on
 another tab that is pointed to the "destination" directory.
 .SH COMMANDS
 .TP
-.B ESC
+.B <ESC>
 Quit rover.
 .TP
-.B Arrow up/down
+.B Arrow <UP>/<DOWN>
 Move cursor up/down.
 .TP
-.B Page up/down
+.B Page <UP>/<DOWN>
 Move cursor up/down 10 lines.
 .TP
-.B HOME/END
+.B <HOME>/<END>
 Move cursor to top/bottom of the list.
 .TP
-.B Arrow Right
-Enter selected directory.
-.TP
-.B Arrow Left
-Go to parent directory.
-.TP
-.B h
-Go to \fB$HOME\fR directory.
-.TP
-.B t
-Go to the target of the selected link.
-.TP
-.B y
-Copy location to clipboard.
-.TP
-.B p
-Go to location in clipboard.
-.TP
-.B r
-Refresh directory listing.
-.TP
-.B <RETURN>
-Open \fB$SHELL\fR on the current directory.
-.TP
-.B <SPACE>
-Open \fB$PAGER\fR with the selected file.
-.TP
-.B e
-Open \fB$VISUAL\fR or \fB$EDITOR\fR with the selected file.
-.TP
-.B o
-Open \fB$OPEN\fR with the selected file.
+.B Arrow <RIGHT>/<LEFT>
+Enter selected directory/Go to parent directory.
 .TP
 .B /
+Go to \fB$HOME\fR directory.
+.TP
+.B l
+Go to the target of the selected symbolic link.
+.TP
+.B <CTRL>+C
+Copy location to clipboard.
+.TP
+.B <CTRL>+V
+Go to location in clipboard.
+.TP
+.B <F5>
+Refresh directory listing.
+.TP
+.B t
+Open terminal \fB$SHELL\fR on the current directory.
+.TP
+.B <F6>
+Open \fB$PAGER\fR with the selected file.
+.TP
+.B <F7>
+Open \fB$VISUAL\fR or \fB$EDITOR\fR with the selected file.
+.TP
+.B <F8>
+Open \fB$OPEN\fR with the selected file.
+.TP
+.B <F3>
 Start incremental search.
 .TP
 .B F/D/H
 Toggle file/directory/hidden listing.
 .TP
-.B n/N
+.B <F9>/<F10>
 Create new file/directory.
 .TP
-.B F2
+.B <F2>
 Rename selected file or directory.
 .TP
-.B E
+.B <F4>
 Toggle execute permission of the selected file.
 .TP
-.B CANC
+.B <CANC>
 Delete selected file or (empty) directory.
 .TP
-.B m
+.B <SPACE>
 Toggle mark on the selected entry.
 .TP
-.B M
+.B <CTRL>+s
 Toggle mark on all visible entries.
 .TP
-.B a
+.B <CTRL>+a
 Mark all visible entries.
 .TP
 .B X/C/V
@@ -161,25 +158,25 @@ keys will insert characters at the cursor position. The following shortcuts are
 available for line editing:
 .TP
 .B <TAB>
-Finish editing and \fBcancel\fR command.
+Clear line (remove all characters).
 .TP
 .B <RETURN>
 Finish editing and \fBconfirm\fR command.
 .TP
-.B <LEFT>/<RIGHT>
+.B Arrow <LEFT>/<RIGHT>
 Move insertion cursor left/right.
 .TP
-.B <UP>/<DOWN>
+.B Arrow <UP>/<DOWN>
 Move insertion cursor to beginning/end of string.
 .TP
 .B <BACKSPACE>
 Remove one character before cursor.
 .TP
-.B <DELETE>
+.B <CANC>
 Remove one character after cursor.
 .TP
-.B <CONTROL>+u
-Clear line (remove all characters).
+.B <ESC>
+If line is empty than finish editing and \fBcancel\fR command otherwise clear line (remove all characters).
 .SH ENVIRONMENT VARIABLES
 .TP
 .B HOME
