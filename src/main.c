@@ -11,14 +11,14 @@ static void init_term(void)
 	setlocale(LC_ALL, "");
 	initscr();
 
-	cbreak(); /* Get one character at a time. */
-	nodelay(stdscr, TRUE); /* For getch(). */
+	cbreak(); // Get one character at a time.
+	nodelay(stdscr, TRUE); // For getch().
 	noecho();
-	nonl(); /* No NL->CR/NL on output. */
+	nonl(); // No NL->CR/NL on output.
 	intrflush(stdscr, FALSE);
 	keypad(stdscr, TRUE);
-	curs_set(FALSE); /* Hide blinking cursor. */
-	raw();
+	curs_set(FALSE); // Hide blinking cursor.
+	raw(); //to read Ctrl+C and so on
 
 	if (has_colors()) {
 		short bg;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
 			printf("rover %s\n", RV_VERSION);
 
-			return 0;
+			return EXIT_SUCCESS;
 		} else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
 			printf(
 				"Usage: rover [OPTIONS] [DIR [DIR [...]]]\n"
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 				"See rover(1) for more information.\n"
 				"Rover homepage: <https://github.com/lecram/rover>.\n");
 
-			return 0;
+			return EXIT_SUCCESS;
 		} else if (!strcmp(argv[1], "-d") || !strcmp(argv[1], "--save-cwd")) {
 			if (argc > 2) {
 				save_cwd_file = fopen(argv[2], "w");
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 			} else {
 				fprintf(stderr, "error: missing argument to %s\n", argv[1]);
 
-				return 1;
+				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--save-marks")) {
 			if (argc > 2) {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 			} else {
 				fprintf(stderr, "error: missing argument to %s\n", argv[1]);
 
-				return 1;
+				return EXIT_FAILURE;
 			}
 		}
 	}

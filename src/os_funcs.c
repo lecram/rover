@@ -139,6 +139,9 @@ int rm(const char *fname)
 	case EISDIR:
 		msgerr = "pathname refers to a directory, and AT_REMOVEDIR was not specified in flags.";
 		break;
+	case ENOTEMPTY:
+		msgerr = "Dirctory not empty.";
+		break;
 	default:
 		msgerr = "Generic error not specified by OS.";
 		break;
@@ -295,14 +298,14 @@ return file descriptor no if success, -1 in case of error or -2 if same inode
 */
 static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 {
-	int fd  = -1L;
+	int fd  = -3;
 	bool ok = true;
 
 	if (access(fname, F_OK) == 0) { //check if the target file already exists
 		if (inodeof(fname) == source_inode)
 			return -2;
 
-		message(RED, "Warning destination file already exist. Overwrite (Y/n)?");
+		message(RED, "Warning: \"%s\" already exist. Overwrite (Y/n)?", FILENAME(fname);
 		if (rover_getch() == 'Y')
 			rm(fname);
 		else
@@ -317,12 +320,12 @@ static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 }
 
 /*
-copyng source file to destination dir using sendfile() with better performance because of kernel
+copyng srcfile file to destination dir using sendfile() with better performance because of kernel
 in case of EINVAL or ENOSYS it try to use classic read()/write() funcs with best chunk of memory
 
-return 0
+return total bytes copied if success, -1L in case of error, -2L if srcfile == dstfile, -3L user abort overwriting
 */
-static ssize_t filecopy(const char *source, const char *todir)
+static ssize_t filecopy(const char *srcfile, const char *dstfile)
 {
 	int input, output;
 	struct stat sb = { 0 };
@@ -331,18 +334,18 @@ static ssize_t filecopy(const char *source, const char *todir)
 	bool trayAgain = false; /* Applications may wish to fall back to read(2)/write(2) in
 								the case where sendfile() fails with EINVAL or ENOSYS. */
 
-	input = open(source, O_RDONLY); //try opening the source file
+	input = open(srcfile, O_RDONLY); //try opening the srcfile file
 	if (input == -1) {
-		LOG(LOG_ERR, "File open error: %s", source);
+		LOG(LOG_ERR, "File open error: %s", srcfile);
 
 		return -1L;
 	}
 
 	errno = 0;
-	if (fstat(input, &sb)) { //read the attributes of the source file
+	if (fstat(input, &sb)) { //read the attributes of the srcfile file
 		switch (errno) {
 		case EACCES:
-			msgerr = "Search permission is denied for one of the directories in the path prefix of source file.";
+			msgerr = "Search permission is denied for one of the directories in the path prefix of srcfile file.";
 			break;
 		case EBADF:
 			msgerr = "fd is not a valid open file descriptor.";
@@ -373,7 +376,7 @@ static ssize_t filecopy(const char *source, const char *todir)
 			msgerr = NULL;
 			break;
 		}
-		LOG(LOG_ERR, "Error reading info from \"%s\" errno[%d]: %s", source, errno, msgerr);
+		LOG(LOG_ERR, "Error reading info from \"%s\" errno[%d]: %s", srcfile, errno, msgerr);
 		message(RED, "Error reading info from source file. more info in \"%s.log\"", ROVER);
 		rover_getch();
 		CLEAR_MESSAGE();
@@ -381,17 +384,24 @@ static ssize_t filecopy(const char *source, const char *todir)
 		return -1L;
 	}
 
-	output = opennew(todir, sb.st_mode, inodeof(source)); //try to open the destinatiion file with same mode of source
+	output = opennew(dstfile, sb.st_mode, inodeof(srcfile)); //try to open the destinatiion file with same mode of srcfile
 	if (output < 0) { //try to open the destinatiion file
 		close(input);
-		msgerr = (output == -1 ? "Error opening destination file" : "Destination file must be in a different directory of the source file");
+		if (output == -1)
+			msgerr = "Error opening destination file";
+		else if (output == -2)
+			msgerr = "Destination file must be in a different directory of the source file";
+		else
+			msgerr = NULL;
 
-		LOG(LOG_ERR, "%s", msgerr);
-		message(RED, "%s", msgerr);
-		rover_getch();
-		CLEAR_MESSAGE();
+		if (msgerr) {
+			LOG(LOG_ERR, "%s", msgerr);
+			message(RED, "%s", msgerr);
+			rover_getch();
+			CLEAR_MESSAGE();
+		}
 
-		return -1L;
+		return (ssize_t)output;
 	}
 
 	errno       = 0;
@@ -470,7 +480,7 @@ static ssize_t filecopy(const char *source, const char *todir)
 	close(input); //close the file descriptor
 	close(output); //close the file descriptor
 	if (errno)
-		unlink(todir); // in case of error remove output file.
+		unlink(dstfile); // in case of error remove output file.
 
 	if (sb.st_size != bytesCopied) { // verify that all bytes have been copied
 		LOG(LOG_ERR, "Error not all data was copied! Writed %ld bytes on %ld bytes: errno[%d]", bytesCopied, sb.st_size, errno);
@@ -489,7 +499,7 @@ returns 0 if success
 int cpyfile(const char *srcpath)
 {
 	char dstpath[PATH_MAX], buffer[PATH_MAX];
-	ssize_t bytesTocopy;
+	ssize_t bytesTocopy, bytesCopied;
 	int result;
 	mode_t mode;
 
@@ -510,14 +520,14 @@ int cpyfile(const char *srcpath)
 			result         = symlink(buffer, dstpath);
 		}
 	} else if (S_ISREG(mode)) {
-		result = (filecopy(srcpath, dstpath) != bytesTocopy);
+		bytesCopied = filecopy(srcpath, dstpath);
+		result      = (int)((bytesCopied == bytesTocopy) ? false : bytesCopied);
 	} else {
 		message(RED, "Error: source file must be a regular file or symbolic link");
 		rover_getch();
 		CLEAR_MESSAGE();
-		result = -3;
+		result = -4;
 	}
-
 	return result;
 }
 

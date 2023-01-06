@@ -138,6 +138,9 @@ struct Rover {
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define ISDIR(E)  (strchr((E), '/') != NULL)
 
+/* Get file or dir name without path */
+#define FILENAME(_path) (strrchr(_path, '/') + 1)
+
 /* Check if not root dir than add / at the end of path */
 #define ADDSLASH(_path)                      \
 	{                                        \

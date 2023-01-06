@@ -509,7 +509,7 @@ void main_menu(void)
 			if (!strcmp(CWD, "/"))
 				continue;
 			DELSLASH(CWD);
-			strcpy(buffer, strrchr(CWD, '/') + 1); //copy the cwd for try_to_sel
+			strcpy(buffer, FILENAME(CWD)); //copy the cwd for try_to_sel
 			ADDSLASH(buffer);
 			dirname(CWD);
 			ADDSLASH(CWD);
@@ -539,7 +539,7 @@ void main_menu(void)
 			strcpy(CWD, buffer);
 			if (S_ISREG(mode)) {
 				strcpy(CWD, buffer);
-				strcpy(buffer, strrchr(CWD, '/') + 1);
+				strcpy(buffer, FILENAME(CWD));
 				dirname(CWD);
 				ADDSLASH(CWD);
 			}
@@ -809,28 +809,6 @@ void main_menu(void)
 			rover_getch();
 			CLEAR_MESSAGE();
 			break;
-		case KEY_DC: //Delete selected file or (empty) directory
-			if (rover.nfiles) {
-				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
-				if (rover_getch() == 'Y') {
-					strcpy(buffer, ENAME(ESEL));
-					if (MARKED(ESEL))
-						del_mark(&rover.marks, ENAME(ESEL));
-					ok = rm(buffer);
-					reload();
-					CLEAR_MESSAGE();
-					if (ok == 0)
-						message(GREEN, "\"%s\" deleted!", buffer);
-					else
-						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer, ROVER); //print error message
-					rover_getch();
-				}
-			} else {
-				message(RED, "No entry for deletion.");
-				rover_getch();
-			}
-			CLEAR_MESSAGE();
-			break;
 		case KEY_SPACE: //Toggle mark on the selected entry
 			if (MARKED(ESEL))
 				del_mark(&rover.marks, ENAME(ESEL));
@@ -866,6 +844,32 @@ void main_menu(void)
 				}
 			update_view();
 			break;
+		case KEY_DC: //Delete selected file or (empty) directory
+			if (rover.marks.nentries) {
+				message(YELLOW, "There is marked entries, to delete them use X");
+				rover_getch();
+				CLEAR_MESSAGE();
+			}
+			if (rover.nfiles) {
+				message(YELLOW, "Delete \"%s\"? (Y/n)", ENAME(ESEL));
+				if (rover_getch() == 'Y') {
+					strcpy(buffer, ENAME(ESEL));
+					if (MARKED(ESEL))
+						del_mark(&rover.marks, ENAME(ESEL));
+					ok = rm(buffer);
+					reload();
+					CLEAR_MESSAGE();
+					if (ok == 0)
+						message(GREEN, "\"%s\" deleted!", buffer);
+					else
+						message(RED, "Error removing \"%s\", to get more info read \"%s.log\"", buffer, ROVER); //print error message
+				}
+			} else
+				message(RED, "No entry for deletion.");
+
+			rover_getch();
+			CLEAR_MESSAGE();
+			break;
 		case 'X': //Delete all marked entries
 			if (rover.marks.nentries) {
 				message(YELLOW, "Delete all marked entries? (Y/n)");
@@ -895,6 +899,7 @@ void main_menu(void)
 				message(RED, "No entries marked for moving.");
 			break;
 		default:
+			//LOG(LOG_INFO, "keypressed [0x%02x]", ch); // Used for DEBUG
 			RV_ALERT();
 			break;
 		}

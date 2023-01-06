@@ -78,7 +78,7 @@
 #define KEY_CTRL_C 0x03
 #endif
 #ifndef KEY_CTRL_V
-#define KEY_CTRL_V 0x10
+#define KEY_CTRL_V 0x16
 #endif
 #ifndef KEY_CTRL_A
 #define KEY_CTRL_A 0x01

@@ -103,7 +103,7 @@ void reload(void)
     process_dir(adddir, movfile, rm, "/src/"); */
 static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 {
-	int ret = 0;
+	int result = 0;
 	DIR *dp;
 	struct dirent *ep;
 	char subpath[PATH_MAX], dstpath[PATH_MAX];
@@ -111,7 +111,7 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 	if (pre) {
 		strcpy(dstpath, CWD);
 		strcat(dstpath, path + strlen(rover.marks.dirpath));
-		ret |= pre(dstpath);
+		result |= pre(dstpath);
 	}
 
 	dp = opendir(path);
@@ -125,16 +125,16 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
 		snprintf(subpath, PATH_MAX, "%s%s", path, ep->d_name);
 		if (S_ISDIR(fileinfo(subpath, NULL))) {
 			ADDSLASH(subpath);
-			ret |= process_dir(pre, proc, pos, subpath);
+			result |= process_dir(pre, proc, pos, subpath);
 		} else
-			ret |= proc(subpath);
+			result |= proc(subpath);
 	}
 	closedir(dp);
 
 	if (pos)
-		ret |= pos(path);
+		result |= pos(path);
 
-	return ret;
+	return result;
 }
 
 /* Process all marked entries using CWD as destination root.
@@ -142,7 +142,7 @@ static int process_dir(PROCESS pre, PROCESS proc, PROCESS pos, const char *path)
    See process_dir() for details on the parameters. */
 void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doing, const char *msg_done)
 {
-	int i, ret;
+	int i, result;
 	char *entry;
 	char path[PATH_MAX];
 
@@ -152,27 +152,30 @@ void process_marked(PROCESS pre, PROCESS proc, PROCESS pos, const char *msg_doin
 	for (i = 0; i < rover.marks.bulk; i++) {
 		entry = rover.marks.entries[i];
 		if (entry) {
-			ret = 0;
+			result = 0;
 			snprintf(path, PATH_MAX, "%s%s", rover.marks.dirpath, entry);
 			if (ISDIR(entry)) {
 				if (!strncmp(path, CWD, strlen(path)))
-					ret = -1;
+					result = -1;
 				else
-					ret = process_dir(pre, proc, pos, path);
+					result = process_dir(pre, proc, pos, path);
 			} else {
-				ret = proc(path);
+				result = proc(path);
 			}
 
-			if (!ret) {
+			if (!result) {
 				del_mark(&rover.marks, entry);
 				reload();
 			}
 		}
 	}
 	reload();
-	if (rover.marks.nentries)
+	if(result == -3)
+		message(YELLOW, "%s aborted.", msg_doing) ;
+	else if (result < 0) //rover.marks.nentries
 		message(RED, "Some errors occured while %s.", msg_doing);
 	else
 		message(GREEN, "%s all marked entries.", msg_done);
+
 	RV_ALERT();
 }
