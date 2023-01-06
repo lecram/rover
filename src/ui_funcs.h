@@ -11,8 +11,7 @@
 #include <stdlib.h>
 #include <unistd.h> /* environ PAGER SHELL EDITOR VISUAL */
 #include <libgen.h> /* dirname() */
-
-#define STATUSPOS (COLS - 16)
+#include <getopt.h>
 
 /* Shell used to launch external  programs.
    Defining   this  macro   will  force   Rover  to   launch  external
@@ -24,6 +23,8 @@
    undefined if you prefer external  programs to be launched with just
    `$EXTERNAL_PROGRAM [arg]`. */
 #define RV_SHELL "/bin/sh"
+
+#define STATUSPOS (COLS - 16)
 
 /* Number of entries to jump on RVK_JUMP_DOWN and RVK_JUMP_UP. */
 #define RV_JUMP 10
@@ -147,6 +148,8 @@ void handlers(bool enable);
 int rover_getch(void);
 void message(Color color, char *fmt, ...);
 void update_view(void);
+void init_marks(Marks *marks);
+void free_marks(Marks *marks);
 void del_mark(Marks *marks, char *entry);
 void main_menu(void);
 

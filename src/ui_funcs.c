@@ -350,6 +350,27 @@ static EditStat get_line_edit(char *string)
 	return CONTINUE;
 }
 
+void init_marks(Marks *marks)
+{
+	strcpy(marks->dirpath, "");
+	marks->bulk     = BULK_INIT;
+	marks->nentries = 0;
+	marks->entries  = (char **)calloc(marks->bulk, sizeof(*marks->entries));
+}
+
+void free_marks(Marks *marks)
+{
+	int i;
+
+	for (i = 0; marks->nentries && i < marks->bulk; i++)
+		if (marks->entries[i]) {
+			FREE(marks->entries[i]);
+			marks->nentries--;
+		}
+
+	FREE(marks->entries);
+}
+
 /* Unmark all entries. */
 static void mark_none(Marks *marks)
 {

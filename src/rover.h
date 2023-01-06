@@ -32,7 +32,7 @@
 #include <stdbool.h>
 #include <time.h>
 
-#define RV_VERSION "2.0.1"
+#define RV_VERSION "2.0.1" //Sandroid75
 
 /* Special symbols used by the TUI. See <curses.h> for available constants. */
 #define RVS_SCROLLBAR ACS_CKBOARD
@@ -48,9 +48,6 @@
 /* Default listing view flags.
    May include SHOW_FILES, SHOW_DIRS and SHOW_HIDDEN. */
 #define RV_FLAGS SHOW_FILES | SHOW_DIRS
-
-/* Optional macro to be executed when a batch operation finishes. */
-#define RV_ALERT() beep()
 
 /*  This signal is not defined by POSIX, but should be
    present on all systems that have resizable terminals. */
@@ -69,6 +66,11 @@
 /* Marks parameters. */
 #define BULK_INIT   5
 #define BULK_THRESH 256
+
+#define ROVER       "rover"
+#define LOG_INFO    false
+#define LOG_ERR     true
+#define RV_PATH_MAX (PATH_MAX - 16)
 
 /* Information associated to each entry in listing. */
 typedef struct Row {
@@ -138,6 +140,26 @@ struct Rover {
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define ISDIR(E)  (strchr((E), '/') != NULL)
 
+/* Macro to initialize the rover struct */
+#define INIT_ROVER(_r)                       \
+	{                                        \
+		_r.nfiles = 0;                       \
+		for (int idx = 0; idx < 10; idx++) { \
+			_r.tabs[idx].esel   = 0;         \
+			_r.tabs[idx].scroll = 0;         \
+			_r.tabs[idx].flags  = RV_FLAGS;  \
+		}                                    \
+	}
+
+/* Optional macro to be executed when a batch operation finishes. */
+#define RV_ALERT() beep()
+
+/* Macro to manage logfile() func in order to read detailed info from source files */
+#define LOG(flag, msg, ...)                                                                                                      \
+	{                                                                                                                            \
+		logfile("{%s} %s %s() <%d>: " msg "\n", (flag ? "ERR" : "INFO"), FILENAME(__FILE__), __func__, __LINE__, ##__VA_ARGS__); \
+	}
+
 /* Get file or dir name without path */
 #define FILENAME(_path) (strrchr(_path, '/') + 1)
 
@@ -155,22 +177,13 @@ struct Rover {
 		    _path[strlen(_path) - 1] == '/') \
 			_path[strlen(_path) - 1] = '\0'; \
 	}
+
 /* Safe version of free() don't need assign NULL after free */
 #define FREE(p)        \
 	{                  \
 		if ((p))       \
 			free((p)); \
 		(p) = NULL;    \
-	}
-
-#define ROVER       "rover"
-#define LOG_INFO    false
-#define LOG_ERR     true
-#define RV_PATH_MAX (PATH_MAX - 16)
-
-#define LOG(flag, msg, ...)                                                                                                      \
-	{                                                                                                                            \
-		logfile("{%s} %s %s() <%d>: " msg "\n", (flag ? "ERR" : "INFO"), basename(__FILE__), __func__, __LINE__, ##__VA_ARGS__); \
 	}
 
 typedef int (*PROCESS)(const char *path);
@@ -180,6 +193,7 @@ extern char rover_home_path[RV_PATH_MAX];
 
 // Functions declaration
 void logfile(const char *format, ...);
+void init_term(void);
 int endsession(void);
 void reload(void);
 void free_rows(Row **rowsp, int nfiles);

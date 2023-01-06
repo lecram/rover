@@ -36,6 +36,44 @@ void logfile(const char *format, ...)
 	return;
 }
 
+/* Curses setup. */
+void init_term(void)
+{
+	setlocale(LC_ALL, "");
+	initscr();
+
+	cbreak(); // Get one character at a time.
+	nodelay(stdscr, TRUE); // For getch().
+	noecho();
+	nonl(); // No NL->CR/NL on output.
+	intrflush(stdscr, FALSE);
+	keypad(stdscr, TRUE);
+	curs_set(FALSE); // Hide blinking cursor.
+	raw(); //to read Ctrl+C and so on
+
+	if (has_colors()) {
+		short bg;
+		start_color();
+
+#ifdef NCURSES_EXT_FUNCS
+		use_default_colors();
+		bg = -1;
+#else
+		bg = COLOR_BLACK;
+#endif
+		init_pair(RED, COLOR_RED, bg);
+		init_pair(GREEN, COLOR_GREEN, bg);
+		init_pair(YELLOW, COLOR_YELLOW, bg);
+		init_pair(BLUE, COLOR_BLUE, bg);
+		init_pair(CYAN, COLOR_CYAN, bg);
+		init_pair(MAGENTA, COLOR_MAGENTA, bg);
+		init_pair(WHITE, COLOR_WHITE, bg);
+		init_pair(BLACK, COLOR_BLACK, bg);
+	}
+	atexit((void (*)(void))endsession);
+	handlers(true); //enable handlers
+}
+
 /* atexit func */
 int endsession(void)
 {

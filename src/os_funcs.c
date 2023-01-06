@@ -305,7 +305,7 @@ static int opennew(const char *fname, mode_t mode, ino_t source_inode)
 		if (inodeof(fname) == source_inode)
 			return -2;
 
-		message(RED, "Warning: \"%s\" already exist. Overwrite (Y/n)?", FILENAME(fname);
+		message(RED, "Warning: \"%s\" already exist. Overwrite (Y/n)?", FILENAME(fname));
 		if (rover_getch() == 'Y')
 			rm(fname);
 		else
