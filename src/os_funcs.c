@@ -331,7 +331,7 @@ static ssize_t filecopy(const char *srcfile, const char *dstfile)
 	struct stat sb = { 0 };
 	ssize_t chunk, bytesCopied, bytesTocopy = 0;
 	char *msgerr, *data, *ptr, *end;
-	bool trayAgain = false; /* Applications may wish to fall back to read(2)/write(2) in
+	bool tryAgain = false; /* Applications may wish to fall back to read(2)/write(2) in
 								the case where sendfile() fails with EINVAL or ENOSYS. */
 
 	input = open(srcfile, O_RDONLY); //try opening the srcfile file
@@ -420,7 +420,7 @@ static ssize_t filecopy(const char *srcfile, const char *dstfile)
 	case EINVAL:
 	case ENOSYS:
 		msgerr    = "Descriptor is not valid or locked, or an mmap(2)-like operation is not available for in_fd, or count is negative.";
-		trayAgain = true; /* read NOTES at https://man7.org/linux/man-pages/man2/sendfile.2.html */
+		tryAgain = true; /* read NOTES at https://man7.org/linux/man-pages/man2/sendfile.2.html */
 		break;
 	case EIO:
 		msgerr = "Unspecified error while reading from in_fd.";
@@ -448,7 +448,7 @@ static ssize_t filecopy(const char *srcfile, const char *dstfile)
 		CLEAR_MESSAGE();
 	}
 
-	if (trayAgain) {
+	if (tryAgain) {
 		LOG(LOG_INFO, "%s try to copy again with read()/write() instead of sendfile().", ROVER);
 		errno = 0;
 		chunk = MIN(bytesTocopy, DEFAULT_CHUNK); //set better performance for copy
@@ -465,13 +465,13 @@ static ssize_t filecopy(const char *srcfile, const char *dstfile)
 				while (ptr < end) { //write data loop
 					bytesTocopy = write(output, ptr, (size_t)(end - ptr));
 					if (bytesTocopy <= 0) {
-						trayAgain = false; // exit from do while loop
+						tryAgain = false; // exit from do while loop
 						break; // exit from while loop
 					}
 					bytesCopied += bytesTocopy;
 					ptr += bytesTocopy;
 				}
-			} while (trayAgain);
+			} while (tryAgain);
 			FREE(data);
 			if (!errno)
 				LOG(LOG_INFO, "%s copy with success using read()/write() instead of sendfile().", ROVER);
