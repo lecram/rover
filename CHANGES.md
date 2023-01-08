@@ -1,5 +1,26 @@
 # Change Log
 
+## [2.0.1] - 2022-12-31
+
+### New revision
+
+- completely revised and improved functions
+- now it can browse the directories with arrows (also scroll mouse)
+- now most commands are associated with function keys
+- better copy performance usign kernel function sendfile()
+- confirmation is asked before overwriting existing files
+- a formatted "rover.log" file is created with info and errors
+- programming style is closer to GNU standards
+- functions are divided into specific files
+- Fixed several bugs
+- also improved the handling of command line arguments
+- VSCode folder with JSON files
+- .clang-format file in order to keep a good style
+
+to do:
+- implement a modern progress bar
+
+
 ## [1.0.1] - 2020-06-04
 
 ### Bug Fixes

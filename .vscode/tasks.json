@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "C/C++: gcc build active file",
+			"command": "/usr/bin/gcc",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-std=gnu17",
+				"-Wall",
+				"-O0",
+				"-ggdb",
+				"-D_DEFAULT_SOURCE", // pkg-config --cflags ncursesw
+				/* "-D_XOPEN_SOURCE=600", already defined in rover.h */ // pkg-config --cflags ncursesw
+				"${workspaceFolder}/src/*c",
+				"-o",
+				"${workspaceFolder}/rover",
+				"-lncursesw", // pkg-config --libs ncursesw
+				"-ltinfo" // pkg-config --libs ncursesw
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: /usr/bin/gcc"
+		}
+	]
+}

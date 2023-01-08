@@ -1,7 +1,7 @@
 Introduction
 ============
 
- Rover is a file browser for the terminal.
+ This is a complete review of Rover is a file browser for the terminal.
 
 ![Rover screenshot](/../screenshots/screenshot.png?raw=true "Screenshot")
 
@@ -28,22 +28,23 @@ Quick Start
 
  Basic Usage:
  ```
-       q - quit Rover
-       ? - show Rover manual
-     j/k - move cursor down/up
-     J/K - move cursor down/up 10 lines
-     g/G - move cursor to top/bottom of listing
-       l - enter selected directory
-       h - go to parent directory
-       H - go to $HOME directory
-     0-9 - change tab
-  RETURN - open $SHELL on the current directory
-   SPACE - open $PAGER with the selected file
-       e - open $VISUAL or $EDITOR with the selected file
-       / - start incremental search (RETURN to finish)
-     n/N - create new file/directory
-       R - rename selected file or directory
-       D - delete selected file or (empty) directory
+              <F1> or ?   Show this manual.
+                  <ESC>   Quit rover.
+      Arrow <UP>/<DOWN>   Move cursor up/down.
+       Page <UP>/<DOWN>   Move cursor up/down 10 lines.
+           <HOME>/<END>   Move cursor to top/bottom of the list.
+   Arrow <RIGHT>/<LEFT>   Enter selected directory/Go to parent directory.
+                      /   Go to $HOME directory.
+                      l   Go to the target of the selected symbolic link.
+                      t   Open terminal $SHELL on the current directory.
+                   <F6>   Open $PAGER with the selected file.
+                   <F7>   Open $VISUAL or $EDITOR with the selected file.
+                   <F8>   Open $OPEN with the selected file.
+                  F/D/H   Toggle file/directory/hidden listing.
+             <F9>/<F12>   Create new file/directory.
+                   <F2>   Rename selected file or directory.
+                 <CANC>   Delete selected file or (empty) directory.
+                <SPACE>   Toggle mark on the selected entry.
  ```
 
  Please read rover(1) for more information.
@@ -60,7 +61,7 @@ Configuration
 =============
 
  Rover configuration (mostly key bindings and colors) can only be changed by
-editing the file `config.h` and rebuilding the binary.
+editing the file `rover.h` and rebuilding the binary.
 
  Note that the external programs executed by some Rover commands may be changed
 via the appropriate environment variables. For example, to specify an editor:
